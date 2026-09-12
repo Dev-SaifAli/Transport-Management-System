@@ -1,0 +1,245 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "autoname": "format:TTRIP-{YYYY}-{#####}",
+ "creation": "2026-09-10 18:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "relationship_section",
+  "transport_job",
+  "execution_section",
+  "trip_date",
+  "execution_source",
+  "transporter",
+  "hired_vehicle",
+  "hired_driver",
+  "vehicle",
+  "driver",
+  "column_break_execution_1",
+  "loading_site",
+  "unloading_site",
+  "material",
+  "column_break_execution_2",
+  "planned_quantity",
+  "actual_quantity",
+  "uom",
+  "references_section",
+  "gdn",
+  "loading_no",
+  "unloading_no",
+  "pod_section",
+  "pod_attachment",
+  "pod_received_at",
+  "status_section",
+  "status",
+  "notes_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "relationship_section",
+   "fieldtype": "Section Break",
+   "label": "Relationship"
+  },
+  {
+   "fieldname": "transport_job",
+   "fieldtype": "Link",
+   "label": "Transport Job",
+   "options": "Transport Job",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "execution_section",
+   "fieldtype": "Section Break",
+   "label": "Execution"
+  },
+  {
+   "fieldname": "trip_date",
+   "fieldtype": "Date",
+   "label": "Trip Date",
+   "reqd": 1
+  },
+  {
+   "default": "OWN",
+   "fieldname": "execution_source",
+   "fieldtype": "Select",
+   "label": "Execution Source",
+   "options": "OWN\nHIRED",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.execution_source == 'HIRED'",
+   "fieldname": "transporter",
+   "fieldtype": "Link",
+   "label": "Transporter",
+   "mandatory_depends_on": "eval:doc.execution_source == 'HIRED'",
+   "options": "Supplier"
+  },
+  {
+   "depends_on": "eval:doc.execution_source == 'HIRED'",
+   "fieldname": "hired_vehicle",
+   "fieldtype": "Link",
+   "label": "Hired Vehicle",
+   "mandatory_depends_on": "eval:doc.execution_source == 'HIRED'",
+   "options": "Hired Vehicle"
+  },
+  {
+   "depends_on": "eval:doc.execution_source == 'HIRED'",
+   "fieldname": "hired_driver",
+   "fieldtype": "Data",
+   "label": "Hired Driver"
+  },
+  {
+   "fieldname": "vehicle",
+   "fieldtype": "Link",
+   "label": "Vehicle",
+   "options": "Truck",
+   "depends_on": "eval:doc.execution_source == 'OWN'",
+   "mandatory_depends_on": "eval:doc.execution_source == 'OWN'"
+  },
+  {
+   "fieldname": "driver",
+   "fieldtype": "Link",
+   "label": "Driver",
+   "options": "Truck Driver",
+   "depends_on": "eval:doc.execution_source == 'OWN'",
+   "mandatory_depends_on": "eval:doc.execution_source == 'OWN'"
+  },
+  {
+   "fieldname": "column_break_execution_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "loading_site",
+   "fieldtype": "Link",
+   "label": "Loading Site",
+   "options": "Transport Location",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unloading_site",
+   "fieldtype": "Link",
+   "label": "Unloading Site",
+   "options": "Transport Location",
+   "reqd": 1
+  },
+  {
+   "fieldname": "material",
+   "fieldtype": "Link",
+   "label": "Material",
+   "options": "Cargo Types",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_execution_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_quantity",
+   "fieldtype": "Float",
+   "label": "Planned Quantity",
+   "reqd": 1
+  },
+  {
+   "fieldname": "actual_quantity",
+   "fieldtype": "Float",
+   "label": "Actual Quantity"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "reqd": 1
+  },
+  {
+   "fieldname": "references_section",
+   "fieldtype": "Section Break",
+   "label": "References"
+  },
+  {
+   "fieldname": "gdn",
+   "fieldtype": "Data",
+   "label": "GDN"
+  },
+  {
+   "fieldname": "loading_no",
+   "fieldtype": "Data",
+   "label": "Loading No"
+  },
+  {
+   "fieldname": "unloading_no",
+   "fieldtype": "Data",
+   "label": "Unloading No"
+  },
+  {
+   "fieldname": "pod_section",
+   "fieldtype": "Section Break",
+   "label": "POD"
+  },
+  {
+   "fieldname": "pod_attachment",
+   "fieldtype": "Attach",
+   "label": "POD Attachment"
+  },
+  {
+   "fieldname": "pod_received_at",
+   "fieldtype": "Datetime",
+   "label": "POD Received At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "default": "PLANNED",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "PLANNED\nASSIGNED\nLOADED\nIN_TRANSIT\nDELIVERED\nPOD_RECEIVED\nCLOSED\nCANCELLED\nEXCEPTION"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-10 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Transport Trip",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
