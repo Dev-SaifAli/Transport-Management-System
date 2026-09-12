@@ -1,0 +1,135 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "format:HV-{#####}",
+ "creation": "2026-09-12 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "transporter",
+  "plate_number",
+  "active",
+  "vehicle_details_section",
+  "vehicle_type",
+  "capacity",
+  "capacity_uom",
+  "compliance_section",
+  "registration_number",
+  "registration_expiry",
+  "insurance_expiry",
+  "default_driver",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "transporter",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Transporter",
+   "options": "Supplier",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "plate_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Plate Number",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Active"
+  },
+  {
+   "fieldname": "vehicle_details_section",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Details"
+  },
+  {
+   "fieldname": "vehicle_type",
+   "fieldtype": "Link",
+   "label": "Vehicle Type",
+   "options": "Truck Type"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Float",
+   "label": "Capacity"
+  },
+  {
+   "fieldname": "capacity_uom",
+   "fieldtype": "Link",
+   "label": "Capacity UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "compliance_section",
+   "fieldtype": "Section Break",
+   "label": "Compliance"
+  },
+  {
+   "fieldname": "registration_number",
+   "fieldtype": "Data",
+   "label": "Registration Number"
+  },
+  {
+   "fieldname": "registration_expiry",
+   "fieldtype": "Date",
+   "label": "Registration Expiry"
+  },
+  {
+   "fieldname": "insurance_expiry",
+   "fieldtype": "Date",
+   "label": "Insurance Expiry"
+  },
+  {
+   "fieldname": "default_driver",
+   "fieldtype": "Data",
+   "label": "Default Driver"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-12 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Hired Vehicle",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "search_fields": "plate_number,transporter",
+ "title_field": "plate_number"
+}
