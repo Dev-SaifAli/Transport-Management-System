@@ -262,3 +262,10 @@ app_license = "mit"
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+
+# Restore Fleet compatibility and install TMS demo customizations.
+after_migrate = "transport_management.setup.after_migrate"
+
+doctype_js = {
+	"Transportation Order": "public/js/transportation_order.js",
+}
