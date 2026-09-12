@@ -1,0 +1,19 @@
+"""Installation hooks for transport_management customizations."""
+
+from transport_management.fleet_compatibility import ensure_assignment_table
+from transport_management.hired_vehicle_migration import migrate_hired_vehicle_text_to_links
+from transport_management.location_master import ensure_transport_location_fields
+from transport_management.party_master import ensure_supplier_transport_fields
+from transport_management.truck_master import ensure_owned_truck_fields
+from transport_management.transport_order_ui import ensure_transportation_order_ui
+from transport_management.transport_job_cleanup import remove_obsolete_transport_job_columns
+
+
+def after_migrate():
+	ensure_assignment_table()
+	ensure_transportation_order_ui()
+	ensure_transport_location_fields()
+	ensure_supplier_transport_fields()
+	ensure_owned_truck_fields()
+	remove_obsolete_transport_job_columns()
+	migrate_hired_vehicle_text_to_links()
