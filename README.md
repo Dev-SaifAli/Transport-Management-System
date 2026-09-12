@@ -1,33 +1,71 @@
-### Transport Management
+# Transport Management
 
-Transportation Management System for managing transport orders, shipments, vehicles, drivers, routes, and delivery operations
+Standalone ERP + Transportation Management System built as a custom Frappe / ERPNext app.
 
-### Installation
+This repository contains only the `transport_management` custom app. It is intended to be installed inside a Frappe bench alongside Frappe, ERPNext, and the required fleet app, without modifying upstream framework or core app source code.
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+## Current Scope
+
+The app supports the foundation for own-fleet and hired/subcontracted transport operations.
+
+Current major modules:
+
+- Transport Job
+- Transport Trip
+- Customer / Supplier / Transporter foundation
+- Transport Locations
+- Owned Truck extensions
+- Hired Vehicle
+- Transport Management workspace
+
+Transporters are modeled as ERPNext Suppliers with transport-specific attributes. Owned fleet uses the existing Fleet Truck master with custom fields owned by this app. Hired/subcontracted fleet uses the lightweight Hired Vehicle master.
+
+## Installation
+
+Install from a Frappe bench:
 
 ```bash
 cd $PATH_TO_YOUR_BENCH
 bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app transport_management
+bench --site $SITE_NAME install-app transport_management
+bench --site $SITE_NAME migrate
 ```
 
-### Contributing
+Replace `$URL_OF_THIS_REPO` and `$SITE_NAME` for your environment.
 
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
+## Development
+
+Run tests with:
+
+```bash
+bench --site tms.localhost run-tests --app transport_management
+```
+
+Useful development commands:
+
+```bash
+bench --site tms.localhost migrate
+bench --site tms.localhost clear-cache
+```
+
+This app uses `pre-commit` for local code checks. To enable it:
 
 ```bash
 cd apps/transport_management
 pre-commit install
 ```
 
-Pre-commit is configured to use the following tools for checking and formatting your code:
+Configured tools include:
 
 - ruff
 - eslint
 - prettier
 - pyupgrade
 
-### License
+## Deferred Areas
 
-mit
+The current implementation does not include rate management, settlement automation, Purchase Invoice automation, accounting automation, compliance alerts, GPS/geofencing, or route pricing.
+
+## License
+
+MIT
