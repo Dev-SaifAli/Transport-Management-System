@@ -10,6 +10,9 @@ from frappe.utils import flt
 
 
 class TransportShipment(Document):
+	def before_insert(self):
+		frappe.throw(_("Transport Shipment is retired. Use Transport Job and Transport Trip instead."))
+
 	def validate(self):
 		quantity = flt(self.quantity)
 		if not isfinite(quantity) or quantity <= 0:
@@ -17,12 +20,3 @@ class TransportShipment(Document):
 
 		if self.loading_site and self.loading_site == self.offloading_site:
 			frappe.throw(_("Loading Site and Offloading Site must be different."))
-
-		if not self.transport_order:
-			frappe.throw(_("Transportation Order is required."))
-		customer = frappe.db.get_value("Transportation Order", self.transport_order, "customer")
-		if not customer:
-			frappe.throw(_("Select a Transportation Order with a Customer before saving the shipment."))
-		if self.customer and self.customer != customer:
-			frappe.throw(_("Shipment Customer must match the Transportation Order Customer."))
-		self.customer = customer

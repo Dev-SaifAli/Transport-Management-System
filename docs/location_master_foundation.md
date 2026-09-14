@@ -2,7 +2,7 @@
 
 ## Transport Location
 
-The standalone TMS reuses the existing `Transport Location` DocType supplied by `vsd_fleet_ms`. The transport_management app does not edit Fleet source files and does not create a duplicate location master.
+The standalone TMS owns the `Transport Location` DocType in `transport_management`. The app does not create a duplicate location master.
 
 Fleet already provides:
 

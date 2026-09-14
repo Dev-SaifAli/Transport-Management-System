@@ -1,19 +1,27 @@
 """Installation hooks for transport_management customizations."""
 
-from transport_management.fleet_compatibility import ensure_assignment_table
+from transport_management.cargo_type_master import ensure_confirmed_material_mappings, migrate_cargo_types_ownership
 from transport_management.hired_vehicle_migration import migrate_hired_vehicle_text_to_links
-from transport_management.location_master import ensure_transport_location_fields
+from transport_management.legacy_fleet_cleanup import retire_transport_shipment_and_cleanup_fleet_customizations
+from transport_management.location_master import ensure_transport_location_fields, migrate_transport_location_ownership
 from transport_management.party_master import ensure_supplier_transport_fields
-from transport_management.truck_master import ensure_owned_truck_fields
-from transport_management.transport_order_ui import ensure_transportation_order_ui
+from transport_management.truck_driver_master import migrate_truck_driver_ownership
+from transport_management.truck_master import ensure_owned_truck_fields, migrate_truck_ownership
+from transport_management.truck_type_master import migrate_truck_type_ownership, normalize_operational_truck_types
 from transport_management.transport_job_cleanup import remove_obsolete_transport_job_columns
 
 
 def after_migrate():
-	ensure_assignment_table()
-	ensure_transportation_order_ui()
+	migrate_transport_location_ownership()
+	migrate_truck_type_ownership()
+	normalize_operational_truck_types()
+	migrate_cargo_types_ownership()
+	ensure_confirmed_material_mappings()
+	migrate_truck_driver_ownership()
+	migrate_truck_ownership()
 	ensure_transport_location_fields()
 	ensure_supplier_transport_fields()
 	ensure_owned_truck_fields()
 	remove_obsolete_transport_job_columns()
 	migrate_hired_vehicle_text_to_links()
+	retire_transport_shipment_and_cleanup_fleet_customizations()

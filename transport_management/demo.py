@@ -2,7 +2,6 @@
 
 import frappe
 
-from transport_management.fleet_compatibility import ensure_assignment_table
 from transport_management.location_master import ensure_transport_location_fields
 from transport_management.party_master import ensure_supplier_transport_fields
 from transport_management.truck_master import ensure_owned_truck_fields
@@ -78,9 +77,6 @@ def setup_demo_data(country="United Arab Emirates"):
 	marked demo Transport Job is updated in place so repeated runs stay idempotent.
 	Run serially; this small demo helper is not a concurrent import service.
 	"""
-	if not frappe.get_meta("Transportation Order").get_field("assign_transport"):
-		frappe.throw("Run bench migrate to install the Fleet compatibility shim first.")
-	ensure_assignment_table()
 	ensure_transport_location_fields()
 	ensure_supplier_transport_fields()
 	ensure_owned_truck_fields()
@@ -131,8 +127,13 @@ def setup_demo_data(country="United Arab Emirates"):
 			hired_vehicle.save()
 		locations = []
 		location_values = (
-			("ATBT AL TAWEEN", {"location_type": "Plant", "active": 1}),
-			("SAJJA ORYX", {"location_type": "Customer Site", "customer": customer.name, "active": 1}),
+			("ATBT AL TAWEEN", {"location_type": "Plant", "location_usage": "Loading", "active": 1}),
+			("SAJJA ORYX", {
+				"location_type": "Customer Site",
+				"location_usage": "Unloading",
+				"customer": customer.name,
+				"active": 1,
+			}),
 		)
 		for location, extra_values in location_values:
 			doc, created = _reuse_or_create("Transport Location", {"location": location}, {
@@ -151,9 +152,9 @@ def setup_demo_data(country="United Arab Emirates"):
 		uom, _ = _reuse_or_create("UOM", {"uom_name": "Tonne"}, {"uom_name": "Tonne", "enabled": 1})
 		if not uom.enabled:
 			frappe.throw("Existing UOM Tonne is disabled; enable it explicitly before demo setup.")
-		fuel, _ = _reuse_or_create("Fuel UOM", {"uom_name": "Litre"}, {"uom_name": "Litre", "enabled": 1})
-		if not fuel.enabled:
-			frappe.throw("Existing Fuel UOM Litre is disabled; enable it explicitly before demo setup.")
+		fuel_uom, _ = _reuse_or_create("UOM", {"uom_name": "Litre"}, {"uom_name": "Litre", "enabled": 1})
+		if not fuel_uom.enabled:
+			frappe.throw("Existing UOM Litre is disabled; enable it explicitly before demo setup.")
 		driver, _ = _reuse_or_create("Truck Driver", {"full_name": "UMAIR"}, {
 			"full_name": "UMAIR", "status": "Active", "cell_number": "DEMO-UMAIR",
 			"address": "DEMO: contact/address details not supplied; phone is a placeholder.",
@@ -164,10 +165,10 @@ def setup_demo_data(country="United Arab Emirates"):
 			"truck_number": "29413-FUJ", "license_plate": "29413-FUJ",
 			"model": "DEMO - UNKNOWN", "make": "DEMO - UNKNOWN",
 			"manufacturing_year": "DEMO - UNKNOWN", "acquisition_date": 2000,
-			"fuel_type": "Diesel", "fuel_uom": fuel.name,
+			"fuel_type": "Diesel", "fuel_uom": fuel_uom.name,
 			"chassis_number": "DEMO-29413-FUJ", "engine_number": "DEMO-UNKNOWN",
 			"trans_ms_driver": driver.name, "status": "Idle", "disabled": 0,
-			"trans_ms_maintain_stock": 0, "ownership_type": "OWN",
+			"ownership_type": "OWN",
 		}, or_filters={"truck_number": "29413-FUJ", "license_plate": "29413-FUJ", "name": "29413-FUJ"})
 		if created:
 			truck.add_comment("Comment", TRUCK_NOTE)
@@ -210,9 +211,9 @@ def setup_demo_data(country="United Arab Emirates"):
 			"customer": customer.name, "normal_supplier": normal_supplier.name,
 			"transporter_supplier": transporter_supplier.name, "hired_vehicle": hired_vehicle.name,
 			"loading_site": locations[0], "offloading_site": locations[1],
-			"material": material.name, "uom": uom.name, "fuel_uom": fuel.name,
+			"material": material.name, "uom": uom.name, "fuel_uom": fuel_uom.name,
 			"driver": driver.name, "vehicle": truck.name, "transport_job": job.name,
-			"note": "No Fleet Trips, Shipments, Transportation Orders, rates, settlements, or invoices were automatically created.",
+			"note": "Demo uses the current Transport Job to Transport Trip flow. No rates, settlements, or invoices were automatically created.",
 		}
 		demo["transport_trips"] = [
 			_ensure_demo_trip(job, demo, 30, 1),

@@ -26,7 +26,7 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/transport_management/css/transport_management.css"
-# app_include_js = "/assets/transport_management/js/transport_management.js"
+app_include_js = "/assets/transport_management/js/tms_master_page.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/transport_management/css/transport_management.css"
@@ -263,9 +263,5 @@ app_license = "mit"
 # ignore_translatable_strings_from = []
 
 
-# Restore Fleet compatibility and install TMS demo customizations.
+# Install upgrade-safe TMS customizations.
 after_migrate = "transport_management.setup.after_migrate"
-
-doctype_js = {
-	"Transportation Order": "public/js/transportation_order.js",
-}

@@ -8,6 +8,6 @@ Transport Job -> 1..N Transport Trips -> execution, POD, costs, settlement, and 
 
 Vehicle, driver, GDN, loading number, unloading number, POD, fuel, toll, and execution expenses belong to Trip execution and should not be added here.
 
-`Transport Shipment` is deprecated and kept only for the earlier working demo. Do not add new production behavior to it. Existing records must remain intact.
+`Transport Shipment` is retired and kept only for historical readability from the earlier working demo. Its old Fleet references are plain text, not active Link dependencies. Do not add new production behavior to it. Existing records must remain intact.
 
-Fleet `Transportation Order` is also kept for compatibility and old demo data. The `assign_transport` compatibility shim remains because Fleet's controller and client script still expect that child table.
+Fleet `Transportation Order` compatibility is retired from the active TMS product. Existing Fleet records are left untouched, but new TMS work should use Transport Job and Transport Trip.

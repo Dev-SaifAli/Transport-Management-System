@@ -1,11 +1,12 @@
 """Tests for the owned Truck master extension."""
 
 import unittest
+from pathlib import Path
 
 import frappe
 
 from transport_management.demo import setup_demo_data
-from transport_management.truck_master import ensure_owned_truck_fields
+from transport_management.truck_master import ensure_owned_truck_fields, ensure_truck_fuel_uom_uses_erpnext_uom
 
 
 class TestOwnedTruckMaster(unittest.TestCase):
@@ -20,6 +21,7 @@ class TestOwnedTruckMaster(unittest.TestCase):
 		frappe.db.rollback(save_point="owned_truck_master_test")
 
 	def make_trip(self, **values):
+		self.prepare_compatible_trip_fixture()
 		doc = frappe.new_doc("Transport Trip")
 		doc.update({
 			"transport_job": self.job.name,
@@ -35,6 +37,11 @@ class TestOwnedTruckMaster(unittest.TestCase):
 		})
 		doc.update(values)
 		return doc
+
+	def prepare_compatible_trip_fixture(self):
+		frappe.db.set_value("Truck", self.demo["vehicle"], "vehicle_type", "TIPPER")
+		frappe.db.set_value("Transport Job", self.job.name, "material", "3/4 AGREEGAT(10MM-20MM)")
+		self.job.reload()
 
 	def make_truck(self, **values):
 		fuel_uom = self.demo["fuel_uom"]
@@ -67,12 +74,102 @@ class TestOwnedTruckMaster(unittest.TestCase):
 
 	def test_custom_truck_fields_exist(self):
 		meta = frappe.get_meta("Truck")
+		self.assertEqual(meta.get_field("fuel_uom").fieldtype, "Link")
+		self.assertEqual(meta.get_field("fuel_uom").options, "UOM")
 		self.assertEqual(meta.get_field("vehicle_type").options, "Truck Type")
 		self.assertEqual(meta.get_field("capacity").fieldtype, "Float")
 		self.assertEqual(meta.get_field("capacity_uom").options, "UOM")
 		self.assertEqual(meta.get_field("ownership_type").options, "OWN")
 		self.assertEqual(meta.get_field("ownership_type").default, "OWN")
+		self.assertEqual(meta.get_field("registration_attachment").fieldtype, "Attach")
+		self.assertEqual(meta.get_field("registration_attachment").label, "Registration Document")
+		self.assertEqual(meta.get_field("insurance_attachment").fieldtype, "Attach")
+		self.assertEqual(meta.get_field("insurance_attachment").label, "Insurance Document")
+		self.assertEqual(meta.get_field("other_document_attachment").fieldtype, "Attach")
+		self.assertEqual(meta.get_field("other_document_attachment").label, "Other Document")
 		self.assertEqual(meta.get_field("erpnext_asset").options, "Asset")
+
+	def test_fuel_uom_dependency_uses_erpnext_uom(self):
+		field = frappe.get_meta("Truck").get_field("fuel_uom")
+		self.assertEqual(field.fieldname, "fuel_uom")
+		self.assertEqual(field.fieldtype, "Link")
+		self.assertEqual(field.options, "UOM")
+		self.assertTrue(frappe.db.exists("UOM", "Litre"))
+		self.assertEqual(frappe.db.get_value("Truck", self.demo["vehicle"], "fuel_uom"), "Litre")
+
+	def test_fuel_uom_property_setter_is_idempotent(self):
+		before = frappe.db.count(
+			"Property Setter",
+			{"doc_type": "Truck", "field_name": "fuel_uom", "property": "options"},
+		)
+		ensure_truck_fuel_uom_uses_erpnext_uom()
+		ensure_truck_fuel_uom_uses_erpnext_uom()
+		after = frappe.db.count(
+			"Property Setter",
+			{"doc_type": "Truck", "field_name": "fuel_uom", "property": "options"},
+		)
+		self.assertEqual(after, before)
+		self.assertEqual(frappe.get_meta("Truck").get_field("fuel_uom").options, "UOM")
+
+	def test_existing_truck_with_erpnext_fuel_uom_loads_and_saves(self):
+		truck = frappe.get_doc("Truck", self.demo["vehicle"])
+		self.assertEqual(truck.fuel_uom, "Litre")
+		truck.save()
+		self.assertEqual(frappe.db.get_value("Truck", truck.name, "fuel_uom"), "Litre")
+
+	def test_existing_truck_loads_without_tms_trailer_dependency(self):
+		truck = frappe.get_doc("Truck", "29413-FUJ")
+		self.assertFalse(truck.get("trans_ms_default_trailer"))
+		truck.save()
+		self.assertFalse(frappe.db.get_value("Truck", truck.name, "trans_ms_default_trailer"))
+
+	def test_no_live_legacy_vehicle_document_rows_exist(self):
+		self.assertFalse(frappe.db.exists("DocType", "Document Attachments"))
+
+	def test_existing_truck_attach_fields_save_and_reload(self):
+		truck = frappe.get_doc("Truck", self.demo["vehicle"])
+		truck.registration_attachment = "/files/tms-registration-test.txt"
+		truck.insurance_attachment = "/files/tms-insurance-test.txt"
+		truck.other_document_attachment = "/files/tms-other-document-test.txt"
+		truck.save()
+
+		reloaded = frappe.get_doc("Truck", truck.name)
+		self.assertEqual(reloaded.registration_attachment, "/files/tms-registration-test.txt")
+		self.assertEqual(reloaded.insurance_attachment, "/files/tms-insurance-test.txt")
+		self.assertEqual(reloaded.other_document_attachment, "/files/tms-other-document-test.txt")
+
+		reloaded.registration_attachment = None
+		reloaded.insurance_attachment = None
+		reloaded.other_document_attachment = None
+		reloaded.save()
+
+	def test_demo_does_not_create_fleet_fuel_uom(self):
+		self.assertFalse(frappe.db.exists("DocType", "Fuel UOM"))
+		ensure_owned_truck_fields()
+		self.assertFalse(frappe.db.exists("DocType", "Fuel UOM"))
+
+	def test_active_transport_management_code_no_longer_depends_on_fuel_uom_master(self):
+		app_root = Path(__file__).resolve().parents[1]
+		active_files = [
+			app_root / "demo.py",
+			app_root / "truck_master.py",
+		]
+		for path in active_files:
+			self.assertNotIn('"Fuel UOM"', path.read_text())
+
+	def test_active_transport_management_code_no_longer_depends_on_fleet_document_tables(self):
+		app_root = Path(__file__).resolve().parents[1]
+		active_files = [
+			app_root / "demo.py",
+			app_root / "truck_driver_master.py",
+			app_root / "transport_management" / "doctype" / "truck" / "truck.py",
+			app_root / "transport_management" / "doctype" / "transport_trip" / "transport_trip.py",
+		]
+		for path in active_files:
+			source = path.read_text()
+			self.assertNotIn("Document Attachments", source)
+			self.assertNotIn("Document Name", source)
+			self.assertNotIn("vehicle_documents", source)
 
 	def test_existing_truck_defaults_to_owned(self):
 		frappe.db.set_value("Truck", self.demo["vehicle"], "ownership_type", None)

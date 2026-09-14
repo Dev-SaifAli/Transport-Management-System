@@ -2,7 +2,7 @@
 
 Standalone ERP + Transportation Management System built as a custom Frappe / ERPNext app.
 
-This repository contains only the `transport_management` custom app. It is intended to be installed inside a Frappe bench alongside Frappe, ERPNext, and the required fleet app, without modifying upstream framework or core app source code.
+This repository contains only the `transport_management` custom app. It is intended to be installed inside a Frappe bench alongside Frappe and ERPNext, without modifying upstream framework or core app source code.
 
 ## Current Scope
 
@@ -14,11 +14,11 @@ Current major modules:
 - Transport Trip
 - Customer / Supplier / Transporter foundation
 - Transport Locations
-- Owned Truck extensions
+- Owned Truck master
 - Hired Vehicle
 - Transport Management workspace
 
-Transporters are modeled as ERPNext Suppliers with transport-specific attributes. Owned fleet uses the existing Fleet Truck master with custom fields owned by this app. Hired/subcontracted fleet uses the lightweight Hired Vehicle master.
+Transporters are modeled as ERPNext Suppliers with transport-specific attributes. Owned fleet uses the TMS-owned Truck master. Hired/subcontracted fleet uses the lightweight Hired Vehicle master.
 
 ## Installation
 

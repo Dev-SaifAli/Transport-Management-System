@@ -47,7 +47,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Fleet",
-   "link_count": 4,
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -57,15 +57,15 @@
    "is_query_report": 0,
    "label": "Owned Trucks",
    "link_count": 0,
-   "link_to": "Truck",
-   "link_type": "DocType",
+   "link_to": "tms-owned-trucks",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Hired Vehicle",
+   "label": "Hired Vehicles",
    "link_count": 0,
    "link_to": "Hired Vehicle",
    "link_type": "DocType",
@@ -77,18 +77,8 @@
    "is_query_report": 0,
    "label": "Drivers",
    "link_count": 0,
-   "link_to": "Truck Driver",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Trailers",
-   "link_count": 0,
-   "link_to": "Trailers",
-   "link_type": "DocType",
+   "link_to": "tms-drivers",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -96,7 +86,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Masters",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -104,10 +94,10 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Customer",
+   "label": "Customers",
    "link_count": 0,
-   "link_to": "Customer",
-   "link_type": "DocType",
+   "link_to": "tms-customers",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -116,18 +106,28 @@
    "is_query_report": 0,
    "label": "Suppliers / Transporters",
    "link_count": 0,
-   "link_to": "Supplier",
-   "link_type": "DocType",
+   "link_to": "tms-suppliers",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Transport Location",
+   "label": "Transport Locations",
    "link_count": 0,
-   "link_to": "Transport Location",
-   "link_type": "DocType",
+   "link_to": "tms-locations",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Data Import",
+   "link_count": 0,
+   "link_to": "tms-data-import",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -181,11 +181,32 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-12 10:07:00.878880",
+ "modified": "2026-09-13 10:10:26.263054",
  "modified_by": "Administrator",
  "module": "Transport Management",
  "name": "Transport Management",
- "number_cards": [],
+ "number_cards": [
+  {
+   "label": "Total Transport Jobs",
+   "number_card_name": "Total Transport Jobs"
+  },
+  {
+   "label": "Active Transport Trips",
+   "number_card_name": "Active Transport Trips"
+  },
+  {
+   "label": "Trips In Transit",
+   "number_card_name": "Trips In Transit"
+  },
+  {
+   "label": "Trips Awaiting POD",
+   "number_card_name": "Trips Awaiting POD"
+  },
+  {
+   "label": "Active Hired Vehicles",
+   "number_card_name": "Active Hired Vehicles"
+  }
+ ],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,

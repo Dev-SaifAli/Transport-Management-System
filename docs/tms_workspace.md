@@ -5,11 +5,13 @@ The Transport Management workspace is the primary Desk navigation area for the s
 ## Sections
 
 - Operations: Transport Job, Transport Trip
-- Fleet: Owned Trucks, Hired Vehicle, Drivers, Trailers
+- Fleet: Owned Trucks, Hired Vehicle, Drivers
 - Masters: Customer, Suppliers / Transporters, Transport Location, Materials
 - ERP: Sales Invoice, Purchase Invoice, Asset
 
-Legacy Fleet workflows such as Manifest, legacy Trips, Trip Routes, Trip Locations, and deprecated Transport Shipment are intentionally not exposed as main TMS links.
+Legacy Fleet workflows such as Manifest, legacy Trips, Trip Routes, Trip Locations, Transportation Order, Fuel Requests, Requested Payment, and deprecated Transport Shipment are intentionally not exposed as TMS links.
+
+Trailers are out of scope for the current AL RANA Transport Management phase. If trailer management is required later, it should be designed as a separate TMS feature rather than inheriting legacy Fleet behavior automatically.
 
 ## Number Cards
 

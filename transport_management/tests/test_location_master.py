@@ -14,6 +14,9 @@ class TestLocationMaster(unittest.TestCase):
 		ensure_transport_location_fields()
 		self.demo = setup_demo_data()
 		self.job = frappe.get_doc("Transport Job", self.demo["transport_job"])
+		frappe.db.set_value("Truck", self.demo["vehicle"], "vehicle_type", "TIPPER")
+		frappe.db.set_value("Transport Job", self.job.name, "material", "3/4 AGREEGAT(10MM-20MM)")
+		self.job.reload()
 
 	def tearDown(self):
 		frappe.db.rollback(save_point="location_master_test")
@@ -24,6 +27,7 @@ class TestLocationMaster(unittest.TestCase):
 			"location": "TMS Test Location " + frappe.generate_hash(length=8),
 			"country": "United Arab Emirates",
 			"location_type": "Other",
+			"location_usage": "Both",
 			"active": 1,
 		})
 		doc.update(values)
@@ -62,14 +66,19 @@ class TestLocationMaster(unittest.TestCase):
 		return doc
 
 	def test_active_location_creation(self):
-		location = self.make_location(location_type="Yard", city="Sharjah")
+		location = self.make_location(location_type="Yard", location_usage="Both", city="Sharjah")
 		self.assertEqual(location.location_type, "Yard")
+		self.assertEqual(location.location_usage, "Both")
 		self.assertEqual(location.city, "Sharjah")
 		self.assertTrue(location.active)
 
 	def test_valid_active_job_locations(self):
-		loading = self.make_location(location_type="Plant")
-		unloading = self.make_location(location_type="Customer Site", customer=self.demo["customer"])
+		loading = self.make_location(location_type="Plant", location_usage="Loading")
+		unloading = self.make_location(
+			location_type="Customer Site",
+			location_usage="Unloading",
+			customer=self.demo["customer"],
+		)
 		job = self.make_job(loading_site=loading.name, unloading_site=unloading.name)
 		job.insert()
 		self.assertEqual(job.loading_site, loading.name)
@@ -106,3 +115,67 @@ class TestLocationMaster(unittest.TestCase):
 		ensure_transport_location_fields()
 		after = frappe.db.count("Custom Field", {"dt": "Transport Location"})
 		self.assertEqual(before, after)
+
+	def test_transport_location_is_owned_by_transport_management(self):
+		self.assertEqual(frappe.db.get_value("DocType", "Transport Location", "module"), "Transport Management")
+		self.assertEqual(
+			frappe.db.get_value("Module Def", "Transport Management", "app_name"),
+			"transport_management",
+		)
+		self.assertEqual(frappe.db.count("DocType", {"name": "Transport Location"}), 1)
+
+	def test_transport_location_table_and_records_are_preserved(self):
+		self.assertTrue(frappe.db.table_exists("Transport Location"))
+		self.assertGreaterEqual(frappe.db.count("Transport Location"), 2)
+		self.assertTrue(frappe.db.exists("Transport Location", "ATBT AL TAWEEN"))
+		self.assertTrue(frappe.db.exists("Transport Location", "SAJJA ORYX"))
+
+	def test_location_field_remains_unique(self):
+		field = frappe.get_meta("Transport Location").get_field("location")
+		self.assertTrue(field.unique)
+
+	def test_location_fields_are_standard_after_ownership_migration(self):
+		standard_fields = {
+			row.fieldname
+			for row in frappe.get_all("DocField", filters={"parent": "Transport Location"}, fields=["fieldname"])
+		}
+		for fieldname in (
+			"location_type",
+			"location_usage",
+			"customer",
+			"supplier",
+			"address",
+			"city",
+			"latitude",
+			"longitude",
+			"active",
+			"notes",
+		):
+			self.assertIn(fieldname, standard_fields)
+			self.assertFalse(
+				frappe.db.exists("Custom Field", {"dt": "Transport Location", "fieldname": fieldname})
+			)
+		self.assertEqual(
+			frappe.db.get_value("Transport Location", "ATBT AL TAWEEN", "location_type"),
+			"Plant",
+		)
+		self.assertEqual(
+			frappe.db.get_value("Transport Location", "ATBT AL TAWEEN", "location_usage"),
+			"Loading",
+		)
+		self.assertEqual(
+			frappe.db.get_value("Transport Location", "SAJJA ORYX", "location_usage"),
+			"Unloading",
+		)
+		self.assertEqual(
+			frappe.db.get_value("Transport Location", "SAJJA ORYX", "customer"),
+			self.demo["customer"],
+		)
+
+	def test_existing_job_and_trip_location_links_resolve(self):
+		self.assertTrue(frappe.db.exists("Transport Location", self.job.loading_site))
+		self.assertTrue(frappe.db.exists("Transport Location", self.job.unloading_site))
+		for trip_name in self.demo["transport_trips"]:
+			trip = frappe.get_doc("Transport Trip", trip_name)
+			self.assertTrue(frappe.db.exists("Transport Location", trip.loading_site))
+			self.assertTrue(frappe.db.exists("Transport Location", trip.unloading_site))

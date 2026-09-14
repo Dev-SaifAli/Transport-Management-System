@@ -1,9 +1,8 @@
 {
  "actions": [],
- "allow_bulk_edit": 1,
- "allow_rename": 1,
+ "allow_rename": 0,
  "creation": "2026-09-10 09:26:31.320501",
- "description": "Deprecated demo-only DocType. The production BRD flow uses Transport Job -> Trips; do not add new production behavior here.",
+ "description": "Retired legacy demo-only DocType kept for historical readability. The production TMS flow uses Transport Job -> Transport Trip; do not create new Transport Shipment records.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -51,10 +50,9 @@
   },
   {
    "fieldname": "transport_order",
-   "fieldtype": "Link",
-   "label": "Transport Order",
-   "options": "Transportation Order",
-   "reqd": 1
+   "fieldtype": "Data",
+   "label": "Legacy Transport Order Reference",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_info",
@@ -66,8 +64,6 @@
    "label": "Customer",
    "options": "Customer",
    "reqd": 1,
-   "fetch_from": "transport_order.customer",
-   "fetch_if_empty": 1,
    "read_only": 1
   },
   {
@@ -143,9 +139,9 @@
   },
   {
    "fieldname": "trip",
-   "fieldtype": "Link",
-   "label": "Trip",
-   "options": "Trips"
+   "fieldtype": "Data",
+   "label": "Legacy Trip Reference",
+   "read_only": 1
   },
   {
    "fieldname": "delivery_references_section",
@@ -217,17 +213,13 @@
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
+   "share": 1
   }
  ],
  "row_format": "Dynamic",

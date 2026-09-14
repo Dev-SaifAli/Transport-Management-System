@@ -3,10 +3,13 @@
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+from frappe.modules import reload_doc
 from frappe.utils import cint
 
 LOCATION = "Transport Location"
 LOCATION_TYPE_OPTIONS = "Customer Site\nSupplier Site\nPlant\nYard\nWarehouse\nPort\nOther"
+LOCATION_USAGE_OPTIONS = "Loading\nUnloading\nBoth"
+LOCATION_MODULE = "Transport Management"
 
 CUSTOM_LOCATION_FIELDS = (
 	{
@@ -82,7 +85,7 @@ CUSTOM_LOCATION_FIELDS = (
 
 
 def ensure_transport_location_fields():
-	"""Extend Fleet's Transport Location without editing Fleet source metadata."""
+	"""Ensure Transport Location has the fields required by TMS."""
 	meta = frappe.get_meta(LOCATION, cached=False)
 	for fieldname, fieldtype in (("location", "Data"), ("country", "Link")):
 		field = meta.get_field(fieldname)
@@ -94,7 +97,50 @@ def ensure_transport_location_fields():
 
 	frappe.clear_cache(doctype=LOCATION)
 	default_existing_locations_to_active()
+	default_existing_location_usage_from_links()
 	return "Transport Location custom fields installed"
+
+
+def migrate_transport_location_ownership():
+	"""Make Transport Location a native transport_management DocType.
+
+	Reloading here keeps Transport Management as the effective owner during
+	migrate and after legacy Fleet removal.
+	"""
+	reload_doc("transport_management", "doctype", "transport_location", force=True)
+	frappe.clear_cache(doctype=LOCATION)
+
+	standard_fields = get_standard_location_fieldnames()
+	missing = [field["fieldname"] for field in CUSTOM_LOCATION_FIELDS if field["fieldname"] not in standard_fields]
+	if "location_usage" not in standard_fields:
+		missing.append("location_usage")
+	if missing:
+		frappe.throw(_("Transport Location standard fields were not synced: {0}").format(", ".join(missing)))
+
+	delete_legacy_location_custom_fields()
+	frappe.db.set_value("DocType", LOCATION, "module", LOCATION_MODULE, update_modified=False)
+	frappe.clear_cache(doctype=LOCATION)
+	default_existing_locations_to_active()
+	default_existing_location_usage_from_links()
+	return "Transport Location ownership migrated"
+
+
+def get_standard_location_fieldnames():
+	return {
+		row.fieldname
+		for row in frappe.get_all(
+			"DocField",
+			filters={"parent": LOCATION},
+			fields=["fieldname"],
+		)
+	}
+
+
+def delete_legacy_location_custom_fields():
+	for field in CUSTOM_LOCATION_FIELDS:
+		name = frappe.db.get_value("Custom Field", {"dt": LOCATION, "fieldname": field["fieldname"]})
+		if name:
+			frappe.delete_doc("Custom Field", name, force=True)
 
 
 def ensure_location_custom_field(field):
@@ -119,6 +165,39 @@ def default_existing_locations_to_active():
 	if not frappe.get_meta(LOCATION, cached=False).get_field("active"):
 		return
 	frappe.db.sql("""update `tabTransport Location` set active = 1 where active is null""")
+
+
+def default_existing_location_usage_from_links():
+	"""Classify existing locations only when usage is proven by current TMS links."""
+	if not frappe.get_meta(LOCATION, cached=False).get_field("location_usage"):
+		return
+
+	loading_locations = set()
+	unloading_locations = set()
+	for doctype in ("Transport Job", "Transport Trip"):
+		if not frappe.db.exists("DocType", doctype):
+			continue
+		for row in frappe.get_all(
+			doctype,
+			fields=["loading_site", "unloading_site"],
+			filters={"docstatus": ("<", 2)},
+		):
+			if row.loading_site:
+				loading_locations.add(row.loading_site)
+			if row.unloading_site:
+				unloading_locations.add(row.unloading_site)
+
+	for location in frappe.get_all(LOCATION, pluck="name"):
+		if frappe.db.get_value(LOCATION, location, "location_usage"):
+			continue
+		is_loading = location in loading_locations
+		is_unloading = location in unloading_locations
+		if is_loading and is_unloading:
+			frappe.db.set_value(LOCATION, location, "location_usage", "Both", update_modified=False)
+		elif is_loading:
+			frappe.db.set_value(LOCATION, location, "location_usage", "Loading", update_modified=False)
+		elif is_unloading:
+			frappe.db.set_value(LOCATION, location, "location_usage", "Unloading", update_modified=False)
 
 
 def validate_active_transport_locations(doc, fields):

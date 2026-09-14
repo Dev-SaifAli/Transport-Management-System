@@ -1,6 +1,6 @@
 # Hired Vehicle Master
 
-`Hired Vehicle` is a lightweight transport_management DocType for subcontracted trucks supplied by transporter Suppliers. It is separate from Fleet `Truck`, which remains the owned-fleet operational master.
+`Hired Vehicle` is a lightweight transport_management DocType for subcontracted trucks supplied by transporter Suppliers. It is separate from TMS `Truck`, which remains the owned-fleet operational master.
 
 ## Model
 

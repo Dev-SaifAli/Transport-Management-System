@@ -1,0 +1,349 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:truck_number",
+ "creation": "2026-09-13 00:00:00.000000",
+ "default_view": "List",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "overview_tab",
+  "disabled",
+  "section_break_730cm",
+  "license_plate",
+  "column_break_xpjhi",
+  "truck_number",
+  "section_break_471de",
+  "image",
+  "make",
+  "acquisition_date",
+  "status",
+  "column_break_y9xcd",
+  "manufacturing_year",
+  "model",
+  "acquisition_odometer_reading",
+  "section_break_pkgwx",
+  "fuel_type",
+  "engine_number",
+  "odometer_value",
+  "column_break_i30j4",
+  "fuel_uom",
+  "chassis_number",
+  "transport_section",
+  "trans_ms_driver",
+  "column_break_gxeno",
+  "trans_ms__driver_name",
+  "operational_capacity_section",
+  "vehicle_type",
+  "capacity",
+  "capacity_uom",
+  "ownership_type",
+  "registration_section",
+  "registration_number",
+  "registration_expiry",
+  "registration_attachment",
+  "insurance_section",
+  "insurance_policy_number",
+  "insurance_expiry",
+  "insurance_attachment",
+  "other_documents_section",
+  "other_document_attachment",
+  "asset_section",
+  "erpnext_asset",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "overview_tab",
+   "fieldtype": "Tab Break",
+   "label": "Overview"
+  },
+  {
+   "bold": 1,
+   "default": "0",
+   "depends_on": "eval:doc.creation",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled?"
+  },
+  {
+   "fieldname": "section_break_730cm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "license_plate",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "License Plate",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xpjhi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "truck_number",
+   "fieldtype": "Data",
+   "label": "Truck Number",
+   "unique": 1
+  },
+  {
+   "fieldname": "section_break_471de",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "hidden": 1,
+   "label": "Image"
+  },
+  {
+   "fieldname": "make",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Make"
+  },
+  {
+   "fieldname": "acquisition_date",
+   "fieldtype": "Int",
+   "label": "Acquisition Year"
+  },
+  {
+   "default": "Idle",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Idle\nUnder Maintenance\nOn Trip\nDisabled"
+  },
+  {
+   "fieldname": "column_break_y9xcd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "manufacturing_year",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Manufacturing Year"
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Model"
+  },
+  {
+   "fieldname": "acquisition_odometer_reading",
+   "fieldtype": "Data",
+   "label": "Acquisition Odometer Reading"
+  },
+  {
+   "fieldname": "section_break_pkgwx",
+   "fieldtype": "Tab Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "fuel_type",
+   "fieldtype": "Select",
+   "label": "Fuel Type",
+   "options": "Petrol\nDiesel"
+  },
+  {
+   "fieldname": "engine_number",
+   "fieldtype": "Data",
+   "label": "Engine Number"
+  },
+  {
+   "fieldname": "odometer_value",
+   "fieldtype": "Data",
+   "label": "Last Odometer Reading"
+  },
+  {
+   "fieldname": "column_break_i30j4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fuel_uom",
+   "fieldtype": "Link",
+   "label": "Fuel UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "chassis_number",
+   "fieldtype": "Data",
+   "label": "Chassis Number"
+  },
+  {
+   "fieldname": "transport_section",
+   "fieldtype": "Tab Break",
+   "label": "Transportation Default"
+  },
+  {
+   "fieldname": "trans_ms_driver",
+   "fieldtype": "Link",
+   "label": "Truck Driver",
+   "options": "Truck Driver"
+  },
+  {
+   "fetch_from": "trans_ms_driver.full_name",
+   "fieldname": "trans_ms__driver_name",
+   "fieldtype": "Data",
+   "label": "Driver's Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_gxeno",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "operational_capacity_section",
+   "fieldtype": "Section Break",
+   "label": "Operational Capacity"
+  },
+  {
+   "description": "Operational vehicle type owned by transport_management.",
+   "fieldname": "vehicle_type",
+   "fieldtype": "Link",
+   "label": "Vehicle Type",
+   "options": "Truck Type"
+  },
+  {
+   "description": "Operational payload capacity for later trip validation.",
+   "fieldname": "capacity",
+   "fieldtype": "Float",
+   "label": "Capacity"
+  },
+  {
+   "fieldname": "capacity_uom",
+   "fieldtype": "Link",
+   "label": "Capacity UOM",
+   "options": "UOM"
+  },
+  {
+   "default": "OWN",
+   "description": "This phase supports owned operational fleet records only.",
+   "fieldname": "ownership_type",
+   "fieldtype": "Select",
+   "label": "Ownership Type",
+   "options": "OWN"
+  },
+  {
+   "fieldname": "registration_section",
+   "fieldtype": "Section Break",
+   "label": "Registration"
+  },
+  {
+   "description": "Use only when the registration number differs from the license plate.",
+   "fieldname": "registration_number",
+   "fieldtype": "Data",
+   "label": "Registration Number"
+  },
+  {
+   "fieldname": "registration_expiry",
+   "fieldtype": "Date",
+   "label": "Registration Expiry"
+  },
+  {
+   "fieldname": "registration_attachment",
+   "fieldtype": "Attach",
+   "label": "Registration Document"
+  },
+  {
+   "fieldname": "insurance_section",
+   "fieldtype": "Section Break",
+   "label": "Insurance"
+  },
+  {
+   "fieldname": "insurance_policy_number",
+   "fieldtype": "Data",
+   "label": "Insurance Policy Number"
+  },
+  {
+   "fieldname": "insurance_expiry",
+   "fieldtype": "Date",
+   "label": "Insurance Expiry"
+  },
+  {
+   "fieldname": "insurance_attachment",
+   "fieldtype": "Attach",
+   "label": "Insurance Document"
+  },
+  {
+   "fieldname": "other_documents_section",
+   "fieldtype": "Section Break",
+   "label": "Other Documents"
+  },
+  {
+   "fieldname": "other_document_attachment",
+   "fieldtype": "Attach",
+   "label": "Other Document"
+  },
+  {
+   "fieldname": "asset_section",
+   "fieldtype": "Section Break",
+   "label": "Asset"
+  },
+  {
+   "description": "Optional link to the financial/depreciation master.",
+   "fieldname": "erpnext_asset",
+   "fieldtype": "Link",
+   "label": "ERPNext Asset",
+   "options": "Asset"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "image_field": "image",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Truck",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "truck_number,license_plate",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Blue",
+   "title": "Idle"
+  },
+  {
+   "color": "Red",
+   "title": "Under Maintenance"
+  },
+  {
+   "color": "Green",
+   "title": "On Trip"
+  },
+  {
+   "color": "Red",
+   "title": "Disabled"
+  }
+ ],
+ "track_changes": 1,
+ "track_seen": 1
+}
