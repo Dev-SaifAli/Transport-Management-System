@@ -8,6 +8,11 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 
+from transport_management.cargo_type_master import (
+	get_effective_material,
+	validate_material_allows_hired_vehicle,
+	validate_material_allows_owned_truck,
+)
 from transport_management.location_master import validate_active_transport_locations
 from transport_management.truck_master import validate_owned_truck_available
 
@@ -34,6 +39,7 @@ class TransportTrip(Document):
 		self.validate_transport_job_exists()
 		self.validate_execution_source()
 		self.validate_quantities()
+		self.validate_material_matches_transport_job()
 		self.validate_locations()
 		self.validate_status_transition()
 		self.validate_pod()
@@ -49,11 +55,30 @@ class TransportTrip(Document):
 
 		if self.execution_source == "OWN":
 			validate_owned_truck_available(self.vehicle)
+			self.validate_owned_truck_material_compatibility()
 			if not self.driver:
 				frappe.throw(_("Driver is required for own fleet Transport Trips."))
 			return
 
 		self.validate_hired_execution()
+
+	def validate_owned_truck_material_compatibility(self):
+		if not self.should_validate_owned_truck_material_compatibility():
+			return
+		validate_material_allows_owned_truck(self.get_effective_material(), self.vehicle)
+
+	def should_validate_owned_truck_material_compatibility(self):
+		if self.execution_source != "OWN" or not self.vehicle:
+			return False
+		if self.is_new():
+			return True
+		return any(
+			self.has_value_changed(fieldname)
+			for fieldname in ("vehicle", "material", "transport_job", "execution_source")
+		)
+
+	def get_effective_material(self):
+		return get_effective_material(self.material, self.transport_job)
 
 	def validate_hired_execution(self):
 		if not self.transporter:
@@ -88,6 +113,32 @@ class TransportTrip(Document):
 			frappe.throw(_("Hired Vehicle must belong to the selected Transporter."))
 		if not hired_vehicle.active:
 			frappe.throw(_("Inactive Hired Vehicles cannot be used on Transport Trips."))
+		self.validate_hired_vehicle_material_compatibility()
+
+	def validate_hired_vehicle_material_compatibility(self):
+		if not self.should_validate_hired_vehicle_material_compatibility():
+			return
+		validate_material_allows_hired_vehicle(
+			self.get_effective_material(),
+			self.hired_vehicle,
+			self.transporter,
+		)
+
+	def should_validate_hired_vehicle_material_compatibility(self):
+		if self.execution_source != "HIRED" or not self.hired_vehicle:
+			return False
+		if self.is_new():
+			return True
+		return any(
+			self.has_value_changed(fieldname)
+			for fieldname in (
+				"hired_vehicle",
+				"transporter",
+				"material",
+				"transport_job",
+				"execution_source",
+			)
+		)
 
 	def validate_quantities(self):
 		planned_quantity = flt(self.planned_quantity)
@@ -98,6 +149,9 @@ class TransportTrip(Document):
 			actual_quantity = flt(self.actual_quantity)
 			if not isfinite(actual_quantity) or actual_quantity < 0:
 				frappe.throw(_("Actual Quantity cannot be negative."))
+
+	def validate_material_matches_transport_job(self):
+		get_effective_material(self.material, self.transport_job, validate_mismatch=True)
 
 	def validate_locations(self):
 		if self.loading_site and self.loading_site == self.unloading_site:

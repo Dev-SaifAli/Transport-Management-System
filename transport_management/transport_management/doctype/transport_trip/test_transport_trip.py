@@ -4,6 +4,10 @@ import unittest
 
 import frappe
 
+from transport_management.cargo_type_master import (
+	get_compatible_hired_vehicles,
+	get_compatible_owned_trucks,
+)
 from transport_management.demo import setup_demo_data
 from transport_management.party_master import ensure_supplier_transport_fields
 from transport_management.transport_management.doctype.transport_trip.transport_trip import (
@@ -17,6 +21,7 @@ class TestTransportTrip(unittest.TestCase):
 		ensure_supplier_transport_fields()
 		self.demo = setup_demo_data()
 		self.job = frappe.get_doc("Transport Job", self.demo["transport_job"])
+		self.set_compatible_demo_assignment()
 		frappe.db.delete("Transport Trip", {"transport_job": self.job.name})
 
 	def tearDown(self):
@@ -39,6 +44,50 @@ class TestTransportTrip(unittest.TestCase):
 		doc.update(values)
 		return doc
 
+	def set_compatible_demo_assignment(self, material="3/4 AGREEGAT(10MM-20MM)", truck_type="TIPPER"):
+		frappe.db.set_value("Truck", self.demo["vehicle"], "vehicle_type", truck_type)
+		frappe.db.set_value("Transport Job", self.job.name, "material", material)
+		self.job.reload()
+
+	def make_truck(self, vehicle_type=None, **values):
+		doc = frappe.new_doc("Truck")
+		hash_value = frappe.generate_hash(length=8)
+		doc.update({
+			"truck_number": "TMS-COMP-" + hash_value,
+			"license_plate": "TMS-COMP-" + hash_value,
+			"vehicle_type": vehicle_type,
+			"ownership_type": "OWN",
+			"status": "Idle",
+			"disabled": 0,
+		})
+		doc.update(values)
+		doc.insert()
+		return doc
+
+	def make_material(self, truck_types=(), active=1):
+		doc = frappe.new_doc("Cargo Types")
+		doc.cargo_name = "TMS COMP MATERIAL " + frappe.generate_hash(length=8)
+		doc.active = active
+		for truck_type in truck_types:
+			doc.append("allowed_truck_types", {"truck_type": truck_type})
+		doc.insert()
+		return doc
+
+	def make_job(self, material, **values):
+		doc = frappe.new_doc("Transport Job")
+		doc.update({
+			"customer": self.demo["customer"],
+			"requested_date": "2026-09-09",
+			"loading_site": self.demo["loading_site"],
+			"unloading_site": self.demo["offloading_site"],
+			"material": material,
+			"requested_quantity": 10,
+			"uom": self.demo["uom"],
+		})
+		doc.update(values)
+		doc.insert()
+		return doc
+
 	def make_supplier(self, **values):
 		doc = frappe.new_doc("Supplier")
 		doc.update({
@@ -59,6 +108,7 @@ class TestTransportTrip(unittest.TestCase):
 			"transporter": supplier.name,
 			"plate_number": "HV-" + frappe.generate_hash(length=8),
 			"active": 1,
+			"vehicle_type": "TIPPER",
 		})
 		doc.update(values)
 		doc.insert()
@@ -155,6 +205,133 @@ class TestTransportTrip(unittest.TestCase):
 		self.assertEqual(defaults["uom"], self.job.uom)
 		self.assertNotIn("customer", defaults)
 		self.assertNotIn("do_number", defaults)
+
+	def test_tipper_material_returns_idle_enabled_tipper_trucks(self):
+		tipper = self.make_truck("TIPPER")
+		tanker = self.make_truck("TANKER")
+		compatible = get_compatible_owned_trucks("3/4 AGREEGAT(10MM-20MM)")
+		self.assertIn(tipper.name, compatible)
+		self.assertNotIn(tanker.name, compatible)
+
+	def test_tanker_material_returns_idle_enabled_tanker_trucks(self):
+		tanker = self.make_truck("TANKER")
+		tipper = self.make_truck("TIPPER")
+		compatible = get_compatible_owned_trucks("CEMENT")
+		self.assertIn(tanker.name, compatible)
+		self.assertNotIn(tipper.name, compatible)
+
+	def test_non_available_and_blank_type_trucks_are_excluded(self):
+		disabled = self.make_truck("TIPPER", disabled=1)
+		on_trip = self.make_truck("TIPPER", status="On Trip")
+		maintenance = self.make_truck("TIPPER", status="Under Maintenance")
+		blank_type = self.make_truck(None)
+		compatible = get_compatible_owned_trucks("3/4 AGREEGAT(10MM-20MM)")
+		self.assertNotIn(disabled.name, compatible)
+		self.assertNotIn(on_trip.name, compatible)
+		self.assertNotIn(maintenance.name, compatible)
+		self.assertNotIn(blank_type.name, compatible)
+
+	def test_tipper_material_returns_active_tipper_hired_vehicles(self):
+		supplier = self.make_supplier()
+		tipper = self.make_hired_vehicle(supplier=supplier, vehicle_type="TIPPER")
+		tanker = self.make_hired_vehicle(supplier=supplier, vehicle_type="TANKER")
+		compatible = get_compatible_hired_vehicles("3/4 AGREEGAT(10MM-20MM)", supplier.name)
+		self.assertIn(tipper.name, compatible)
+		self.assertNotIn(tanker.name, compatible)
+
+	def test_tanker_material_returns_active_tanker_hired_vehicles(self):
+		supplier = self.make_supplier()
+		tanker = self.make_hired_vehicle(supplier=supplier, vehicle_type="TANKER")
+		tipper = self.make_hired_vehicle(supplier=supplier, vehicle_type="TIPPER")
+		compatible = get_compatible_hired_vehicles("CEMENT", supplier.name)
+		self.assertIn(tanker.name, compatible)
+		self.assertNotIn(tipper.name, compatible)
+
+	def test_non_matching_hired_vehicles_are_excluded(self):
+		supplier = self.make_supplier()
+		other_supplier = self.make_supplier()
+		wrong_transporter = self.make_hired_vehicle(supplier=other_supplier, vehicle_type="TIPPER")
+		inactive = self.make_hired_vehicle(supplier=supplier, vehicle_type="TIPPER", active=0)
+		blank_type = self.make_hired_vehicle(supplier=supplier, vehicle_type=None)
+		compatible = get_compatible_hired_vehicles("3/4 AGREEGAT(10MM-20MM)", supplier.name)
+		self.assertNotIn(wrong_transporter.name, compatible)
+		self.assertNotIn(inactive.name, compatible)
+		self.assertNotIn(blank_type.name, compatible)
+
+	def test_incompatible_truck_rejected_server_side(self):
+		self.set_compatible_demo_assignment(material="CEMENT", truck_type="TIPPER")
+		with self.assertRaises(frappe.ValidationError) as raised:
+			self.make_trip(material="CEMENT").insert()
+		self.assertIn("not compatible with material", str(raised.exception))
+		self.assertIn("TANKER", str(raised.exception))
+
+	def test_compatible_truck_accepted_server_side(self):
+		self.set_compatible_demo_assignment(material="CEMENT", truck_type="TANKER")
+		trip = self.make_trip(material="CEMENT")
+		trip.insert()
+		self.assertEqual(trip.vehicle, self.demo["vehicle"])
+
+	def test_material_without_allowed_truck_types_blocks_assignment(self):
+		material = self.make_material()
+		job = self.make_job(material.name)
+		with self.assertRaises(frappe.ValidationError) as raised:
+			self.make_trip(transport_job=job.name, material=material.name).insert()
+		self.assertIn("No allowed truck types are configured", str(raised.exception))
+
+	def test_compatible_hired_vehicle_accepted_server_side(self):
+		self.set_compatible_demo_assignment(material="CEMENT")
+		supplier = self.make_supplier()
+		vehicle = self.make_hired_vehicle(supplier=supplier, vehicle_type="TANKER")
+		trip = self.make_hired_trip(supplier=supplier, hired_vehicle=vehicle.name, material="CEMENT")
+		trip.insert()
+		self.assertEqual(trip.hired_vehicle, vehicle.name)
+
+	def test_incompatible_hired_vehicle_rejected_server_side(self):
+		self.set_compatible_demo_assignment(material="CEMENT")
+		supplier = self.make_supplier()
+		vehicle = self.make_hired_vehicle(supplier=supplier, vehicle_type="TIPPER")
+		with self.assertRaises(frappe.ValidationError) as raised:
+			self.make_hired_trip(supplier=supplier, hired_vehicle=vehicle.name, material="CEMENT").insert()
+		self.assertIn("Hired Vehicle", str(raised.exception))
+		self.assertIn("not compatible with material", str(raised.exception))
+		self.assertIn("TANKER", str(raised.exception))
+
+	def test_hired_vehicle_without_type_rejected_server_side(self):
+		supplier = self.make_supplier()
+		vehicle = self.make_hired_vehicle(supplier=supplier, vehicle_type=None)
+		with self.assertRaises(frappe.ValidationError) as raised:
+			self.make_hired_trip(supplier=supplier, hired_vehicle=vehicle.name).insert()
+		self.assertIn("not compatible with material", str(raised.exception))
+
+	def test_hired_material_without_allowed_truck_types_blocks_assignment(self):
+		material = self.make_material()
+		job = self.make_job(material.name)
+		supplier = self.make_supplier()
+		vehicle = self.make_hired_vehicle(supplier=supplier, vehicle_type="TIPPER")
+		with self.assertRaises(frappe.ValidationError) as raised:
+			self.make_hired_trip(
+				supplier=supplier,
+				hired_vehicle=vehicle.name,
+				transport_job=job.name,
+				material=material.name,
+			).insert()
+		self.assertIn("No allowed truck types are configured", str(raised.exception))
+
+	def test_trip_material_must_match_transport_job_material(self):
+		with self.assertRaises(frappe.ValidationError):
+			self.make_trip(material="CEMENT").insert()
+
+	def test_historical_legacy_material_trip_remains_readable_and_saveable(self):
+		frappe.db.set_value("Truck", self.demo["vehicle"], "vehicle_type", None)
+		frappe.db.set_value("Transport Job", self.job.name, "material", self.demo["material"])
+		self.job.reload()
+		trip = self.make_trip(material=self.demo["material"])
+		trip.flags.ignore_validate = True
+		trip.insert()
+		trip.reload()
+		trip.remarks = "Historical legacy material save"
+		trip.save()
+		self.assertEqual(trip.material, self.demo["material"])
 
 	def test_vehicle_and_driver_remain_trip_owned(self):
 		job_meta = frappe.get_meta("Transport Job")
