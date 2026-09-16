@@ -91,6 +91,20 @@ class TestTransportSalesOrder(unittest.TestCase):
 		frappe.clear_cache(user=email)
 		return email
 
+	def make_truck(self, vehicle_type="TIPPER"):
+		doc = frappe.new_doc("Truck")
+		hash_value = frappe.generate_hash(length=8)
+		doc.update({
+			"truck_number": "TMS-SO-" + hash_value,
+			"license_plate": "TMS-SO-" + hash_value,
+			"vehicle_type": vehicle_type,
+			"ownership_type": "OWN",
+			"status": "Idle",
+			"disabled": 0,
+		})
+		doc.insert()
+		return doc
+
 	def test_naming_series_and_customer_link_use_erpnext_customer(self):
 		self.make_rate()
 		doc = self.make_sales_order()
@@ -344,7 +358,7 @@ class TestTransportSalesOrder(unittest.TestCase):
 
 	def test_transport_job_quantity_progress_uses_supported_trip_quantities(self):
 		material = "3/4 AGREEGAT(10MM-20MM)"
-		frappe.db.set_value("Truck", self.demo["vehicle"], "vehicle_type", "TIPPER")
+		truck = self.make_truck()
 		self.make_rate(material=material)
 		doc = self.make_sales_order(submit=True, row={"material": material})
 		job_name = create_transport_jobs(doc.name)[0]
@@ -354,7 +368,7 @@ class TestTransportSalesOrder(unittest.TestCase):
 			"transport_job": job_name,
 			"execution_source": "OWN",
 			"trip_date": "2026-09-16",
-			"vehicle": self.demo["vehicle"],
+			"vehicle": truck.name,
 			"driver": self.demo["driver"],
 			"loading_site": self.demo["loading_site"],
 			"unloading_site": self.demo["offloading_site"],

@@ -53,18 +53,18 @@ def get_quantity_progress(transport_job):
 	rows = frappe.get_all(
 		"Transport Trip",
 		filters={"transport_job": transport_job, "status": ["!=", "CANCELLED"]},
-		fields=["planned_quantity", "actual_quantity", "status"],
+		fields=["planned_quantity", "loaded_quantity", "delivered_quantity", "status"],
 	)
 	assigned_quantity = sum(flt(row.planned_quantity, 6) for row in rows)
 	loaded_quantity = sum(
-		flt(row.actual_quantity or row.planned_quantity, 6)
+		flt(row.loaded_quantity, 6)
 		for row in rows
-		if row.status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"}
+		if row.loaded_quantity and row.status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"}
 	)
 	delivered_quantity = sum(
-		flt(row.actual_quantity or row.planned_quantity, 6)
+		flt(row.delivered_quantity, 6)
 		for row in rows
-		if row.status in {"DELIVERED", "POD_RECEIVED", "CLOSED"}
+		if row.delivered_quantity and row.status in {"DELIVERED", "POD_RECEIVED", "CLOSED"}
 	)
 	return {
 		"assigned_quantity": flt(assigned_quantity, 6),

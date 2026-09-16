@@ -10,6 +10,7 @@ CUSTOMER = "ORYX CONCRETE PRODUCT LLC SAJJA"
 NORMAL_SUPPLIER = "DEMO TMS GENERAL SUPPLIER"
 TRANSPORTER_SUPPLIER = "DEMO TMS TRANSPORTER SUPPLIER"
 HIRED_VEHICLE_PLATE = "HIRED-TRUCK-001"
+DEMO_TRUCKS = ("29413-FUJ", "29414-FUJ", "29415-FUJ")
 ORDER_MARKER = "DEMO TMS ORYX 80.8 | ATBT AL TAWEEN - SAJJA ORXY - 78"
 TRIP_MARKER_PREFIX = "DEMO TMS ORYX TRANSPORT TRIP"
 TRUCK_NOTE = (
@@ -41,13 +42,42 @@ def _set_values_if_changed(doc, values):
 		doc.save()
 
 
-def _ensure_demo_trip(job, demo, planned_quantity, sequence):
+def _ensure_demo_truck(truck_number, driver, fuel_uom):
+	truck, created = _reuse_or_create("Truck", {"truck_number": truck_number}, {
+		"truck_number": truck_number,
+		"license_plate": truck_number,
+		"model": "DEMO - UNKNOWN",
+		"make": "DEMO - UNKNOWN",
+		"manufacturing_year": "DEMO - UNKNOWN",
+		"acquisition_date": 2000,
+		"fuel_type": "Diesel",
+		"fuel_uom": fuel_uom,
+		"chassis_number": f"DEMO-{truck_number}",
+		"engine_number": "DEMO-UNKNOWN",
+		"trans_ms_driver": driver,
+		"status": "Idle",
+		"disabled": 0,
+		"ownership_type": "OWN",
+	}, or_filters={"truck_number": truck_number, "license_plate": truck_number, "name": truck_number})
+	if created:
+		truck.add_comment("Comment", TRUCK_NOTE)
+	if not truck.get("ownership_type"):
+		truck.ownership_type = "OWN"
+		truck.save()
+	if truck.ownership_type != "OWN":
+		frappe.throw(f"Existing demo Truck {truck.name} is not marked as owned; review it before demo setup.")
+	if truck.disabled or truck.status != "Idle":
+		frappe.throw(f"Existing demo Truck {truck.name} is not Idle/enabled; review it before demo setup.")
+	return truck
+
+
+def _ensure_demo_trip(job, demo, planned_quantity, sequence, vehicle):
 	remarks = f"{TRIP_MARKER_PREFIX} {sequence}"
 	trip_values = {
 		"transport_job": job.name,
 		"execution_source": "OWN",
 		"trip_date": job.requested_date,
-		"vehicle": demo["vehicle"],
+		"vehicle": vehicle,
 		"driver": demo["driver"],
 		"loading_site": job.loading_site,
 		"unloading_site": job.unloading_site,
@@ -67,6 +97,22 @@ def _ensure_demo_trip(job, demo, planned_quantity, sequence):
 		frappe.throw(f"Existing demo Transport Trip {trip.name} is {trip.status}; review it before demo setup.")
 	_set_values_if_changed(trip, trip_values)
 	return trip.name
+
+
+def _normalize_existing_demo_trip_vehicles(job, vehicles):
+	for sequence, vehicle in enumerate(vehicles, start=1):
+		remarks = f"{TRIP_MARKER_PREFIX} {sequence}"
+		trip = frappe.db.get_value(
+			"Transport Trip",
+			{"transport_job": job.name, "remarks": remarks},
+			["name", "status"],
+			as_dict=True,
+		)
+		if not trip:
+			continue
+		if trip.status in {"CLOSED", "CANCELLED"}:
+			frappe.throw(f"Existing demo Transport Trip {trip.name} is {trip.status}; review it before demo setup.")
+		frappe.db.set_value("Transport Trip", trip.name, "vehicle", vehicle, update_modified=False)
 
 
 def setup_demo_data(country="United Arab Emirates"):
@@ -161,24 +207,8 @@ def setup_demo_data(country="United Arab Emirates"):
 		})
 		if driver.status != "Active":
 			frappe.throw("Existing UMAIR driver is not Active; review it before demo setup.")
-		truck, created = _reuse_or_create("Truck", {}, {
-			"truck_number": "29413-FUJ", "license_plate": "29413-FUJ",
-			"model": "DEMO - UNKNOWN", "make": "DEMO - UNKNOWN",
-			"manufacturing_year": "DEMO - UNKNOWN", "acquisition_date": 2000,
-			"fuel_type": "Diesel", "fuel_uom": fuel_uom.name,
-			"chassis_number": "DEMO-29413-FUJ", "engine_number": "DEMO-UNKNOWN",
-			"trans_ms_driver": driver.name, "status": "Idle", "disabled": 0,
-			"ownership_type": "OWN",
-		}, or_filters={"truck_number": "29413-FUJ", "license_plate": "29413-FUJ", "name": "29413-FUJ"})
-		if created:
-			truck.add_comment("Comment", TRUCK_NOTE)
-		if not truck.get("ownership_type"):
-			truck.ownership_type = "OWN"
-			truck.save()
-		if truck.ownership_type != "OWN":
-			frappe.throw("Existing demo Truck is not marked as owned; review it before demo setup.")
-		if truck.disabled or truck.status != "Idle":
-			frappe.throw("Existing demo Truck is not Idle/enabled; review it before demo setup.")
+		trucks = [_ensure_demo_truck(truck_number, driver.name, fuel_uom.name) for truck_number in DEMO_TRUCKS]
+		truck = trucks[0]
 
 		job_values = {
 			"customer": customer.name,
@@ -212,13 +242,15 @@ def setup_demo_data(country="United Arab Emirates"):
 			"transporter_supplier": transporter_supplier.name, "hired_vehicle": hired_vehicle.name,
 			"loading_site": locations[0], "offloading_site": locations[1],
 			"material": material.name, "uom": uom.name, "fuel_uom": fuel_uom.name,
-			"driver": driver.name, "vehicle": truck.name, "transport_job": job.name,
+			"driver": driver.name, "vehicle": truck.name, "vehicles": [truck.name for truck in trucks],
+			"transport_job": job.name,
 			"note": "Demo uses the current Transport Job to Transport Trip flow. No rates, settlements, or invoices were automatically created.",
 		}
+		_normalize_existing_demo_trip_vehicles(job, demo["vehicles"])
 		demo["transport_trips"] = [
-			_ensure_demo_trip(job, demo, 30, 1),
-			_ensure_demo_trip(job, demo, 30, 2),
-			_ensure_demo_trip(job, demo, 20.8, 3),
+			_ensure_demo_trip(job, demo, 30, 1, trucks[0].name),
+			_ensure_demo_trip(job, demo, 30, 2, trucks[1].name),
+			_ensure_demo_trip(job, demo, 20.8, 3, trucks[2].name),
 		]
 		return demo
 	except Exception:

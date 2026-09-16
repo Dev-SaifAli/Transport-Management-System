@@ -6,6 +6,7 @@ frappe.ui.form.on("Transport Trip", {
 		frm.trigger("setup_hired_vehicle_query");
 		frm.trigger("toggle_execution_fields");
 		frm.trigger("toggle_pod_fields");
+		frm.trigger("toggle_charge_fields");
 	},
 
 	execution_source(frm) {
@@ -15,6 +16,7 @@ frappe.ui.form.on("Transport Trip", {
 	},
 
 	transport_job(frm) {
+		frm.trigger("set_defaults_from_transport_job");
 		frm.trigger("setup_vehicle_query");
 		frm.trigger("setup_hired_vehicle_query");
 		frm.trigger("clear_incompatible_hired_vehicle");
@@ -34,6 +36,10 @@ frappe.ui.form.on("Transport Trip", {
 
 	status(frm) {
 		frm.trigger("toggle_pod_fields");
+	},
+
+	toll_applicable(frm) {
+		frm.trigger("toggle_charge_fields");
 	},
 
 	setup_transporter_query(frm) {
@@ -58,11 +64,18 @@ frappe.ui.form.on("Transport Trip", {
 	},
 
 	setup_location_queries(frm) {
-		["loading_site", "unloading_site"].forEach((fieldname) => {
-			frm.set_query(fieldname, () => ({
-				filters: { active: 1 },
-			}));
-		});
+		frm.set_query("loading_site", () => ({
+			filters: {
+				active: 1,
+				location_usage: ["in", ["Loading", "Both"]],
+			},
+		}));
+		frm.set_query("unloading_site", () => ({
+			filters: {
+				active: 1,
+				location_usage: ["in", ["Unloading", "Both"]],
+			},
+		}));
 	},
 
 	setup_vehicle_query(frm) {
@@ -122,6 +135,11 @@ frappe.ui.form.on("Transport Trip", {
 
 	toggle_execution_fields(frm) {
 		const is_hired = frm.doc.execution_source === "HIRED";
+		frm.toggle_display("transporter", is_hired);
+		frm.toggle_display("hired_vehicle", is_hired);
+		frm.toggle_display("hired_driver", is_hired);
+		frm.toggle_display("vehicle", !is_hired);
+		frm.toggle_display("driver", !is_hired);
 		frm.set_df_property("transporter", "reqd", is_hired);
 		frm.set_df_property("hired_vehicle", "reqd", is_hired);
 		frm.set_df_property("vehicle", "reqd", !is_hired);
@@ -130,5 +148,30 @@ frappe.ui.form.on("Transport Trip", {
 
 	toggle_pod_fields(frm) {
 		frm.set_df_property("pod_attachment", "reqd", frm.doc.status === "POD_RECEIVED");
+	},
+
+	toggle_charge_fields(frm) {
+		const show_tolls = Boolean(frm.doc.toll_applicable);
+		frm.toggle_display("rak_toll", show_tolls);
+		frm.toggle_display("sharjah_toll", show_tolls);
+	},
+
+	set_defaults_from_transport_job(frm) {
+		if (!frm.doc.transport_job) return;
+		frappe.call({
+			method:
+				"transport_management.transport_management.doctype.transport_trip.transport_trip.get_defaults_from_transport_job",
+			args: {
+				transport_job: frm.doc.transport_job,
+			},
+			callback(r) {
+				const defaults = r.message || {};
+				["trip_date", "loading_site", "unloading_site", "material", "uom"].forEach((fieldname) => {
+					if (defaults[fieldname]) {
+						frm.set_value(fieldname, defaults[fieldname]);
+					}
+				});
+			},
+		});
 	},
 });

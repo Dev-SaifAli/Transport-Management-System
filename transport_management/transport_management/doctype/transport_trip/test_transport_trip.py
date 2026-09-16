@@ -64,6 +64,9 @@ class TestTransportTrip(unittest.TestCase):
 		doc.insert()
 		return doc
 
+	def get_field(self, fieldname):
+		return frappe.get_meta("Transport Trip").get_field(fieldname)
+
 	def make_material(self, truck_types=(), active=1):
 		doc = frappe.new_doc("Cargo Types")
 		doc.cargo_name = "TMS COMP MATERIAL " + frappe.generate_hash(length=8)
@@ -141,6 +144,28 @@ class TestTransportTrip(unittest.TestCase):
 		self.assertEqual(doc.vehicle, self.demo["vehicle"])
 		self.assertEqual(doc.driver, self.demo["driver"])
 
+	def test_form_uses_expected_top_tabs_with_trip_details_first(self):
+		meta = frappe.get_meta("Transport Trip")
+		tabs = [field for field in meta.fields if field.fieldtype == "Tab Break"]
+		self.assertEqual(
+			[field.label for field in tabs],
+			["Trip Details", "Execution", "Loading & Delivery", "Charges", "References & Remarks"],
+		)
+		self.assertEqual(meta.fields[0].fieldname, "trip_details_tab")
+		self.assertEqual(meta.fields[0].label, "Trip Details")
+
+	def test_uom_defaults_to_ton_and_is_read_only(self):
+		field = self.get_field("uom")
+		self.assertEqual(field.default, "TON")
+		self.assertTrue(field.read_only)
+		trip = self.make_trip(uom="")
+		trip.insert()
+		self.assertEqual(trip.uom, "TON")
+
+	def test_non_ton_uom_rejected(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "Transport Trip UOM must be TON"):
+			self.make_trip(uom="Tonne").insert()
+
 	def test_transport_job_required(self):
 		with self.assertRaises(frappe.ValidationError):
 			self.make_trip(transport_job=None).insert()
@@ -158,6 +183,64 @@ class TestTransportTrip(unittest.TestCase):
 			self.make_trip(actual_quantity=-0.1).insert()
 		self.make_trip(actual_quantity=0).insert()
 
+	def test_loaded_and_delivered_quantities_do_not_default_blindly(self):
+		trip = self.make_trip()
+		trip.insert()
+		self.assertFalse(trip.loaded_quantity)
+		self.assertFalse(trip.delivered_quantity)
+
+	def test_delivered_quantity_cannot_exceed_loaded_quantity(self):
+		trip = self.make_trip()
+		trip.insert()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		trip.loaded_quantity = 30
+		trip.save()
+		trip.status = "IN_TRANSIT"
+		trip.save()
+		trip.status = "DELIVERED"
+		trip.delivered_quantity = 31
+		with self.assertRaises(frappe.ValidationError):
+			trip.save()
+
+	def test_loaded_transition_requires_loaded_quantity(self):
+		trip = self.make_trip()
+		trip.insert()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		with self.assertRaisesRegex(frappe.ValidationError, "Loaded Quantity is required"):
+			trip.save()
+
+	def test_delivered_transition_requires_delivered_quantity(self):
+		trip = self.make_trip()
+		trip.insert()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		trip.loaded_quantity = 30
+		trip.save()
+		trip.status = "IN_TRANSIT"
+		trip.save()
+		trip.status = "DELIVERED"
+		with self.assertRaisesRegex(frappe.ValidationError, "Delivered Quantity is required"):
+			trip.save()
+
+	def test_vehicle_capacity_limits_planned_and_loaded_quantity_when_configured(self):
+		truck = self.make_truck("TIPPER", capacity=25, capacity_uom="TON")
+		with self.assertRaisesRegex(frappe.ValidationError, "Planned Quantity cannot exceed Vehicle capacity"):
+			self.make_trip(vehicle=truck.name, planned_quantity=30).insert()
+
+		trip = self.make_trip(vehicle=truck.name, planned_quantity=20)
+		trip.insert()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		trip.loaded_quantity = 26
+		with self.assertRaisesRegex(frappe.ValidationError, "Loaded Quantity cannot exceed Vehicle capacity"):
+			trip.save()
+
 	def test_loading_and_unloading_sites_must_differ(self):
 		with self.assertRaises(frappe.ValidationError):
 			self.make_trip(unloading_site=self.job.loading_site).insert()
@@ -165,14 +248,16 @@ class TestTransportTrip(unittest.TestCase):
 	def test_one_transport_job_can_have_multiple_trips(self):
 		trip_1 = self.make_trip(planned_quantity=30)
 		trip_1.insert()
-		trip_2 = self.make_trip(planned_quantity=50.8)
+		other_truck = self.make_truck("TIPPER")
+		trip_2 = self.make_trip(planned_quantity=50.8, vehicle=other_truck.name)
 		trip_2.insert()
 		self.assertEqual(frappe.db.count("Transport Trip", {"transport_job": self.job.name}), 2)
 
 	def test_total_planned_quantity_cannot_exceed_requested_quantity(self):
 		self.make_trip(planned_quantity=80).insert()
+		other_truck = self.make_truck("TIPPER")
 		with self.assertRaises(frappe.ValidationError) as raised:
-			self.make_trip(planned_quantity=1).insert()
+			self.make_trip(planned_quantity=1, vehicle=other_truck.name).insert()
 		message = str(raised.exception)
 		self.assertIn("Requested Quantity", message)
 		self.assertIn("Already Planned", message)
@@ -186,10 +271,35 @@ class TestTransportTrip(unittest.TestCase):
 		cancelled_trip.save()
 		self.make_trip(planned_quantity=80.8).insert()
 
+	def test_transport_job_progress_uses_loaded_and_delivered_quantities(self):
+		first = self.make_trip(planned_quantity=80)
+		first.insert()
+		first.status = "ASSIGNED"
+		first.save()
+		first.status = "LOADED"
+		first.loaded_quantity = 76
+		first.save()
+		first.status = "IN_TRANSIT"
+		first.save()
+		first.status = "DELIVERED"
+		first.delivered_quantity = 76
+		first.save()
+
+		second_truck = self.make_truck("TIPPER")
+		second = self.make_trip(vehicle=second_truck.name, planned_quantity=0.8)
+		second.insert()
+
+		self.job.reload()
+		self.assertEqual(self.job.assigned_quantity, 80.8)
+		self.assertEqual(self.job.loaded_quantity, 76)
+		self.assertEqual(self.job.delivered_quantity, 76)
+		self.assertEqual(self.job.remaining_quantity, 4.8)
+
 	def test_over_allocation_rejected_on_update(self):
 		trip_1 = self.make_trip(planned_quantity=40)
 		trip_1.insert()
-		trip_2 = self.make_trip(planned_quantity=40)
+		other_truck = self.make_truck("TIPPER")
+		trip_2 = self.make_trip(planned_quantity=40, vehicle=other_truck.name)
 		trip_2.insert()
 		trip_2.planned_quantity = 41
 		with self.assertRaises(frappe.ValidationError):
@@ -205,6 +315,26 @@ class TestTransportTrip(unittest.TestCase):
 		self.assertEqual(defaults["uom"], self.job.uom)
 		self.assertNotIn("customer", defaults)
 		self.assertNotIn("do_number", defaults)
+
+	def test_charges_and_reference_fields_exist_without_auto_toll_rules(self):
+		expected = {
+			"toll_applicable": "Toll Applicable",
+			"rak_toll": "RAK Toll",
+			"sharjah_toll": "Sharjah Toll",
+			"fnrc_extra_charge": "FNRC / Extra Charge",
+			"gdn": "External GDN / Delivery Reference",
+			"remarks": "Remarks",
+		}
+		for fieldname, label in expected.items():
+			self.assertEqual(self.get_field(fieldname).label, label)
+		trip = self.make_trip()
+		trip.insert()
+		self.assertFalse(trip.toll_applicable)
+		self.assertFalse(trip.rak_toll)
+		self.assertFalse(trip.sharjah_toll)
+		self.assertFalse(trip.fnrc_extra_charge)
+		self.assertFalse(trip.gdn)
+		self.assertFalse(trip.remarks)
 
 	def test_tipper_material_returns_idle_enabled_tipper_trucks(self):
 		tipper = self.make_truck("TIPPER")
@@ -230,6 +360,35 @@ class TestTransportTrip(unittest.TestCase):
 		self.assertNotIn(on_trip.name, compatible)
 		self.assertNotIn(maintenance.name, compatible)
 		self.assertNotIn(blank_type.name, compatible)
+
+	def test_reserved_owned_truck_is_excluded_from_compatible_trucks(self):
+		reserved = self.make_truck("TIPPER")
+		self.make_trip(vehicle=reserved.name, status="PLANNED").insert()
+		self.assertNotIn(reserved.name, get_compatible_owned_trucks("3/4 AGREEGAT(10MM-20MM)"))
+
+	def test_same_owned_truck_cannot_be_assigned_to_two_active_trips(self):
+		self.make_trip(status="PLANNED").insert()
+		with self.assertRaises(frappe.ValidationError) as raised:
+			self.make_trip().insert()
+		message = str(raised.exception)
+		self.assertIn(self.demo["vehicle"], message)
+		self.assertIn("is already assigned to active Trip", message)
+		self.assertIn("Please select another available vehicle", message)
+
+	def test_owned_truck_released_after_delivered_status(self):
+		trip = self.make_trip()
+		trip.insert()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		trip.loaded_quantity = 30
+		trip.save()
+		trip.status = "IN_TRANSIT"
+		trip.save()
+		trip.status = "DELIVERED"
+		trip.delivered_quantity = 30
+		trip.save()
+		self.make_trip(planned_quantity=1).insert()
 
 	def test_tipper_material_returns_active_tipper_hired_vehicles(self):
 		supplier = self.make_supplier()
@@ -353,9 +512,18 @@ class TestTransportTrip(unittest.TestCase):
 			trip.save()
 
 		trip.reload()
-		for status in ("ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED"):
-			trip.status = status
-			trip.save()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		trip.loaded_quantity = 30
+		trip.save()
+		self.assertTrue(trip.loading_datetime)
+		trip.status = "IN_TRANSIT"
+		trip.save()
+		trip.status = "DELIVERED"
+		trip.delivered_quantity = 30
+		trip.save()
+		self.assertTrue(trip.delivery_datetime)
 
 		trip.status = "EXCEPTION"
 		trip.save()
@@ -364,9 +532,16 @@ class TestTransportTrip(unittest.TestCase):
 	def test_pod_required_for_pod_received(self):
 		trip = self.make_trip()
 		trip.insert()
-		for status in ("ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED"):
-			trip.status = status
-			trip.save()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		trip.loaded_quantity = 30
+		trip.save()
+		trip.status = "IN_TRANSIT"
+		trip.save()
+		trip.status = "DELIVERED"
+		trip.delivered_quantity = 30
+		trip.save()
 		trip.status = "POD_RECEIVED"
 		with self.assertRaises(frappe.ValidationError):
 			trip.save()
@@ -374,9 +549,16 @@ class TestTransportTrip(unittest.TestCase):
 	def test_pod_received_at_is_set_once(self):
 		trip = self.make_trip()
 		trip.insert()
-		for status in ("ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED"):
-			trip.status = status
-			trip.save()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		trip.loaded_quantity = 30
+		trip.save()
+		trip.status = "IN_TRANSIT"
+		trip.save()
+		trip.status = "DELIVERED"
+		trip.delivered_quantity = 30
+		trip.save()
 		trip.status = "POD_RECEIVED"
 		trip.pod_attachment = "/private/files/demo-pod.pdf"
 		trip.save()
@@ -389,9 +571,16 @@ class TestTransportTrip(unittest.TestCase):
 	def test_closed_cannot_reopen(self):
 		trip = self.make_trip()
 		trip.insert()
-		for status in ("ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED"):
-			trip.status = status
-			trip.save()
+		trip.status = "ASSIGNED"
+		trip.save()
+		trip.status = "LOADED"
+		trip.loaded_quantity = 30
+		trip.save()
+		trip.status = "IN_TRANSIT"
+		trip.save()
+		trip.status = "DELIVERED"
+		trip.delivered_quantity = 30
+		trip.save()
 		trip.status = "POD_RECEIVED"
 		trip.pod_attachment = "/private/files/demo-pod.pdf"
 		trip.save()

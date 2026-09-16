@@ -14,6 +14,7 @@ CONFIRMED_MATERIAL_MAPPINGS = {
 	"3/16 BLACK SAND FULL WASHED(SAND)": ("TIPPER",),
 	"CEMENT": ("TANKER",),
 }
+VEHICLE_RESERVED_STATUSES = ("PLANNED", "ASSIGNED", "LOADED", "IN_TRANSIT")
 
 
 def migrate_cargo_types_ownership():
@@ -116,7 +117,7 @@ def get_compatible_owned_trucks(material):
 	if not allowed_truck_types:
 		return []
 
-	return frappe.get_list(
+	trucks = frappe.get_list(
 		"Truck",
 		filters={
 			"vehicle_type": ("in", allowed_truck_types),
@@ -126,6 +127,7 @@ def get_compatible_owned_trucks(material):
 		},
 		pluck="name",
 	)
+	return [truck for truck in trucks if not is_owned_truck_reserved(truck)]
 
 
 @frappe.whitelist()
@@ -216,6 +218,13 @@ def compatible_owned_truck_query(doctype, txt, searchfield, start, page_len, fil
 			and ownership_type = 'OWN'
 			and disabled = 0
 			and status = 'Idle'
+			and not exists (
+				select trip.name
+				from `tabTransport Trip` trip
+				where trip.vehicle = `tabTruck`.name
+					and trip.execution_source = 'OWN'
+					and trip.status in %(reserved_statuses)s
+			)
 			{get_match_cond("Truck")}
 		order by
 			case when locate(%(_txt)s, name) > 0 then locate(%(_txt)s, name) else 99999 end,
@@ -226,9 +235,23 @@ def compatible_owned_truck_query(doctype, txt, searchfield, start, page_len, fil
 			"txt": f"%{txt}%",
 			"_txt": txt.replace("%", ""),
 			"allowed_truck_types": tuple(allowed_truck_types),
+			"reserved_statuses": VEHICLE_RESERVED_STATUSES,
 			"start": start,
 			"page_len": page_len,
 		},
+	)
+
+
+def is_owned_truck_reserved(truck):
+	return bool(
+		frappe.db.exists(
+			"Transport Trip",
+			{
+				"vehicle": truck,
+				"execution_source": "OWN",
+				"status": ("in", VEHICLE_RESERVED_STATUSES),
+			},
+		)
 	)
 
 

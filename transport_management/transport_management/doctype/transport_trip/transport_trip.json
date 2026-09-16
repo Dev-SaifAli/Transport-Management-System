@@ -7,41 +7,53 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "relationship_section",
+  "trip_details_tab",
   "transport_job",
-  "execution_section",
   "trip_date",
+  "status",
+  "column_break_trip_details_1",
+  "material",
+  "loading_site",
+  "unloading_site",
+  "column_break_trip_details_2",
+  "planned_quantity",
+  "uom",
+  "execution_tab",
   "execution_source",
+  "column_break_execution_1",
+  "vehicle",
+  "driver",
+  "column_break_execution_2",
   "transporter",
   "hired_vehicle",
   "hired_driver",
-  "vehicle",
-  "driver",
-  "column_break_execution_1",
-  "loading_site",
-  "unloading_site",
-  "material",
-  "column_break_execution_2",
-  "planned_quantity",
+  "loading_delivery_tab",
+  "loaded_quantity",
+  "loading_datetime",
+  "column_break_loading_delivery",
+  "delivered_quantity",
+  "delivery_datetime",
   "actual_quantity",
-  "uom",
-  "references_section",
+  "charges_tab",
+  "toll_applicable",
+  "rak_toll",
+  "sharjah_toll",
+  "column_break_charges",
+  "fnrc_extra_charge",
+  "references_remarks_tab",
   "gdn",
-  "loading_no",
-  "unloading_no",
+  "remarks",
   "pod_section",
   "pod_attachment",
   "pod_received_at",
-  "status_section",
-  "status",
-  "notes_section",
-  "remarks"
+  "loading_no",
+  "unloading_no"
  ],
  "fields": [
   {
-   "fieldname": "relationship_section",
-   "fieldtype": "Section Break",
-   "label": "Relationship"
+   "fieldname": "trip_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Trip Details"
   },
   {
    "fieldname": "transport_job",
@@ -52,15 +64,70 @@
    "search_index": 1
   },
   {
-   "fieldname": "execution_section",
-   "fieldtype": "Section Break",
-   "label": "Execution"
-  },
-  {
+   "default": "Today",
    "fieldname": "trip_date",
    "fieldtype": "Date",
    "label": "Trip Date",
    "reqd": 1
+  },
+  {
+   "default": "PLANNED",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Trip Status",
+   "options": "PLANNED\nASSIGNED\nLOADED\nIN_TRANSIT\nDELIVERED\nPOD_RECEIVED\nCLOSED\nCANCELLED\nEXCEPTION"
+  },
+  {
+   "fieldname": "column_break_trip_details_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "loading_site",
+   "fieldtype": "Link",
+   "label": "Loading Location",
+   "options": "Transport Location",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "unloading_site",
+   "fieldtype": "Link",
+   "label": "Unloading Location",
+   "options": "Transport Location",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "material",
+   "fieldtype": "Link",
+   "label": "Material",
+   "options": "Cargo Types",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_trip_details_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_quantity",
+   "fieldtype": "Float",
+   "label": "Planned Quantity",
+   "reqd": 1
+  },
+  {
+   "default": "TON",
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "label": "UOM",
+   "options": "UOM",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "execution_tab",
+   "fieldtype": "Tab Break",
+   "label": "Execution"
   },
   {
    "default": "OWN",
@@ -69,6 +136,30 @@
    "label": "Execution Source",
    "options": "OWN\nHIRED",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_execution_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.execution_source == 'OWN'",
+   "fieldname": "vehicle",
+   "fieldtype": "Link",
+   "label": "Vehicle",
+   "mandatory_depends_on": "eval:doc.execution_source == 'OWN'",
+   "options": "Truck"
+  },
+  {
+   "depends_on": "eval:doc.execution_source == 'OWN'",
+   "fieldname": "driver",
+   "fieldtype": "Link",
+   "label": "Driver",
+   "mandatory_depends_on": "eval:doc.execution_source == 'OWN'",
+   "options": "Truck Driver"
+  },
+  {
+   "fieldname": "column_break_execution_2",
+   "fieldtype": "Column Break"
   },
   {
    "depends_on": "eval:doc.execution_source == 'HIRED'",
@@ -93,87 +184,86 @@
    "label": "Hired Driver"
   },
   {
-   "fieldname": "vehicle",
-   "fieldtype": "Link",
-   "label": "Vehicle",
-   "options": "Truck",
-   "depends_on": "eval:doc.execution_source == 'OWN'",
-   "mandatory_depends_on": "eval:doc.execution_source == 'OWN'"
+   "fieldname": "loading_delivery_tab",
+   "fieldtype": "Tab Break",
+   "label": "Loading & Delivery"
   },
   {
-   "fieldname": "driver",
-   "fieldtype": "Link",
-   "label": "Driver",
-   "options": "Truck Driver",
-   "depends_on": "eval:doc.execution_source == 'OWN'",
-   "mandatory_depends_on": "eval:doc.execution_source == 'OWN'"
-  },
-  {
-   "fieldname": "column_break_execution_1",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "loading_site",
-   "fieldtype": "Link",
-   "label": "Loading Site",
-   "options": "Transport Location",
-   "reqd": 1
-  },
-  {
-   "fieldname": "unloading_site",
-   "fieldtype": "Link",
-   "label": "Unloading Site",
-   "options": "Transport Location",
-   "reqd": 1
-  },
-  {
-   "fieldname": "material",
-   "fieldtype": "Link",
-   "label": "Material",
-   "options": "Cargo Types",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_execution_2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "planned_quantity",
+   "fieldname": "loaded_quantity",
    "fieldtype": "Float",
-   "label": "Planned Quantity",
-   "reqd": 1
+   "label": "Loaded Quantity"
+  },
+  {
+   "fieldname": "loading_datetime",
+   "fieldtype": "Datetime",
+   "label": "Loading Date/Time"
+  },
+  {
+   "fieldname": "column_break_loading_delivery",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "delivered_quantity",
+   "fieldtype": "Float",
+   "label": "Delivered Quantity"
+  },
+  {
+   "fieldname": "delivery_datetime",
+   "fieldtype": "Datetime",
+   "label": "Delivery Date/Time"
   },
   {
    "fieldname": "actual_quantity",
    "fieldtype": "Float",
+   "hidden": 1,
    "label": "Actual Quantity"
   },
   {
-   "fieldname": "uom",
-   "fieldtype": "Link",
-   "label": "UOM",
-   "options": "UOM",
-   "reqd": 1
+   "fieldname": "charges_tab",
+   "fieldtype": "Tab Break",
+   "label": "Charges"
   },
   {
-   "fieldname": "references_section",
-   "fieldtype": "Section Break",
-   "label": "References"
+   "default": "0",
+   "fieldname": "toll_applicable",
+   "fieldtype": "Check",
+   "label": "Toll Applicable"
+  },
+  {
+   "depends_on": "eval:doc.toll_applicable",
+   "fieldname": "rak_toll",
+   "fieldtype": "Currency",
+   "label": "RAK Toll"
+  },
+  {
+   "depends_on": "eval:doc.toll_applicable",
+   "fieldname": "sharjah_toll",
+   "fieldtype": "Currency",
+   "label": "Sharjah Toll"
+  },
+  {
+   "fieldname": "column_break_charges",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fnrc_extra_charge",
+   "fieldtype": "Currency",
+   "label": "FNRC / Extra Charge"
+  },
+  {
+   "fieldname": "references_remarks_tab",
+   "fieldtype": "Tab Break",
+   "label": "References & Remarks"
   },
   {
    "fieldname": "gdn",
    "fieldtype": "Data",
-   "label": "GDN"
+   "label": "External GDN / Delivery Reference"
   },
   {
-   "fieldname": "loading_no",
-   "fieldtype": "Data",
-   "label": "Loading No"
-  },
-  {
-   "fieldname": "unloading_no",
-   "fieldtype": "Data",
-   "label": "Unloading No"
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
   },
   {
    "fieldname": "pod_section",
@@ -192,26 +282,14 @@
    "read_only": 1
   },
   {
-   "fieldname": "status_section",
-   "fieldtype": "Section Break",
-   "label": "Status"
+   "fieldname": "loading_no",
+   "fieldtype": "Data",
+   "label": "Loading No"
   },
   {
-   "default": "PLANNED",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "PLANNED\nASSIGNED\nLOADED\nIN_TRANSIT\nDELIVERED\nPOD_RECEIVED\nCLOSED\nCANCELLED\nEXCEPTION"
-  },
-  {
-   "fieldname": "notes_section",
-   "fieldtype": "Section Break",
-   "label": "Notes"
-  },
-  {
-   "fieldname": "remarks",
-   "fieldtype": "Small Text",
-   "label": "Remarks"
+   "fieldname": "unloading_no",
+   "fieldtype": "Data",
+   "label": "Unloading No"
   }
  ],
  "grid_page_length": 50,

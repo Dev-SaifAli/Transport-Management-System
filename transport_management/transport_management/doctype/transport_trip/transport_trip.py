@@ -6,23 +6,25 @@ from math import isfinite
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, now_datetime
+from frappe.utils import flt, now_datetime, today
 
 from transport_management.cargo_type_master import (
 	get_effective_material,
 	validate_material_allows_hired_vehicle,
 	validate_material_allows_owned_truck,
 )
-from transport_management.location_master import validate_active_transport_locations
+from transport_management.location_master import validate_transport_location_usage
 from transport_management.transport_management.doctype.transport_job.transport_job import refresh_quantity_progress
 from transport_management.truck_master import validate_owned_truck_available
 
 ACTIVE_OPERATIONAL_STATUSES = {"ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED"}
+VEHICLE_RESERVED_STATUSES = {"PLANNED", "ASSIGNED", "LOADED", "IN_TRANSIT"}
 TERMINAL_STATUSES = {"CLOSED", "CANCELLED"}
 STATUS_SEQUENCE = ("PLANNED", "ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED")
 ALLOWED_FORWARD_TRANSITIONS = dict(zip(STATUS_SEQUENCE, STATUS_SEQUENCE[1:]))
 ALLOWED_STATUSES = set(STATUS_SEQUENCE) | {"CANCELLED", "EXCEPTION"}
 ALLOWED_EXECUTION_SOURCES = {"OWN", "HIRED"}
+TON_UOM = "TON"
 
 
 class TransportTrip(Document):
@@ -33,8 +35,20 @@ class TransportTrip(Document):
 		if not self.execution_source:
 			self.execution_source = "OWN"
 
+		if not self.trip_date:
+			self.trip_date = today()
+
+		if not self.uom:
+			self.uom = TON_UOM
+
 		if self.status == "POD_RECEIVED" and self.pod_attachment and not self.pod_received_at:
 			self.pod_received_at = now_datetime()
+
+		if self.status in {"LOADED", "IN_TRANSIT"} and self.loaded_quantity and not self.loading_datetime:
+			self.loading_datetime = now_datetime()
+
+		if self.status in {"DELIVERED", "POD_RECEIVED", "CLOSED"} and self.delivered_quantity and not self.delivery_datetime:
+			self.delivery_datetime = now_datetime()
 
 	def validate(self):
 		self.validate_transport_job_exists()
@@ -61,6 +75,7 @@ class TransportTrip(Document):
 			frappe.throw(_("Invalid Execution Source {0}.").format(self.execution_source))
 
 		if self.execution_source == "OWN":
+			self.validate_vehicle_not_reserved()
 			validate_owned_truck_available(self.vehicle)
 			self.validate_owned_truck_material_compatibility()
 			if not self.driver:
@@ -152,10 +167,64 @@ class TransportTrip(Document):
 		if not isfinite(planned_quantity) or planned_quantity <= 0:
 			frappe.throw(_("Planned Quantity must be greater than zero."))
 
+		if self.uom != TON_UOM:
+			frappe.throw(_("Transport Trip UOM must be TON."))
+
 		if self.actual_quantity is not None and self.actual_quantity != "":
 			actual_quantity = flt(self.actual_quantity)
 			if not isfinite(actual_quantity) or actual_quantity < 0:
 				frappe.throw(_("Actual Quantity cannot be negative."))
+
+		loaded_quantity = self.get_optional_quantity("loaded_quantity", _("Loaded Quantity"))
+		delivered_quantity = self.get_optional_quantity("delivered_quantity", _("Delivered Quantity"))
+
+		if self.status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"} and not loaded_quantity:
+			frappe.throw(_("Loaded Quantity is required when Transport Trip is LOADED."))
+		if self.status in {"DELIVERED", "POD_RECEIVED", "CLOSED"} and not delivered_quantity:
+			frappe.throw(_("Delivered Quantity is required when Transport Trip is DELIVERED."))
+		if self.status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"} and not self.loading_datetime:
+			frappe.throw(_("Loading Date/Time is required when Transport Trip is LOADED."))
+		if self.status in {"DELIVERED", "POD_RECEIVED", "CLOSED"} and not self.delivery_datetime:
+			frappe.throw(_("Delivery Date/Time is required when Transport Trip is DELIVERED."))
+		if loaded_quantity and delivered_quantity and delivered_quantity > loaded_quantity:
+			frappe.throw(_("Delivered Quantity cannot exceed Loaded Quantity."))
+		self.validate_vehicle_capacity(planned_quantity, loaded_quantity)
+
+	def get_optional_quantity(self, fieldname, label):
+		value = self.get(fieldname)
+		if value is None or value == "":
+			return 0
+		quantity = flt(value, 6)
+		if not isfinite(quantity) or quantity < 0:
+			frappe.throw(_("{0} cannot be negative.").format(label))
+		return quantity
+
+	def validate_vehicle_capacity(self, planned_quantity, loaded_quantity):
+		if self.execution_source != "OWN" or not self.vehicle:
+			return
+		truck = frappe.db.get_value("Truck", self.vehicle, ["capacity", "capacity_uom"], as_dict=True)
+		if not truck or not flt(truck.capacity):
+			return
+		if truck.capacity_uom and truck.capacity_uom != TON_UOM:
+			return
+		capacity = flt(truck.capacity, 6)
+		if planned_quantity > capacity:
+			frappe.throw(_("Planned Quantity cannot exceed Vehicle capacity {0} TON.").format(capacity))
+		if loaded_quantity and loaded_quantity > capacity:
+			frappe.throw(_("Loaded Quantity cannot exceed Vehicle capacity {0} TON.").format(capacity))
+
+	def validate_vehicle_not_reserved(self):
+		if not self.vehicle or self.status not in VEHICLE_RESERVED_STATUSES:
+			return
+		existing_trip = get_active_vehicle_trip(self.vehicle, exclude_name=self.name)
+		if not existing_trip:
+			return
+		frappe.throw(
+			_("Vehicle {0} is already assigned to active Trip {1}. Please select another available vehicle.").format(
+				self.vehicle,
+				existing_trip,
+			)
+		)
 
 	def validate_material_matches_transport_job(self):
 		get_effective_material(self.material, self.transport_job, validate_mismatch=True)
@@ -164,10 +233,8 @@ class TransportTrip(Document):
 		if self.loading_site and self.loading_site == self.unloading_site:
 			frappe.throw(_("Loading Site and Unloading Site must be different."))
 
-		validate_active_transport_locations(
-			self,
-			(("loading_site", _("Loading Site")), ("unloading_site", _("Unloading Site"))),
-		)
+		validate_transport_location_usage(self.loading_site, {"Loading", "Both"}, _("Loading Location"))
+		validate_transport_location_usage(self.unloading_site, {"Unloading", "Both"}, _("Unloading Location"))
 
 	def validate_status_transition(self):
 		if self.status not in ALLOWED_STATUSES:
@@ -245,7 +312,7 @@ def get_defaults_from_transport_job(transport_job):
 		"loading_site": job.loading_site,
 		"unloading_site": job.unloading_site,
 		"material": job.material,
-		"uom": job.uom,
+		"uom": TON_UOM,
 	}
 
 
@@ -281,3 +348,26 @@ def get_reserved_quantity(transport_job, exclude_name=None):
 		values,
 	)[0][0]
 	return flt(reserved, 6)
+
+
+def get_active_vehicle_trip(vehicle, exclude_name=None):
+	filters = ["vehicle = %s", "execution_source = 'OWN'", "status in %s"]
+	sql_values = [vehicle]
+	sql_values.append(tuple(VEHICLE_RESERVED_STATUSES))
+	if exclude_name:
+		filters.append("name != %s")
+		sql_values.append(exclude_name)
+
+	rows = frappe.db.sql(
+		f"""
+		select name
+		from `tabTransport Trip`
+		where {' and '.join(filters)}
+		order by creation asc
+		limit 1
+		for update
+		""",
+		tuple(sql_values),
+		as_dict=True,
+	)
+	return rows[0].name if rows else None

@@ -66,7 +66,7 @@ class TestDemoSetup(unittest.TestCase):
 			self.assertEqual(sum(trip.planned_quantity for trip in trips), 80.8)
 			self.assertEqual({trip.status for trip in trips}, {"PLANNED"})
 			self.assertEqual({trip.execution_source for trip in trips}, {"OWN"})
-			self.assertEqual({trip.vehicle for trip in trips}, {first["vehicle"]})
+			self.assertEqual({trip.vehicle for trip in trips}, set(first["vehicles"]))
 			self.assertEqual({trip.driver for trip in trips}, {first["driver"]})
 			self.assertEqual({trip.transporter for trip in trips}, {None})
 		finally:
