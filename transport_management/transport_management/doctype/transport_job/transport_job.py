@@ -10,9 +10,13 @@ from frappe.utils import flt
 
 from transport_management.location_master import validate_transport_location_usage
 
+TON_UOM = "TON"
+
 
 class TransportJob(Document):
 	def before_validate(self):
+		if not self.uom:
+			self.uom = TON_UOM
 		self.calculate_quantity_progress()
 
 	def validate(self):
@@ -22,6 +26,9 @@ class TransportJob(Document):
 
 		if self.loading_site and self.loading_site == self.unloading_site:
 			frappe.throw(_("Loading Site and Unloading Site must be different."))
+
+		if self.uom != TON_UOM:
+			frappe.throw(_("Transport Job UOM must be TON."))
 
 		validate_transport_location_usage(self.loading_site, {"Loading", "Both"}, _("Loading Site"))
 		validate_transport_location_usage(self.unloading_site, {"Unloading", "Both"}, _("Unloading Site"))

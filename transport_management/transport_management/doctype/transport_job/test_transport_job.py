@@ -106,6 +106,27 @@ class TestTransportJob(unittest.TestCase):
 		self.assertFalse(doc.get("pod"))
 		self.assertFalse(doc.get("gdn"))
 
+	def test_new_transport_job_defaults_uom_to_ton(self):
+		doc = self.make_job(uom="")
+		doc.insert()
+		self.assertEqual(doc.uom, "TON")
+
+	def test_transport_job_uom_is_read_only_in_metadata(self):
+		field = self.get_field("uom")
+		self.assertEqual(field.default, "TON")
+		self.assertTrue(field.read_only)
+
+	def test_transport_job_rejects_non_ton_uom(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "Transport Job UOM must be TON"):
+			self.make_job(uom="Tonne").insert()
+
+	def test_existing_ton_transport_job_remains_valid(self):
+		doc = self.make_job(uom="TON")
+		doc.insert()
+		doc.special_instructions = "Existing TON job still saves."
+		doc.save()
+		self.assertEqual(doc.uom, "TON")
+
 	def test_obsolete_integration_fields_do_not_exist(self):
 		meta = frappe.get_meta("Transport Job")
 		obsolete_fields = (

@@ -149,9 +149,9 @@ def setup_demo_data(country="United Arab Emirates"):
 		material, _ = _reuse_or_create("Cargo Types", {"cargo_name": "3/4 Aggregate"}, {
 			"cargo_name": "3/4 Aggregate",
 		})
-		uom, _ = _reuse_or_create("UOM", {"uom_name": "Tonne"}, {"uom_name": "Tonne", "enabled": 1})
+		uom, _ = _reuse_or_create("UOM", {"uom_name": "TON"}, {"uom_name": "TON", "enabled": 1})
 		if not uom.enabled:
-			frappe.throw("Existing UOM Tonne is disabled; enable it explicitly before demo setup.")
+			frappe.throw("Existing UOM TON is disabled; enable it explicitly before demo setup.")
 		fuel_uom, _ = _reuse_or_create("UOM", {"uom_name": "Litre"}, {"uom_name": "Litre", "enabled": 1})
 		if not fuel_uom.enabled:
 			frappe.throw("Existing UOM Litre is disabled; enable it explicitly before demo setup.")

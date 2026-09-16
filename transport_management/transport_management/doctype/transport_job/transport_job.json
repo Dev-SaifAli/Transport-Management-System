@@ -90,10 +90,12 @@
    "reqd": 1
   },
   {
+   "default": "TON",
    "fieldname": "uom",
    "fieldtype": "Link",
    "label": "UOM",
    "options": "UOM",
+   "read_only": 1,
    "reqd": 1
   },
   {
