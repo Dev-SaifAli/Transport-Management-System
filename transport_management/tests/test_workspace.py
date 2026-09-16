@@ -4,6 +4,8 @@ from pathlib import Path
 
 import frappe
 
+from transport_management.navigation import sync_tms_navigation
+
 
 APP_ROOT = Path(frappe.get_app_path("transport_management")).parent
 WORKSPACE_PATH = APP_ROOT / "transport_management" / "transport_management" / "workspace" / "transport_management" / "transport_management.json"
@@ -12,13 +14,13 @@ PAGE_ROOT = APP_ROOT / "transport_management" / "transport_management" / "page"
 SIDEBAR_PATH = APP_ROOT / "transport_management" / "workspace_sidebar" / "transport_management.json"
 DESKTOP_ICON_PATH = APP_ROOT / "transport_management" / "desktop_icon" / "transport_management.json"
 
-WRAPPER_PAGES = {
-	"tms-customers": "Transport Management / Customers",
-	"tms-suppliers": "Transport Management / Suppliers",
-	"tms-owned-trucks": "Transport Management / Owned Trucks",
-	"tms-drivers": "Transport Management / Drivers",
-	"tms-locations": "Transport Management / Locations",
-}
+OBSOLETE_WRAPPER_PAGE_FOLDERS = (
+	"tms_customers",
+	"tms_suppliers",
+	"tms_owned_trucks",
+	"tms_drivers",
+	"tms_locations",
+)
 
 TMS_TOOL_PAGES = {
 	"tms-data-import": "Transport Management / Data Import",
@@ -26,6 +28,10 @@ TMS_TOOL_PAGES = {
 
 
 class TestTransportManagementWorkspace(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		sync_tms_navigation()
+
 	def load_workspace(self):
 		return json.loads(WORKSPACE_PATH.read_text())
 
@@ -43,7 +49,7 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		workspace = self.load_workspace()
 		links = workspace["links"]
 		sections = [row["label"] for row in links if row["type"] == "Card Break"]
-		self.assertEqual(sections, ["Operations", "Fleet", "Masters", "ERP"])
+		self.assertEqual(sections, ["Operations", "Fleet", "Masters", "Tools"])
 
 		linked_doctypes = {
 			row.get("link_to"): row.get("label")
@@ -52,22 +58,25 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		}
 		self.assertEqual(linked_doctypes["Transport Job"], "Transport Job")
 		self.assertEqual(linked_doctypes["Transport Trip"], "Transport Trip")
+		self.assertEqual(linked_doctypes["Truck"], "Owned Trucks")
 		self.assertEqual(linked_doctypes["Hired Vehicle"], "Hired Vehicles")
+		self.assertEqual(linked_doctypes["Truck Driver"], "Drivers")
+		self.assertEqual(linked_doctypes["Customer"], "Customers")
+		self.assertEqual(linked_doctypes["Supplier"], "Suppliers / Transporters")
+		self.assertEqual(linked_doctypes["Transport Location"], "Transport Locations")
 		self.assertEqual(linked_doctypes["Cargo Types"], "Materials")
+		self.assertEqual(linked_doctypes["Truck Type"], "Truck Types")
 
 		linked_pages = {
 			row.get("link_to"): row.get("label")
 			for row in links
 			if row["type"] == "Link" and row.get("link_type") == "Page"
 		}
-		self.assertEqual(linked_pages["tms-owned-trucks"], "Owned Trucks")
-		self.assertEqual(linked_pages["tms-drivers"], "Drivers")
-		self.assertEqual(linked_pages["tms-customers"], "Customers")
-		self.assertEqual(linked_pages["tms-suppliers"], "Suppliers / Transporters")
-		self.assertEqual(linked_pages["tms-locations"], "Transport Locations")
 		self.assertEqual(linked_pages["tms-data-import"], "Data Import")
 
 		all_links = {row.get("link_to") for row in links if row["type"] == "Link"}
+		for wrapper_page in self.obsolete_wrapper_page_routes():
+			self.assertNotIn(wrapper_page, all_links)
 		for legacy in ("Transport Shipment", "Trips", "Manifest", "Trip Routes", "Trip Locations", "Trailers"):
 			self.assertNotIn(legacy, all_links)
 
@@ -88,8 +97,15 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		self.assertEqual(metadata["title_field"], "plate_number")
 		self.assertEqual(metadata["search_fields"], "plate_number,transporter")
 
-	def test_tms_wrapper_pages_exist_and_belong_to_transport_management(self):
-		for page_name, title in {**WRAPPER_PAGES, **TMS_TOOL_PAGES}.items():
+	def test_obsolete_tms_wrapper_pages_are_removed(self):
+		for folder in OBSOLETE_WRAPPER_PAGE_FOLDERS:
+			page_name = folder.replace("_", "-")
+			self.assertFalse((PAGE_ROOT / folder / f"{folder}.json").exists(), page_name)
+			self.assertFalse((PAGE_ROOT / folder / f"{folder}.js").exists(), page_name)
+			self.assertFalse(frappe.db.exists("Page", page_name), page_name)
+
+	def test_tms_tool_pages_exist_and_belong_to_transport_management(self):
+		for page_name, title in TMS_TOOL_PAGES.items():
 			folder = page_name.replace("-", "_")
 			metadata_path = PAGE_ROOT / folder / f"{folder}.json"
 			self.assertTrue(metadata_path.exists(), page_name)
@@ -109,7 +125,7 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		metadata = json.loads(metadata_path.read_text())
 		self.assertEqual(metadata["name"], "tms-data-import")
 		self.assertEqual(metadata["module"], "Transport Management")
-		self.assertEqual(metadata["roles"], [{"role": "System Manager"}])
+		self.assertEqual(metadata["roles"], [{"role": "System Manager"}, {"role": "Transport Admin"}])
 
 	def test_tms_owned_doctypes_remain_direct_workspace_links(self):
 		workspace = self.load_workspace()
@@ -120,7 +136,10 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		}
 		self.assertEqual(direct_links["Transport Job"], "DocType")
 		self.assertEqual(direct_links["Transport Trip"], "DocType")
+		self.assertEqual(direct_links["Truck"], "DocType")
 		self.assertEqual(direct_links["Hired Vehicle"], "DocType")
+		self.assertEqual(direct_links["Truck Driver"], "DocType")
+		self.assertEqual(direct_links["Transport Location"], "DocType")
 
 	def load_sidebar(self):
 		return json.loads(SIDEBAR_PATH.read_text())
@@ -137,23 +156,28 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 	def test_transport_management_sidebar_links(self):
 		items = self.load_sidebar()["items"]
 		sections = [row["label"] for row in items if row["type"] == "Section Break"]
-		self.assertEqual(sections, ["Operations", "Fleet", "Masters", "ERP"])
+		self.assertEqual(sections, ["Operations", "Fleet", "Masters", "Tools"])
 
 		links = {row["label"]: (row.get("link_type"), row.get("link_to")) for row in items if row["type"] == "Link"}
 		self.assertEqual(links["Home"], ("Workspace", "Transport Management"))
 		self.assertEqual(links["Transport Job"], ("DocType", "Transport Job"))
 		self.assertEqual(links["Transport Trip"], ("DocType", "Transport Trip"))
-		self.assertEqual(links["Owned Trucks"], ("Page", "tms-owned-trucks"))
+		self.assertEqual(links["Owned Trucks"], ("DocType", "Truck"))
 		self.assertEqual(links["Hired Vehicles"], ("DocType", "Hired Vehicle"))
-		self.assertEqual(links["Drivers"], ("Page", "tms-drivers"))
-		self.assertEqual(links["Customers"], ("Page", "tms-customers"))
-		self.assertEqual(links["Suppliers / Transporters"], ("Page", "tms-suppliers"))
-		self.assertEqual(links["Transport Locations"], ("Page", "tms-locations"))
+		self.assertEqual(links["Drivers"], ("DocType", "Truck Driver"))
+		self.assertEqual(links["Customers"], ("DocType", "Customer"))
+		self.assertEqual(links["Suppliers / Transporters"], ("DocType", "Supplier"))
+		self.assertEqual(links["Transport Locations"], ("DocType", "Transport Location"))
 		self.assertEqual(links["Data Import"], ("Page", "tms-data-import"))
 		self.assertEqual(links["Materials"], ("DocType", "Cargo Types"))
-		self.assertEqual(links["Sales Invoice"], ("DocType", "Sales Invoice"))
-		self.assertEqual(links["Purchase Invoice"], ("DocType", "Purchase Invoice"))
-		self.assertEqual(links["Asset"], ("DocType", "Asset"))
+		self.assertEqual(links["Truck Types"], ("DocType", "Truck Type"))
+		self.assertNotIn("Sales Invoice", links)
+		self.assertNotIn("Purchase Invoice", links)
+		self.assertNotIn("Asset", links)
+
+		targets = {row.get("link_to") for row in items if row["type"] == "Link"}
+		for wrapper_page in self.obsolete_wrapper_page_routes():
+			self.assertNotIn(wrapper_page, targets)
 
 	def test_transport_management_sidebar_excludes_legacy_fleet_items(self):
 		items = self.load_sidebar()["items"]
@@ -192,3 +216,6 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		self.assertEqual(sidebar["name"], "Transport Management")
 		self.assertNotEqual(sidebar["name"], "Fleet MS")
 		self.assertFalse(frappe.db.exists("Workspace Sidebar", "Fleet MS"))
+
+	def obsolete_wrapper_page_routes(self):
+		return tuple(folder.replace("_", "-") for folder in OBSOLETE_WRAPPER_PAGE_FOLDERS)

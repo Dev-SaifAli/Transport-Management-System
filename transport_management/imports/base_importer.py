@@ -39,7 +39,8 @@ def get_supported_import_types() -> list[dict[str, str]]:
 
 
 def require_import_manager() -> None:
-	frappe.only_for("System Manager")
+	if not {"System Manager", "Transport Admin"} & set(frappe.get_roles()):
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 
 def validate_import_type(import_type: str) -> None:

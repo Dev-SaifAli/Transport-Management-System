@@ -4,7 +4,9 @@ from transport_management.cargo_type_master import ensure_confirmed_material_map
 from transport_management.hired_vehicle_migration import migrate_hired_vehicle_text_to_links
 from transport_management.legacy_fleet_cleanup import retire_transport_shipment_and_cleanup_fleet_customizations
 from transport_management.location_master import ensure_transport_location_fields, migrate_transport_location_ownership
+from transport_management.navigation import sync_tms_navigation
 from transport_management.party_master import ensure_supplier_transport_fields
+from transport_management.rbac import ensure_tms_rbac
 from transport_management.truck_driver_master import migrate_truck_driver_ownership
 from transport_management.truck_master import ensure_owned_truck_fields, migrate_truck_ownership
 from transport_management.truck_type_master import migrate_truck_type_ownership, normalize_operational_truck_types
@@ -25,3 +27,5 @@ def after_migrate():
 	remove_obsolete_transport_job_columns()
 	migrate_hired_vehicle_text_to_links()
 	retire_transport_shipment_and_cleanup_fleet_customizations()
+	ensure_tms_rbac()
+	sync_tms_navigation()

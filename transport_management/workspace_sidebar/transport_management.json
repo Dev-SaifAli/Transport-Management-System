@@ -9,14 +9,14 @@
   {
    "child": 0,
    "collapsible": 1,
+   "icon": "home",
    "indent": 0,
    "keep_closed": 0,
    "label": "Home",
+   "link_to": "Transport Management",
    "link_type": "Workspace",
    "show_arrow": 0,
-   "type": "Link",
-   "icon": "home",
-   "link_to": "Transport Management"
+   "type": "Link"
   },
   {
    "child": 0,
@@ -34,10 +34,10 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Transport Job",
+   "link_to": "Transport Job",
    "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "Transport Job"
+   "type": "Link"
   },
   {
    "child": 1,
@@ -45,10 +45,10 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Transport Trip",
+   "link_to": "Transport Trip",
    "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "Transport Trip"
+   "type": "Link"
   },
   {
    "child": 0,
@@ -66,10 +66,10 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Owned Trucks",
-   "link_type": "Page",
+   "link_to": "Truck",
+   "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "tms-owned-trucks"
+   "type": "Link"
   },
   {
    "child": 1,
@@ -77,10 +77,10 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Hired Vehicles",
+   "link_to": "Hired Vehicle",
    "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "Hired Vehicle"
+   "type": "Link"
   },
   {
    "child": 1,
@@ -88,10 +88,10 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Drivers",
-   "link_type": "Page",
+   "link_to": "Truck Driver",
+   "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "tms-drivers"
+   "type": "Link"
   },
   {
    "child": 0,
@@ -109,10 +109,10 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Customers",
-   "link_type": "Page",
+   "link_to": "Customer",
+   "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "tms-customers"
+   "type": "Link"
   },
   {
    "child": 1,
@@ -120,10 +120,10 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Suppliers / Transporters",
-   "link_type": "Page",
+   "link_to": "Supplier",
+   "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "tms-suppliers"
+   "type": "Link"
   },
   {
    "child": 1,
@@ -131,21 +131,10 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Transport Locations",
-   "link_type": "Page",
+   "link_to": "Transport Location",
+   "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "tms-locations"
-  },
-  {
-   "child": 1,
-   "collapsible": 1,
-   "indent": 0,
-   "keep_closed": 0,
-   "label": "Data Import",
-   "link_type": "Page",
-   "show_arrow": 0,
-   "type": "Link",
-   "link_to": "tms-data-import"
+   "type": "Link"
   },
   {
    "child": 1,
@@ -153,18 +142,29 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Materials",
+   "link_to": "Cargo Types",
    "link_type": "DocType",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "Cargo Types"
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Truck Types",
+   "link_to": "Truck Type",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
   },
   {
    "child": 0,
    "collapsible": 1,
    "indent": 0,
    "keep_closed": 0,
-   "label": "ERP",
-   "link_type": "DocType",
+   "label": "Tools",
+   "link_type": "Page",
    "show_arrow": 0,
    "type": "Section Break"
   },
@@ -173,36 +173,14 @@
    "collapsible": 1,
    "indent": 0,
    "keep_closed": 0,
-   "label": "Sales Invoice",
-   "link_type": "DocType",
+   "label": "Data Import",
+   "link_to": "tms-data-import",
+   "link_type": "Page",
    "show_arrow": 0,
-   "type": "Link",
-   "link_to": "Sales Invoice"
-  },
-  {
-   "child": 1,
-   "collapsible": 1,
-   "indent": 0,
-   "keep_closed": 0,
-   "label": "Purchase Invoice",
-   "link_type": "DocType",
-   "show_arrow": 0,
-   "type": "Link",
-   "link_to": "Purchase Invoice"
-  },
-  {
-   "child": 1,
-   "collapsible": 1,
-   "indent": 0,
-   "keep_closed": 0,
-   "label": "Asset",
-   "link_type": "DocType",
-   "show_arrow": 0,
-   "type": "Link",
-   "link_to": "Asset"
+   "type": "Link"
   }
  ],
- "modified": "2026-09-12 00:00:00.000000",
+ "modified": "2026-09-16 14:24:02.602802",
  "modified_by": "Administrator",
  "module": "Transport Management",
  "name": "Transport Management",

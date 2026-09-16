@@ -92,6 +92,9 @@ class TestTruckDriverMaster(unittest.TestCase):
 
 	def test_hired_trip_still_does_not_require_truck_driver_or_employee(self):
 		frappe.db.delete("Transport Trip", {"transport_job": self.demo["transport_job"]})
+		material = "3/4 AGREEGAT(10MM-20MM)"
+		frappe.db.set_value("Transport Job", self.demo["transport_job"], "material", material)
+		frappe.db.set_value("Hired Vehicle", self.demo["hired_vehicle"], "vehicle_type", "TIPPER")
 
 		trip = frappe.new_doc("Transport Trip")
 		trip.update({
@@ -102,7 +105,7 @@ class TestTruckDriverMaster(unittest.TestCase):
 			"hired_vehicle": self.demo["hired_vehicle"],
 			"loading_site": self.demo["loading_site"],
 			"unloading_site": self.demo["offloading_site"],
-			"material": self.demo["material"],
+			"material": material,
 			"planned_quantity": 1,
 			"uom": self.demo["uom"],
 		})
