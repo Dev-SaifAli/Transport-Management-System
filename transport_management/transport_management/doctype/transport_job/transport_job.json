@@ -7,41 +7,43 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "transport_requirement_section",
+  "job_details_tab",
   "customer",
   "requested_date",
-  "loading_site",
-  "unloading_site",
-  "column_break_requirement",
   "material",
   "requested_quantity",
   "uom",
-  "business_references_section",
-  "do_number",
-  "customer_do",
-  "column_break_references",
-  "sale_order_reference",
-  "sales_order",
-  "sales_order_item",
-  "customer_lpo_number",
-  "fnrc",
-  "commercial_section",
-  "agreed_rate",
-  "ordered_amount",
-  "progress_section",
-  "assigned_quantity",
-  "loaded_quantity",
-  "delivered_quantity",
-  "remaining_quantity",
+  "status",
+  "column_break_job_details",
+  "loading_site",
+  "unloading_site",
   "instructions_section",
   "special_instructions",
-  "status"
+  "business_references_tab",
+  "sale_order_reference",
+  "customer_lpo_number",
+  "hidden_internal_references_section",
+  "sales_order",
+  "sales_order_item",
+  "do_number",
+  "customer_do",
+  "fnrc",
+  "commercial_tab",
+  "agreed_rate",
+  "column_break_commercial",
+  "ordered_amount",
+  "quantity_progress_tab",
+  "assigned_quantity",
+  "loaded_quantity",
+  "column_break_quantity_progress",
+  "delivered_quantity",
+  "remaining_quantity"
  ],
  "fields": [
   {
-   "fieldname": "transport_requirement_section",
-   "fieldtype": "Section Break",
-   "label": "Transport Requirement"
+   "fieldname": "job_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Job Details"
   },
   {
    "fieldname": "customer",
@@ -57,6 +59,10 @@
    "reqd": 1
   },
   {
+   "fieldname": "column_break_job_details",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "loading_site",
    "fieldtype": "Link",
    "label": "Loading Site",
@@ -69,10 +75,6 @@
    "label": "Unloading Site",
    "options": "Transport Location",
    "reqd": 1
-  },
-  {
-   "fieldname": "column_break_requirement",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "material",
@@ -95,32 +97,25 @@
    "reqd": 1
   },
   {
-   "fieldname": "business_references_section",
-   "fieldtype": "Section Break",
-   "label": "Business References"
-  },
-  {
-   "fieldname": "do_number",
-   "fieldtype": "Data",
-   "label": "DO Number"
-  },
-  {
-   "fieldname": "customer_do",
-   "fieldtype": "Data",
-   "label": "Customer DO"
-  },
-  {
-   "fieldname": "column_break_references",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "sale_order_reference",
    "fieldtype": "Data",
    "label": "Sale Order Reference"
   },
   {
+   "fieldname": "business_references_tab",
+   "fieldtype": "Tab Break",
+   "label": "Business References"
+  },
+  {
+   "fieldname": "hidden_internal_references_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Internal References"
+  },
+  {
    "fieldname": "sales_order",
    "fieldtype": "Link",
+   "hidden": 1,
    "in_standard_filter": 1,
    "label": "Sales Order",
    "options": "Transport Sales Order",
@@ -130,6 +125,7 @@
   {
    "fieldname": "sales_order_item",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Sales Order Item",
    "read_only": 1
   },
@@ -140,13 +136,26 @@
    "read_only": 1
   },
   {
+   "fieldname": "do_number",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "DO Number"
+  },
+  {
+   "fieldname": "customer_do",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Customer DO"
+  },
+  {
    "fieldname": "fnrc",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "FNRC"
   },
   {
-   "fieldname": "commercial_section",
-   "fieldtype": "Section Break",
+   "fieldname": "commercial_tab",
+   "fieldtype": "Tab Break",
    "label": "Commercial"
   },
   {
@@ -156,14 +165,18 @@
    "read_only": 1
   },
   {
+   "fieldname": "column_break_commercial",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "ordered_amount",
    "fieldtype": "Currency",
    "label": "Ordered Amount",
    "read_only": 1
   },
   {
-   "fieldname": "progress_section",
-   "fieldtype": "Section Break",
+   "fieldname": "quantity_progress_tab",
+   "fieldtype": "Tab Break",
    "label": "Quantity Progress"
   },
   {
@@ -177,6 +190,10 @@
    "fieldtype": "Float",
    "label": "Loaded Quantity",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_quantity_progress",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "delivered_quantity",

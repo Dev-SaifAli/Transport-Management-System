@@ -8,7 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt
 
-from transport_management.location_master import validate_active_transport_locations
+from transport_management.location_master import validate_transport_location_usage
 
 
 class TransportJob(Document):
@@ -23,10 +23,8 @@ class TransportJob(Document):
 		if self.loading_site and self.loading_site == self.unloading_site:
 			frappe.throw(_("Loading Site and Unloading Site must be different."))
 
-		validate_active_transport_locations(
-			self,
-			(("loading_site", _("Loading Site")), ("unloading_site", _("Unloading Site"))),
-		)
+		validate_transport_location_usage(self.loading_site, {"Loading", "Both"}, _("Loading Site"))
+		validate_transport_location_usage(self.unloading_site, {"Unloading", "Both"}, _("Unloading Site"))
 
 	def calculate_quantity_progress(self):
 		if not self.name:

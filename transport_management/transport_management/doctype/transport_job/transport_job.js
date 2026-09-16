@@ -5,11 +5,18 @@ frappe.ui.form.on("Transport Job", {
 	},
 
 	setup_location_queries(frm) {
-		["loading_site", "unloading_site"].forEach((fieldname) => {
-			frm.set_query(fieldname, () => ({
-				filters: { active: 1 },
-			}));
-		});
+		frm.set_query("loading_site", () => ({
+			filters: {
+				active: 1,
+				location_usage: ["in", ["Loading", "Both"]],
+			},
+		}));
+		frm.set_query("unloading_site", () => ({
+			filters: {
+				active: 1,
+				location_usage: ["in", ["Unloading", "Both"]],
+			},
+		}));
 	},
 
 	add_trip_button(frm) {

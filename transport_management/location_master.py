@@ -215,3 +215,27 @@ def validate_active_transport_locations(doc, fields):
 			frappe.throw(_("{0} must be a valid Transport Location.").format(label))
 		if not cint(active):
 			frappe.throw(_("{0} must be an active Transport Location.").format(label))
+
+
+def validate_transport_location_usage(location, allowed_usages, label):
+	"""Reject Transport Locations that are inactive or not intended for the given usage."""
+	if not location:
+		return
+
+	values = frappe.db.get_value(
+		LOCATION,
+		location,
+		["location_usage", "active"],
+		as_dict=True,
+	)
+	if not values:
+		frappe.throw(_("{0} must be a valid Transport Location.").format(label))
+	if not cint(values.active):
+		frappe.throw(_("{0} must be an active Transport Location.").format(label))
+	if values.location_usage not in allowed_usages:
+		frappe.throw(
+			_("{0} must have Location Usage {1}.").format(
+				label,
+				_(" or ").join(sorted(allowed_usages)),
+			)
+		)
