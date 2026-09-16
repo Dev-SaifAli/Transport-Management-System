@@ -1,0 +1,102 @@
+{
+ "actions": [],
+ "creation": "2026-09-16 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "material",
+  "quantity",
+  "uom",
+  "loading_location",
+  "unloading_location",
+  "rate",
+  "amount",
+  "transport_job",
+  "converted"
+ ],
+ "fields": [
+  {
+   "fieldname": "material",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item / Material",
+   "options": "Cargo Types",
+   "reqd": 1
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Quantity",
+   "precision": "3",
+   "reqd": 1
+  },
+  {
+   "default": "TON",
+   "fieldname": "uom",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "UOM",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "loading_location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Loading Point",
+   "options": "Transport Location",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unloading_location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Unloading Point",
+   "options": "Transport Location",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "transport_job",
+   "fieldtype": "Link",
+   "label": "Transport Job",
+   "options": "Transport Job",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "converted",
+   "fieldtype": "Check",
+   "label": "Converted",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Transport Sales Order Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

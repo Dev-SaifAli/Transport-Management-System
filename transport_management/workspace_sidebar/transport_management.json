@@ -23,10 +23,21 @@
    "collapsible": 1,
    "indent": 0,
    "keep_closed": 0,
-   "label": "Operations",
+   "label": "Operations / Commercial",
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Section Break"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Sales Orders",
+   "link_to": "Transport Sales Order",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
   },
   {
    "child": 1,
@@ -121,6 +132,17 @@
    "keep_closed": 0,
    "label": "Suppliers / Transporters",
    "link_to": "Supplier",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Transport Rates",
+   "link_to": "Transport Rate",
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"

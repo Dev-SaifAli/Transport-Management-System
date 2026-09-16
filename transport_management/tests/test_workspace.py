@@ -49,13 +49,14 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		workspace = self.load_workspace()
 		links = workspace["links"]
 		sections = [row["label"] for row in links if row["type"] == "Card Break"]
-		self.assertEqual(sections, ["Operations", "Fleet", "Masters", "Tools"])
+		self.assertEqual(sections, ["Operations / Commercial", "Fleet", "Masters", "Tools"])
 
 		linked_doctypes = {
 			row.get("link_to"): row.get("label")
 			for row in links
 			if row["type"] == "Link" and row.get("link_type") == "DocType"
 		}
+		self.assertEqual(linked_doctypes["Transport Sales Order"], "Sales Orders")
 		self.assertEqual(linked_doctypes["Transport Job"], "Transport Job")
 		self.assertEqual(linked_doctypes["Transport Trip"], "Transport Trip")
 		self.assertEqual(linked_doctypes["Truck"], "Owned Trucks")
@@ -63,6 +64,7 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		self.assertEqual(linked_doctypes["Truck Driver"], "Drivers")
 		self.assertEqual(linked_doctypes["Customer"], "Customers")
 		self.assertEqual(linked_doctypes["Supplier"], "Suppliers / Transporters")
+		self.assertEqual(linked_doctypes["Transport Rate"], "Transport Rates")
 		self.assertEqual(linked_doctypes["Transport Location"], "Transport Locations")
 		self.assertEqual(linked_doctypes["Cargo Types"], "Materials")
 		self.assertEqual(linked_doctypes["Truck Type"], "Truck Types")
@@ -156,10 +158,11 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 	def test_transport_management_sidebar_links(self):
 		items = self.load_sidebar()["items"]
 		sections = [row["label"] for row in items if row["type"] == "Section Break"]
-		self.assertEqual(sections, ["Operations", "Fleet", "Masters", "Tools"])
+		self.assertEqual(sections, ["Operations / Commercial", "Fleet", "Masters", "Tools"])
 
 		links = {row["label"]: (row.get("link_type"), row.get("link_to")) for row in items if row["type"] == "Link"}
 		self.assertEqual(links["Home"], ("Workspace", "Transport Management"))
+		self.assertEqual(links["Sales Orders"], ("DocType", "Transport Sales Order"))
 		self.assertEqual(links["Transport Job"], ("DocType", "Transport Job"))
 		self.assertEqual(links["Transport Trip"], ("DocType", "Transport Trip"))
 		self.assertEqual(links["Owned Trucks"], ("DocType", "Truck"))
@@ -167,6 +170,7 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		self.assertEqual(links["Drivers"], ("DocType", "Truck Driver"))
 		self.assertEqual(links["Customers"], ("DocType", "Customer"))
 		self.assertEqual(links["Suppliers / Transporters"], ("DocType", "Supplier"))
+		self.assertEqual(links["Transport Rates"], ("DocType", "Transport Rate"))
 		self.assertEqual(links["Transport Locations"], ("DocType", "Transport Location"))
 		self.assertEqual(links["Data Import"], ("Page", "tms-data-import"))
 		self.assertEqual(links["Materials"], ("DocType", "Cargo Types"))

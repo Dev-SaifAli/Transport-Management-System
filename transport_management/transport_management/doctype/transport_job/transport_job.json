@@ -21,7 +21,18 @@
   "customer_do",
   "column_break_references",
   "sale_order_reference",
+  "sales_order",
+  "sales_order_item",
+  "customer_lpo_number",
   "fnrc",
+  "commercial_section",
+  "agreed_rate",
+  "ordered_amount",
+  "progress_section",
+  "assigned_quantity",
+  "loaded_quantity",
+  "delivered_quantity",
+  "remaining_quantity",
   "instructions_section",
   "special_instructions",
   "status"
@@ -108,9 +119,76 @@
    "label": "Sale Order Reference"
   },
   {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Sales Order",
+   "options": "Transport Sales Order",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "sales_order_item",
+   "fieldtype": "Data",
+   "label": "Sales Order Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer_lpo_number",
+   "fieldtype": "Data",
+   "label": "Customer LPO Number",
+   "read_only": 1
+  },
+  {
    "fieldname": "fnrc",
    "fieldtype": "Data",
    "label": "FNRC"
+  },
+  {
+   "fieldname": "commercial_section",
+   "fieldtype": "Section Break",
+   "label": "Commercial"
+  },
+  {
+   "fieldname": "agreed_rate",
+   "fieldtype": "Currency",
+   "label": "Agreed Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ordered_amount",
+   "fieldtype": "Currency",
+   "label": "Ordered Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "progress_section",
+   "fieldtype": "Section Break",
+   "label": "Quantity Progress"
+  },
+  {
+   "fieldname": "assigned_quantity",
+   "fieldtype": "Float",
+   "label": "Assigned Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loaded_quantity",
+   "fieldtype": "Float",
+   "label": "Loaded Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivered_quantity",
+   "fieldtype": "Float",
+   "label": "Delivered Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remaining_quantity",
+   "fieldtype": "Float",
+   "label": "Remaining Quantity",
+   "read_only": 1
   },
   {
    "fieldname": "instructions_section",

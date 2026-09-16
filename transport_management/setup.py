@@ -11,6 +11,7 @@ from transport_management.truck_driver_master import migrate_truck_driver_owners
 from transport_management.truck_master import ensure_owned_truck_fields, migrate_truck_ownership
 from transport_management.truck_type_master import migrate_truck_type_ownership, normalize_operational_truck_types
 from transport_management.transport_job_cleanup import remove_obsolete_transport_job_columns
+from transport_management.transport_management.doctype.transport_sales_order.transport_sales_order import ensure_ton_uom
 
 
 def after_migrate():
@@ -27,5 +28,6 @@ def after_migrate():
 	remove_obsolete_transport_job_columns()
 	migrate_hired_vehicle_text_to_links()
 	retire_transport_shipment_and_cleanup_fleet_customizations()
+	ensure_ton_uom()
 	ensure_tms_rbac()
 	sync_tms_navigation()

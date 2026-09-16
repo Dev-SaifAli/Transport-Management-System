@@ -14,6 +14,7 @@ from transport_management.cargo_type_master import (
 	validate_material_allows_owned_truck,
 )
 from transport_management.location_master import validate_active_transport_locations
+from transport_management.transport_management.doctype.transport_job.transport_job import refresh_quantity_progress
 from transport_management.truck_master import validate_owned_truck_available
 
 ACTIVE_OPERATIONAL_STATUSES = {"ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED"}
@@ -44,6 +45,12 @@ class TransportTrip(Document):
 		self.validate_status_transition()
 		self.validate_pod()
 		self.validate_reserved_quantity()
+
+	def on_update(self):
+		refresh_quantity_progress(self.transport_job)
+
+	def on_trash(self):
+		refresh_quantity_progress(self.transport_job)
 
 	def validate_transport_job_exists(self):
 		if not self.transport_job or not frappe.db.exists("Transport Job", self.transport_job):

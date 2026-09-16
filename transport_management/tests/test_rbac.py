@@ -152,10 +152,22 @@ class TestTransportManagementRBAC(unittest.TestCase):
 			self.assert_can(self.manager_user, doctype, "write")
 			self.assert_cannot(self.manager_user, doctype, "delete")
 
-		for doctype in ("Transport Location", "Cargo Types", "Truck Type", "Truck", "Truck Driver", "Hired Vehicle"):
+		for doctype in (
+			"Transport Location",
+			"Cargo Types",
+			"Truck Type",
+			"Truck",
+			"Truck Driver",
+			"Hired Vehicle",
+			"Transport Rate",
+		):
 			self.assert_can(self.manager_user, doctype, "create")
 			self.assert_can(self.manager_user, doctype, "write")
 			self.assert_cannot(self.manager_user, doctype, "delete")
+
+		self.assert_can(self.manager_user, "Transport Sales Order", "create")
+		self.assert_can(self.manager_user, "Transport Sales Order", "write")
+		self.assert_can(self.manager_user, "Transport Sales Order", "submit")
 
 	def test_transport_manager_has_current_sales_purchase_document_permissions(self):
 		for doctype in ("Purchase Order", "Purchase Invoice", "Sales Invoice", "Sales Order"):
@@ -174,6 +186,8 @@ class TestTransportManagementRBAC(unittest.TestCase):
 			"Transport Location",
 			"Cargo Types",
 			"Truck Type",
+			"Transport Rate",
+			"Transport Sales Order",
 			"TMS Import Log",
 		):
 			self.assert_can(self.admin_user, doctype, "create")
@@ -201,4 +215,3 @@ class TestTransportManagementRBAC(unittest.TestCase):
 		frappe.set_user(self.trip_user)
 		with self.assertRaises(frappe.PermissionError):
 			base_importer.get_import_options()
-
