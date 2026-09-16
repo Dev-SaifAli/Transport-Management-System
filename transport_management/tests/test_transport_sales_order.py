@@ -50,7 +50,7 @@ class TestTransportSalesOrder(unittest.TestCase):
 		rate.insert()
 		return rate
 
-	def make_sales_order(self, submit=False, **values):
+	def make_sales_order(self, submit=False, ignore_permissions=False, **values):
 		doc = frappe.new_doc("Transport Sales Order")
 		doc.update({
 			"posting_date": "2026-09-16",
@@ -72,7 +72,7 @@ class TestTransportSalesOrder(unittest.TestCase):
 				doc.items[0].update(value)
 			else:
 				doc.set(key, value)
-		doc.insert()
+		doc.insert(ignore_permissions=ignore_permissions)
 		if submit:
 			doc.submit()
 		return doc
@@ -118,6 +118,7 @@ class TestTransportSalesOrder(unittest.TestCase):
 		self.make_rate(rate=20)
 		doc = self.make_sales_order()
 		self.assertEqual(doc.items[0].rate, 20)
+		self.assertEqual(doc.items[0].rate_source, "Transport Rate")
 		self.assertEqual(doc.items[0].amount, 20000)
 		self.assertEqual(doc.net_amount, 20000)
 
@@ -207,6 +208,64 @@ class TestTransportSalesOrder(unittest.TestCase):
 		self.assertEqual(doc.items[0].rate, 20)
 		self.assertEqual(doc.items[0].amount, 20000)
 
+	def test_manager_can_enable_manual_rate_override(self):
+		manager_user = self.make_user("Transport Manager")
+		frappe.set_user(manager_user)
+		doc = self.make_sales_order(row={"manual_rate_override": 1, "rate": 33})
+		self.assertEqual(doc.items[0].manual_rate_override, 1)
+		self.assertEqual(doc.items[0].rate, 33)
+		self.assertEqual(doc.items[0].rate_source, "Manual Override")
+
+	def test_admin_can_enable_manual_rate_override(self):
+		admin_user = self.make_user("Transport Admin")
+		frappe.set_user(admin_user)
+		doc = self.make_sales_order(row={"manual_rate_override": 1, "rate": 34})
+		self.assertEqual(doc.items[0].manual_rate_override, 1)
+		self.assertEqual(doc.items[0].rate, 34)
+		self.assertEqual(doc.items[0].rate_source, "Manual Override")
+
+	def test_trip_entry_user_cannot_override_rate(self):
+		trip_user = self.make_user("TMS Trip Data Entry")
+		frappe.set_user(trip_user)
+		with self.assertRaisesRegex(
+			frappe.ValidationError,
+			"You are not permitted to override Transport Rates manually.",
+		):
+			self.make_sales_order(
+				ignore_permissions=True,
+				row={"manual_rate_override": 1, "rate": 35},
+			)
+
+	def test_manual_override_works_without_transport_rate_record(self):
+		doc = self.make_sales_order(submit=True, row={"manual_rate_override": 1, "rate": 42})
+		self.assertEqual(doc.items[0].rate, 42)
+		self.assertEqual(doc.items[0].amount, 42000)
+		self.assertEqual(doc.net_amount, 42000)
+
+	def test_manual_rate_must_be_positive(self):
+		for rate in (0, -1):
+			with self.subTest(rate=rate):
+				with self.assertRaises(frappe.ValidationError):
+					self.make_sales_order(row={"manual_rate_override": 1, "rate": rate})
+
+	def test_backend_does_not_overwrite_manual_rate(self):
+		self.make_rate(rate=20)
+		doc = self.make_sales_order(row={"manual_rate_override": 1, "rate": 55})
+		self.assertEqual(doc.items[0].rate, 55)
+		self.assertEqual(doc.items[0].amount, 55000)
+		self.assertEqual(doc.net_amount, 55000)
+		self.assertEqual(doc.items[0].rate_source, "Manual Override")
+
+	def test_switching_manual_override_off_returns_to_backend_rate_lookup(self):
+		doc = self.make_sales_order(row={"manual_rate_override": 1, "rate": 55})
+		self.make_rate(rate=20)
+		doc.items[0].manual_rate_override = 0
+		doc.save()
+		self.assertEqual(doc.items[0].rate, 20)
+		self.assertEqual(doc.items[0].amount, 20000)
+		self.assertEqual(doc.net_amount, 20000)
+		self.assertEqual(doc.items[0].rate_source, "Transport Rate")
+
 	def test_submitted_sales_order_creates_one_transport_job_per_row(self):
 		self.make_rate(rate=20)
 		doc = self.make_sales_order(submit=True)
@@ -229,6 +288,12 @@ class TestTransportSalesOrder(unittest.TestCase):
 		self.assertFalse(job.get("driver"))
 		self.assertEqual(row.transport_job, job.name)
 		self.assertEqual(row.converted, 1)
+
+	def test_transport_job_receives_manual_agreed_rate_and_ordered_amount(self):
+		doc = self.make_sales_order(submit=True, row={"manual_rate_override": 1, "rate": 45})
+		job = frappe.get_doc("Transport Job", create_transport_jobs(doc.name)[0])
+		self.assertEqual(job.agreed_rate, 45)
+		self.assertEqual(job.ordered_amount, 45000)
 
 	def test_draft_sales_order_cannot_create_transport_job(self):
 		self.make_rate()

@@ -1,6 +1,11 @@
 frappe.ui.form.on("Transport Sales Order", {
 	refresh(frm) {
 		set_location_queries(frm);
+		frm.fields_dict.items.grid.update_docfield_property(
+			"manual_rate_override",
+			"read_only",
+			can_override_rate() ? 0 : 1
+		);
 		if (frm.doc.docstatus === 1 && has_unconverted_rows(frm)) {
 			frm.add_custom_button(__("Create Transport Job"), () => show_create_jobs_dialog(frm), __("Actions"));
 		}
@@ -19,7 +24,12 @@ frappe.ui.form.on("Transport Sales Order Item", {
 	items_add(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
 		row.uom = "TON";
+		row.manual_rate_override = 0;
 		frm.refresh_field("items");
+	},
+
+	form_render(frm, cdt, cdn) {
+		toggle_rate_editability(frm, locals[cdt][cdn]);
 	},
 
 	material(frm, cdt, cdn) {
@@ -36,6 +46,31 @@ frappe.ui.form.on("Transport Sales Order Item", {
 
 	quantity(frm, cdt, cdn) {
 		const row = locals[cdt][cdn];
+		row.amount = flt(row.quantity) * flt(row.rate);
+		frm.refresh_field("items");
+	},
+
+	manual_rate_override(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		toggle_rate_editability(frm, row);
+		if (!row.manual_rate_override) {
+			row.rate = null;
+			row.rate_source = null;
+			row.amount = 0;
+			refresh_row_rate(frm, row);
+		} else {
+			row.rate_source = "Manual Override";
+		}
+		frm.refresh_field("items");
+	},
+
+	rate(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (!row.manual_rate_override) {
+			refresh_row_rate(frm, row);
+			return;
+		}
+		row.rate_source = "Manual Override";
 		row.amount = flt(row.quantity) * flt(row.rate);
 		frm.refresh_field("items");
 	}
@@ -65,6 +100,12 @@ function refresh_item_rates(frm) {
 }
 
 function refresh_row_rate(frm, row) {
+	if (row.manual_rate_override) {
+		row.rate_source = "Manual Override";
+		row.amount = flt(row.quantity) * flt(row.rate);
+		frm.refresh_field("items");
+		return;
+	}
 	if (!frm.doc.customer || !frm.doc.posting_date || !row.material || !row.loading_location || !row.unloading_location) {
 		return;
 	}
@@ -79,10 +120,34 @@ function refresh_row_rate(frm, row) {
 		},
 		callback(response) {
 			row.rate = response.message;
+			row.rate_source = "Transport Rate";
 			row.amount = flt(row.quantity) * flt(row.rate);
 			frm.refresh_field("items");
 		}
 	});
+}
+
+function toggle_rate_editability(frm, row) {
+	if (!can_override_rate()) {
+		frm.fields_dict.items.grid.update_docfield_property("rate", "read_only", 1);
+		return;
+	}
+	const grid_row = frm.fields_dict.items.grid.grid_rows_by_docname[row.name];
+	if (!grid_row || !grid_row.grid_form) {
+		frm.fields_dict.items.grid.update_docfield_property("rate", "read_only", row.manual_rate_override ? 0 : 1);
+		return;
+	}
+	const rate_field = grid_row.grid_form.fields_dict.rate;
+	if (rate_field) {
+		rate_field.df.read_only = row.manual_rate_override ? 0 : 1;
+		rate_field.refresh();
+	}
+}
+
+function can_override_rate() {
+	return ["Transport Manager", "Transport Admin", "System Manager"].some((role) =>
+		frappe.user_roles.includes(role)
+	);
 }
 
 function show_create_jobs_dialog(frm) {

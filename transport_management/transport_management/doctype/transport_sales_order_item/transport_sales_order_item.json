@@ -10,7 +10,9 @@
   "uom",
   "loading_location",
   "unloading_location",
+  "manual_rate_override",
   "rate",
+  "rate_source",
   "amount",
   "transport_job",
   "converted"
@@ -58,10 +60,24 @@
    "reqd": 1
   },
   {
+   "default": "0",
+   "description": "Use only when an approved Transport Rate is not yet configured.",
+   "fieldname": "manual_rate_override",
+   "fieldtype": "Check",
+   "label": "Manual Rate Override"
+  },
+  {
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Rate",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate_source",
+   "fieldtype": "Select",
+   "label": "Rate Source",
+   "options": "\nTransport Rate\nManual Override",
    "read_only": 1
   },
   {

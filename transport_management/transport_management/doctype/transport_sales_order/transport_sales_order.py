@@ -9,6 +9,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, getdate, today
 
 TON_UOM = "TON"
+MANUAL_RATE_OVERRIDE_ROLES = {"Transport Manager", "Transport Admin", "System Manager"}
 
 
 class TransportSalesOrder(Document):
@@ -87,6 +88,8 @@ class TransportSalesOrder(Document):
 			frappe.throw(_("Loading Point and Unloading Point must be different on row {0}.").format(row.idx))
 		if row.transport_job and not frappe.db.exists("Transport Job", row.transport_job):
 			frappe.throw(_("Transport Job {0} linked on row {1} does not exist.").format(row.transport_job, row.idx))
+		if row.manual_rate_override:
+			validate_manual_rate_override_permission()
 
 	def calculate_totals(self, require_rates=False):
 		net_amount = 0
@@ -95,7 +98,11 @@ class TransportSalesOrder(Document):
 				row.uom = TON_UOM
 			validate_ton_uom(row.uom)
 
-			if self.can_resolve_rate(row):
+			if row.manual_rate_override:
+				validate_manual_rate_override_permission()
+				validate_manual_rate(row.rate, row.idx)
+				row.rate_source = "Manual Override"
+			elif self.can_resolve_rate(row):
 				row.rate = resolve_transport_rate(
 					self.customer,
 					row.material,
@@ -104,6 +111,7 @@ class TransportSalesOrder(Document):
 					self.posting_date,
 					raise_if_missing=require_rates,
 				)
+				row.rate_source = "Transport Rate" if row.rate else ""
 			elif require_rates:
 				raise_missing_rate(row, self.customer)
 
@@ -326,6 +334,18 @@ def get_active_linked_jobs(sales_order):
 def validate_ton_uom(uom):
 	if uom != TON_UOM:
 		frappe.throw(_("UOM must be TON."))
+
+
+def validate_manual_rate_override_permission():
+	if MANUAL_RATE_OVERRIDE_ROLES.intersection(set(frappe.get_roles())):
+		return
+	frappe.throw(_("You are not permitted to override Transport Rates manually."))
+
+
+def validate_manual_rate(rate, row_idx):
+	rate = flt(rate, 6)
+	if not isfinite(rate) or rate <= 0:
+		frappe.throw(_("Manual Rate must be greater than zero on row {0}.").format(row_idx))
 
 
 def validate_active_material(material):
