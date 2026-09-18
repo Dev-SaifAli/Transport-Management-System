@@ -35,7 +35,7 @@ RUN bench get-app \
 
 COPY --chown=frappe:frappe . /tmp/transport_management
 
-RUN bench get-app /tmp/transport_management \
+RUN bench get-app file:///tmp/transport_management \
     && bench build --production
 
 FROM ${BENCH_IMAGE} AS runtime
