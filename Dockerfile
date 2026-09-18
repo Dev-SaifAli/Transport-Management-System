@@ -15,13 +15,13 @@ USER frappe
 WORKDIR /home/frappe
 
 RUN bench init \
-		--skip-redis-config-generation \
-		--frappe-path "${FRAPPE_REPO}" \
-		--frappe-branch "${FRAPPE_BRANCH}" \
-		frappe-bench \
-	&& cd frappe-bench/apps/frappe \
-	&& git fetch --depth 1 origin "${FRAPPE_REF}" \
-	&& git checkout "${FRAPPE_REF}"
+    --skip-redis-config-generation \
+    --frappe-path "${FRAPPE_REPO}" \
+    --frappe-branch "${FRAPPE_BRANCH}" \
+    frappe-bench \
+    && cd frappe-bench/apps/frappe \
+    && git fetch --depth 1 upstream "${FRAPPE_REF}" \
+    && git checkout "${FRAPPE_REF}"
 
 WORKDIR /home/frappe/frappe-bench
 
