@@ -49,9 +49,15 @@ COPY --from=builder --chown=frappe:frappe \
     /home/frappe/frappe-bench \
     /home/frappe/frappe-bench
 
-RUN mkdir -p /opt/frappe \
+RUN mkdir -p \
+        /opt/frappe \
+        /home/frappe/logs \
+        /home/frappe/frappe-bench/logs \
     && cp -a /home/frappe/frappe-bench/sites /opt/frappe/sites-template \
-    && chown -R frappe:frappe /opt/frappe /home/frappe/frappe-bench
+    && chown -R frappe:frappe \
+        /opt/frappe \
+        /home/frappe/logs \
+        /home/frappe/frappe-bench
 
 COPY --chown=frappe:frappe \
     scripts/railway-entrypoint.sh \
