@@ -35,6 +35,7 @@ CUSTOM_LOCATION_FIELDS = (
 		"fieldtype": "Link",
 		"options": "Supplier",
 		"insert_after": "customer",
+		"hidden": 1,
 		"module": "Transport Management",
 	},
 	{
@@ -53,10 +54,17 @@ CUSTOM_LOCATION_FIELDS = (
 		"module": "Transport Management",
 	},
 	{
+		"fieldname": "area_zone",
+		"label": "Area / Zone",
+		"fieldtype": "Data",
+		"insert_after": "city",
+		"module": "Transport Management",
+	},
+	{
 		"fieldname": "latitude",
 		"label": "Latitude",
 		"fieldtype": "Float",
-		"insert_after": "city",
+		"insert_after": "area_zone",
 		"module": "Transport Management",
 	},
 	{
@@ -112,8 +120,9 @@ def migrate_transport_location_ownership():
 
 	standard_fields = get_standard_location_fieldnames()
 	missing = [field["fieldname"] for field in CUSTOM_LOCATION_FIELDS if field["fieldname"] not in standard_fields]
-	if "location_usage" not in standard_fields:
-		missing.append("location_usage")
+	for fieldname in ("location_usage", "location_map_section", "map_html", "notes_section"):
+		if fieldname not in standard_fields:
+			missing.append(fieldname)
 	if missing:
 		frappe.throw(_("Transport Location standard fields were not synced: {0}").format(", ".join(missing)))
 
@@ -155,6 +164,8 @@ def ensure_location_custom_field(field):
 			)
 		if field.get("options") and existing.options != field["options"]:
 			frappe.throw(_("Transport Location.{0} has unexpected options.").format(field["fieldname"]))
+		if "hidden" in field and cint(existing.hidden) != cint(field["hidden"]):
+			frappe.db.set_value("DocField", existing.name, "hidden", cint(field["hidden"]), update_modified=False)
 		return
 
 	create_custom_field(LOCATION, field)

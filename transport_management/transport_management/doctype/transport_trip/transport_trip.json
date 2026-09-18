@@ -40,6 +40,8 @@
   "sharjah_toll",
   "column_break_charges",
   "fnrc_extra_charge",
+  "transport_charges_section",
+  "transport_charges",
   "references_remarks_tab",
   "gdn",
   "remarks",
@@ -47,7 +49,10 @@
   "pod_attachment",
   "pod_received_at",
   "loading_no",
-  "unloading_no"
+  "unloading_no",
+  "transport_billing_section",
+  "transport_billing_status",
+  "transport_sales_invoice"
  ],
  "fields": [
   {
@@ -58,6 +63,8 @@
   {
    "fieldname": "transport_job",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Transport Job",
    "options": "Transport Job",
    "reqd": 1,
@@ -67,6 +74,8 @@
    "default": "Today",
    "fieldname": "trip_date",
    "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Trip Date",
    "reqd": 1
   },
@@ -74,8 +83,12 @@
    "default": "PLANNED",
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Trip Status",
-   "options": "PLANNED\nASSIGNED\nLOADED\nIN_TRANSIT\nDELIVERED\nPOD_RECEIVED\nCLOSED\nCANCELLED\nEXCEPTION"
+   "options": "PLANNED\nASSIGNED\nLOADED\nIN_TRANSIT\nDELIVERED\nPOD_RECEIVED\nCLOSED\nCANCELLED\nEXCEPTION",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_trip_details_1",
@@ -84,6 +97,7 @@
   {
    "fieldname": "loading_site",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Loading Location",
    "options": "Transport Location",
    "read_only": 1,
@@ -100,10 +114,13 @@
   {
    "fieldname": "material",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Material",
    "options": "Cargo Types",
    "read_only": 1,
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_trip_details_2",
@@ -112,6 +129,7 @@
   {
    "fieldname": "planned_quantity",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Planned Quantity",
    "reqd": 1
   },
@@ -133,6 +151,8 @@
    "default": "OWN",
    "fieldname": "execution_source",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Execution Source",
    "options": "OWN\nHIRED",
    "reqd": 1
@@ -145,17 +165,23 @@
    "depends_on": "eval:doc.execution_source == 'OWN'",
    "fieldname": "vehicle",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Vehicle",
    "mandatory_depends_on": "eval:doc.execution_source == 'OWN'",
-   "options": "Truck"
+   "options": "Truck",
+   "search_index": 1
   },
   {
    "depends_on": "eval:doc.execution_source == 'OWN'",
    "fieldname": "driver",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Driver",
    "mandatory_depends_on": "eval:doc.execution_source == 'OWN'",
-   "options": "Truck Driver"
+   "options": "Truck Driver",
+   "search_index": 1
   },
   {
    "fieldname": "column_break_execution_2",
@@ -175,13 +201,15 @@
    "fieldtype": "Link",
    "label": "Hired Vehicle",
    "mandatory_depends_on": "eval:doc.execution_source == 'HIRED'",
-   "options": "Hired Vehicle"
+   "options": "Hired Vehicle",
+   "search_index": 1
   },
   {
    "depends_on": "eval:doc.execution_source == 'HIRED'",
    "fieldname": "hired_driver",
    "fieldtype": "Data",
-   "label": "Hired Driver"
+   "label": "Hired Driver",
+   "search_index": 1
   },
   {
    "fieldname": "loading_delivery_tab",
@@ -205,6 +233,7 @@
   {
    "fieldname": "delivered_quantity",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Delivered Quantity"
   },
   {
@@ -251,6 +280,18 @@
    "label": "FNRC / Extra Charge"
   },
   {
+   "fieldname": "transport_charges_section",
+   "fieldtype": "Section Break",
+   "label": "Transport Charges"
+  },
+  {
+   "fieldname": "transport_charges",
+   "fieldtype": "Table",
+   "label": "Transport Charges",
+   "options": "Transport Trip Charge",
+   "read_only": 1
+  },
+  {
    "fieldname": "references_remarks_tab",
    "fieldtype": "Tab Break",
    "label": "References & Remarks"
@@ -290,6 +331,29 @@
    "fieldname": "unloading_no",
    "fieldtype": "Data",
    "label": "Unloading No"
+  },
+  {
+   "fieldname": "transport_billing_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Transport Billing"
+  },
+  {
+   "default": "Not Billed",
+   "fieldname": "transport_billing_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Transport Billing Status",
+   "options": "Not Billed\nDraft Invoice\nInvoiced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transport_sales_invoice",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Transport Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

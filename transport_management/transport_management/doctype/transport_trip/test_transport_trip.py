@@ -12,6 +12,7 @@ from transport_management.demo import setup_demo_data
 from transport_management.party_master import ensure_supplier_transport_fields
 from transport_management.transport_management.doctype.transport_trip.transport_trip import (
 	get_defaults_from_transport_job,
+	transition_trip_status,
 )
 
 
@@ -210,7 +211,7 @@ class TestTransportTrip(unittest.TestCase):
 		trip.status = "ASSIGNED"
 		trip.save()
 		trip.status = "LOADED"
-		with self.assertRaisesRegex(frappe.ValidationError, "Loaded Quantity is required"):
+		with self.assertRaisesRegex(frappe.ValidationError, "Enter Loaded Quantity before marking this trip as Loaded."):
 			trip.save()
 
 	def test_delivered_transition_requires_delivered_quantity(self):
@@ -528,6 +529,27 @@ class TestTransportTrip(unittest.TestCase):
 		trip.status = "EXCEPTION"
 		trip.save()
 		self.assertEqual(trip.status, "EXCEPTION")
+
+	def test_backend_transition_rejects_invalid_skip_and_preserves_status(self):
+		trip = self.make_trip()
+		trip.insert()
+		transition_trip_status(trip.name, "ASSIGNED")
+		with self.assertRaisesRegex(
+			frappe.ValidationError,
+			"Invalid Transport Trip status transition from ASSIGNED to CLOSED.",
+		):
+			transition_trip_status(trip.name, "CLOSED")
+		self.assertEqual(frappe.db.get_value("Transport Trip", trip.name, "status"), "ASSIGNED")
+
+	def test_backend_transition_updates_status_only_after_success(self):
+		trip = self.make_trip()
+		trip.insert()
+		transition_trip_status(trip.name, "ASSIGNED")
+		trip.loaded_quantity = 30
+		trip.save()
+		result = transition_trip_status(trip.name, "LOADED")
+		self.assertEqual(result["status"], "LOADED")
+		self.assertEqual(frappe.db.get_value("Transport Trip", trip.name, "status"), "LOADED")
 
 	def test_pod_required_for_pod_received(self):
 		trip = self.make_trip()

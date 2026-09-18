@@ -1,0 +1,78 @@
+{
+ "actions": [],
+ "creation": "2026-09-18 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "transport_job",
+  "sales_order_item",
+  "material",
+  "loading_location",
+  "unloading_location",
+  "delivered_quantity",
+  "amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "transport_job",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Transport Job",
+   "options": "Transport Job",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_order_item",
+   "fieldtype": "Data",
+   "label": "Sales Order Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "material",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Material",
+   "options": "Cargo Types",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loading_location",
+   "fieldtype": "Link",
+   "label": "Loading Location",
+   "options": "Transport Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "unloading_location",
+   "fieldtype": "Link",
+   "label": "Unloading Location",
+   "options": "Transport Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivered_quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Delivered Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "modified": "2026-09-18 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "TMS Invoice Source Job",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

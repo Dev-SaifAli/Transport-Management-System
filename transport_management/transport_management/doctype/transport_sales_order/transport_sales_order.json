@@ -17,7 +17,12 @@
   "items",
   "totals_section",
   "currency",
+  "ordered_quantity",
+  "delivered_quantity",
   "net_amount",
+  "billing_section",
+  "transport_sales_invoice",
+  "billing_status",
   "remarks_section",
   "remarks"
  ],
@@ -96,6 +101,41 @@
    "fieldname": "net_amount",
    "fieldtype": "Currency",
    "label": "Net Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ordered_quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Ordered Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivered_quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Delivered Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "billing_section",
+   "fieldtype": "Section Break",
+   "label": "Billing"
+  },
+  {
+   "fieldname": "transport_sales_invoice",
+   "fieldtype": "Link",
+   "label": "Transport Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "default": "Not Ready",
+   "fieldname": "billing_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Billing Status",
+   "options": "Not Ready\nReady for Billing\nBilling In Progress\nInvoiced",
    "read_only": 1
   },
   {

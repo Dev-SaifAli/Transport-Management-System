@@ -6,6 +6,7 @@ frappe.ui.form.on("Transport Sales Order", {
 			"read_only",
 			can_override_rate() ? 0 : 1
 		);
+		add_billing_actions(frm);
 		if (frm.doc.docstatus === 1 && has_unconverted_rows(frm)) {
 			frm.add_custom_button(__("Create Transport Job"), () => show_create_jobs_dialog(frm), __("Actions"));
 		}
@@ -148,6 +149,47 @@ function can_override_rate() {
 	return ["Transport Manager", "Transport Admin", "System Manager"].some((role) =>
 		frappe.user_roles.includes(role)
 	);
+}
+
+function can_use_transport_billing() {
+	return ["Transport Manager", "Transport Admin", "System Manager"].some((role) =>
+		frappe.user_roles.includes(role)
+	);
+}
+
+function add_billing_actions(frm) {
+	if (frm.is_new() || frm.doc.docstatus !== 1 || !can_use_transport_billing()) {
+		return;
+	}
+
+	if (frm.doc.transport_sales_invoice) {
+		frm.add_custom_button(__("Open Transport Invoice"), () => {
+			frappe.set_route("Form", "Sales Invoice", frm.doc.transport_sales_invoice);
+		}, __("Billing"));
+		return;
+	}
+
+	if (frm.doc.billing_status === "Ready for Billing") {
+		frm.add_custom_button(__("Prepare Billing"), () => {
+			frappe.call({
+				method:
+					"transport_management.transport_management.doctype.transport_sales_order.transport_sales_order.prepare_billing",
+				args: {
+					sales_order: frm.doc.name
+				},
+				callback(r) {
+					const route = r.message && r.message.route;
+					frappe.route_options = { transport_sales_order: frm.doc.name };
+					frappe.set_route(route || "tms-billing-review");
+				}
+			});
+		}, __("Billing")).addClass("btn-primary");
+	} else if (frm.doc.billing_status === "Billing In Progress") {
+		frm.add_custom_button(__("Review Billing"), () => {
+			frappe.route_options = { transport_sales_order: frm.doc.name };
+			frappe.set_route("tms-billing-review");
+		}, __("Billing")).addClass("btn-primary");
+	}
 }
 
 function show_create_jobs_dialog(frm) {

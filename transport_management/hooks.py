@@ -42,6 +42,9 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
+doctype_js = {
+	"Sales Invoice": "public/js/sales_invoice.js",
+}
 # doctype_js = {"doctype" : "public/js/doctype.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -143,13 +146,14 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Sales Invoice": {
+		"on_update": "transport_management.transport_management.doctype.transport_job.transport_job.sync_transport_invoice_lifecycle",
+		"on_submit": "transport_management.transport_management.doctype.transport_job.transport_job.sync_transport_invoice_lifecycle",
+		"on_cancel": "transport_management.transport_management.doctype.transport_job.transport_job.sync_transport_invoice_lifecycle",
+		"on_trash": "transport_management.transport_management.doctype.transport_job.transport_job.sync_transport_invoice_lifecycle",
+	}
+}
 
 # Scheduled Tasks
 # ---------------

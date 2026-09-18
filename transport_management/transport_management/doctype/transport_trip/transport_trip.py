@@ -14,6 +14,10 @@ from transport_management.cargo_type_master import (
 	validate_material_allows_owned_truck,
 )
 from transport_management.location_master import validate_transport_location_usage
+from transport_management.transport_management.doctype.transport_charge_rule.transport_charge_rule import (
+	apply_transport_trip_charges,
+	sync_legacy_charge_totals,
+)
 from transport_management.transport_management.doctype.transport_job.transport_job import refresh_quantity_progress
 from transport_management.truck_master import validate_owned_truck_available
 
@@ -52,6 +56,7 @@ class TransportTrip(Document):
 
 	def validate(self):
 		self.validate_transport_job_exists()
+		self.validate_transport_job_has_remaining_quantity()
 		self.validate_execution_source()
 		self.validate_quantities()
 		self.validate_material_matches_transport_job()
@@ -59,6 +64,7 @@ class TransportTrip(Document):
 		self.validate_status_transition()
 		self.validate_pod()
 		self.validate_reserved_quantity()
+		sync_legacy_charge_totals(self)
 
 	def on_update(self):
 		refresh_quantity_progress(self.transport_job)
@@ -69,6 +75,12 @@ class TransportTrip(Document):
 	def validate_transport_job_exists(self):
 		if not self.transport_job or not frappe.db.exists("Transport Job", self.transport_job):
 			frappe.throw(_("Transport Job must exist."))
+
+	def validate_transport_job_has_remaining_quantity(self):
+		if not self.is_new() or self.status == "CANCELLED":
+			return
+		if flt(frappe.db.get_value("Transport Job", self.transport_job, "remaining_quantity"), 6) <= 0:
+			frappe.throw(_("This Transport Job is fully delivered. No remaining quantity is available for a new Trip."))
 
 	def validate_execution_source(self):
 		if self.execution_source not in ALLOWED_EXECUTION_SOURCES:
@@ -179,7 +191,7 @@ class TransportTrip(Document):
 		delivered_quantity = self.get_optional_quantity("delivered_quantity", _("Delivered Quantity"))
 
 		if self.status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"} and not loaded_quantity:
-			frappe.throw(_("Loaded Quantity is required when Transport Trip is LOADED."))
+			frappe.throw(_("Enter Loaded Quantity before marking this trip as Loaded."))
 		if self.status in {"DELIVERED", "POD_RECEIVED", "CLOSED"} and not delivered_quantity:
 			frappe.throw(_("Delivered Quantity is required when Transport Trip is DELIVERED."))
 		if self.status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"} and not self.loading_datetime:
@@ -306,6 +318,8 @@ def get_defaults_from_transport_job(transport_job):
 	if not transport_job:
 		frappe.throw(_("Transport Job is required."))
 	job = frappe.get_doc("Transport Job", transport_job)
+	if flt(job.remaining_quantity, 6) <= 0:
+		frappe.throw(_("This Transport Job is fully delivered. No remaining quantity is available for a new Trip."))
 	return {
 		"transport_job": job.name,
 		"trip_date": job.requested_date,
@@ -314,6 +328,29 @@ def get_defaults_from_transport_job(transport_job):
 		"material": job.material,
 		"uom": TON_UOM,
 	}
+
+
+@frappe.whitelist()
+def transition_trip_status(transport_trip, status):
+	if not transport_trip:
+		frappe.throw(_("Transport Trip is required."))
+	if status not in ALLOWED_STATUSES:
+		frappe.throw(_("Invalid Transport Trip status {0}.").format(status))
+
+	trip = frappe.get_doc("Transport Trip", transport_trip)
+	trip.status = status
+	trip.save()
+	return {
+		"name": trip.name,
+		"status": trip.status,
+	}
+
+
+@frappe.whitelist()
+def calculate_charges(transport_trip):
+	if not transport_trip:
+		frappe.throw(_("Transport Trip is required."))
+	return apply_transport_trip_charges(transport_trip)
 
 
 def lock_transport_job(transport_job):

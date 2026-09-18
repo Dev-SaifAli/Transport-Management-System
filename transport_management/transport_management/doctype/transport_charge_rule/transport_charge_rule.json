@@ -1,0 +1,219 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:rule_name",
+ "creation": "2026-09-18 00:00:00.000000",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "rule_section",
+  "rule_name",
+  "charge_type",
+  "active",
+  "route_section",
+  "loading_area_zone",
+  "loading_location",
+  "unloading_location",
+  "material",
+  "rate_section",
+  "rate_basis",
+  "amount",
+  "currency",
+  "validity_section",
+  "valid_from",
+  "valid_to",
+  "priority",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "rule_section",
+   "fieldtype": "Section Break",
+   "label": "Rule"
+  },
+  {
+   "fieldname": "rule_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Rule Name",
+   "reqd": 1,
+   "search_index": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "charge_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Charge Type",
+   "options": "RAK Toll\nSharjah Toll\nFNRC / Extra Charge\nOther",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Active"
+  },
+  {
+   "fieldname": "route_section",
+   "fieldtype": "Section Break",
+   "label": "Route Match"
+  },
+  {
+   "fieldname": "loading_area_zone",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Loading Area / Zone"
+  },
+  {
+   "fieldname": "loading_location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Loading Location",
+   "options": "Transport Location"
+  },
+  {
+   "fieldname": "unloading_location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Unloading Location",
+   "options": "Transport Location",
+   "reqd": 1
+  },
+  {
+   "fieldname": "material",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Material",
+   "options": "Cargo Types"
+  },
+  {
+   "fieldname": "rate_section",
+   "fieldtype": "Section Break",
+   "label": "Rate"
+  },
+  {
+   "default": "Per Trip",
+   "fieldname": "rate_basis",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Rate Basis",
+   "options": "Per Trip\nPer TON\nFixed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "options": "currency",
+   "reqd": 1
+  },
+  {
+   "default": "AED",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "validity_section",
+   "fieldtype": "Section Break",
+   "label": "Validity"
+  },
+  {
+   "fieldname": "valid_from",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Valid From"
+  },
+  {
+   "fieldname": "valid_to",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Valid To"
+  },
+  {
+   "default": "100",
+   "description": "Higher number wins when matching rules have the same specificity.",
+   "fieldname": "priority",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Priority"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-18 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Transport Charge Rule",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transport Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transport Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "rule_name,charge_type,loading_area_zone,loading_location,unloading_location,material",
+ "sort_field": "priority",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "rule_name",
+ "track_changes": 1
+}

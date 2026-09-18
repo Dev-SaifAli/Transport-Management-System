@@ -152,6 +152,17 @@
    "collapsible": 1,
    "indent": 0,
    "keep_closed": 0,
+   "label": "Transport Charge Rule",
+   "link_to": "Transport Charge Rule",
+   "link_type": "DocType",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
    "label": "Transport Locations",
    "link_to": "Transport Location",
    "link_type": "DocType",

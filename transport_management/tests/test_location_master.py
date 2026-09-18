@@ -1,11 +1,16 @@
 """Tests for the Transport Location master extension."""
 
 import unittest
+from unittest.mock import Mock, patch
 
 import frappe
 
 from transport_management.demo import setup_demo_data
 from transport_management.location_master import ensure_transport_location_fields
+from transport_management.transport_management.doctype.transport_location.transport_location import (
+	reverse_geocode,
+	search_location,
+)
 
 
 class TestLocationMaster(unittest.TestCase):
@@ -66,11 +71,16 @@ class TestLocationMaster(unittest.TestCase):
 		return doc
 
 	def test_active_location_creation(self):
-		location = self.make_location(location_type="Yard", location_usage="Both", city="Sharjah")
+		location = self.make_location(location_type="Yard", location_usage="Both", city="Sharjah", area_zone="Sajja")
 		self.assertEqual(location.location_type, "Yard")
 		self.assertEqual(location.location_usage, "Both")
 		self.assertEqual(location.city, "Sharjah")
+		self.assertEqual(location.area_zone, "Sajja")
 		self.assertTrue(location.active)
+
+	def test_new_transport_location_defaults_country_to_uae(self):
+		location = self.make_location(country="")
+		self.assertEqual(location.country, "United Arab Emirates")
 
 	def test_valid_active_job_locations(self):
 		loading = self.make_location(location_type="Plant", location_usage="Loading")
@@ -133,6 +143,12 @@ class TestLocationMaster(unittest.TestCase):
 	def test_location_field_remains_unique(self):
 		field = frappe.get_meta("Transport Location").get_field("location")
 		self.assertTrue(field.unique)
+		self.assertFalse(field.hidden)
+
+	def test_supplier_field_is_hidden_but_preserved(self):
+		field = frappe.get_meta("Transport Location").get_field("supplier")
+		self.assertIsNotNone(field)
+		self.assertTrue(field.hidden)
 
 	def test_location_fields_are_standard_after_ownership_migration(self):
 		standard_fields = {
@@ -146,8 +162,11 @@ class TestLocationMaster(unittest.TestCase):
 			"supplier",
 			"address",
 			"city",
+			"area_zone",
+			"location_map_section",
 			"latitude",
 			"longitude",
+			"map_html",
 			"active",
 			"notes",
 		):
@@ -171,6 +190,45 @@ class TestLocationMaster(unittest.TestCase):
 			frappe.db.get_value("Transport Location", "SAJJA ORYX", "customer"),
 			self.demo["customer"],
 		)
+
+	def test_coordinates_are_optional(self):
+		location = self.make_location(latitude=None, longitude=None)
+		self.assertFalse(location.latitude)
+		self.assertFalse(location.longitude)
+
+	def test_invalid_latitude_rejected_server_side(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "Latitude must be between -90 and 90."):
+			self.make_location(latitude=91, longitude=55).insert()
+
+	def test_invalid_longitude_rejected_server_side(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "Longitude must be between -180 and 180."):
+			self.make_location(latitude=25, longitude=181).insert()
+
+	def test_invalid_coordinate_text_rejected_server_side(self):
+		with self.assertRaisesRegex(frappe.ValidationError, "Latitude must be a valid number."):
+			self.make_location(latitude="not-a-coordinate", longitude=55).insert()
+
+	def test_search_location_normalizes_nominatim_result(self):
+		response = Mock()
+		response.json.return_value = [
+			{
+				"display_name": "Oryx DIC Dubai, United Arab Emirates",
+				"lat": "25.1",
+				"lon": "55.2",
+				"address": {"city": "Dubai", "suburb": "DIC", "country": "United Arab Emirates"},
+			}
+		]
+		response.raise_for_status.return_value = None
+		with patch("transport_management.transport_management.doctype.transport_location.transport_location.requests.get", return_value=response):
+			results = search_location("Oryx DIC Dubai")
+		self.assertEqual(results[0]["latitude"], 25.1)
+		self.assertEqual(results[0]["longitude"], 55.2)
+		self.assertEqual(results[0]["city"], "Dubai")
+		self.assertEqual(results[0]["area_zone"], "DIC")
+
+	def test_reverse_geocode_failure_returns_empty_result(self):
+		with patch("transport_management.transport_management.doctype.transport_location.transport_location.requests.get", side_effect=Exception("timeout")):
+			self.assertEqual(reverse_geocode(25.1, 55.2), {})
 
 	def test_existing_job_and_trip_location_links_resolve(self):
 		self.assertTrue(frappe.db.exists("Transport Location", self.job.loading_site))

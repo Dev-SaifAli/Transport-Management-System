@@ -8,19 +8,24 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "location",
-  "column_break_d6pes",
-  "country",
   "tms_details_section",
-  "location_type",
+  "location",
   "location_usage",
   "customer",
-  "supplier",
-  "address",
   "city",
-  "latitude",
-  "longitude",
+  "column_break_d6pes",
+  "location_type",
   "active",
+  "country",
+  "area_zone",
+  "location_map_section",
+  "map_html",
+  "latitude",
+  "coordinates_column_break",
+  "longitude",
+  "address",
+  "supplier",
+  "notes_section",
   "notes"
  ],
  "fields": [
@@ -50,7 +55,7 @@
   {
    "fieldname": "tms_details_section",
    "fieldtype": "Section Break",
-   "label": "Transport Management Details"
+   "label": "Location Details"
   },
   {
    "fieldname": "location_type",
@@ -79,6 +84,7 @@
   {
    "fieldname": "supplier",
    "fieldtype": "Link",
+   "hidden": 1,
    "in_standard_filter": 1,
    "label": "Supplier",
    "options": "Supplier"
@@ -95,9 +101,28 @@
    "label": "City"
   },
   {
+   "fieldname": "area_zone",
+   "fieldtype": "Data",
+   "label": "Area / Zone"
+  },
+  {
+   "fieldname": "location_map_section",
+   "fieldtype": "Section Break",
+   "label": "Map & Coordinates"
+  },
+  {
+   "fieldname": "map_html",
+   "fieldtype": "HTML",
+   "label": "Map"
+  },
+  {
    "fieldname": "latitude",
    "fieldtype": "Float",
    "label": "Latitude"
+  },
+  {
+   "fieldname": "coordinates_column_break",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "longitude",
@@ -111,6 +136,11 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Active"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
   },
   {
    "fieldname": "notes",

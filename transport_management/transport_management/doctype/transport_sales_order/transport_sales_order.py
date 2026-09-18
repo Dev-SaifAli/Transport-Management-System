@@ -10,6 +10,13 @@ from frappe.utils import flt, getdate, today
 
 TON_UOM = "TON"
 MANUAL_RATE_OVERRIDE_ROLES = {"Transport Manager", "Transport Admin", "System Manager"}
+BILLING_STATUS_NOT_READY = "Not Ready"
+BILLING_STATUS_READY = "Ready for Billing"
+BILLING_STATUS_IN_PROGRESS = "Billing In Progress"
+BILLING_STATUS_INVOICED = "Invoiced"
+BILLING_ROLES = {"Transport Manager", "Transport Admin", "System Manager"}
+BILLING_READY_TRIP_STATUS = "CLOSED"
+BILLING_ACTIVE_TRIP_STATUSES = {"PLANNED", "ASSIGNED", "LOADED", "IN_TRANSIT"}
 
 
 class TransportSalesOrder(Document):
@@ -21,12 +28,14 @@ class TransportSalesOrder(Document):
 
 		self.calculate_totals()
 		self.set_conversion_status()
+		self.set_billing_progress()
 
 	def validate(self):
 		self.validate_customer()
 		self.validate_items(require_complete=self.is_submit_action())
 		self.calculate_totals(require_rates=self.is_submit_action())
 		self.set_conversion_status()
+		self.set_billing_progress()
 
 	def before_submit(self):
 		self.validate_items(require_complete=True)
@@ -93,6 +102,7 @@ class TransportSalesOrder(Document):
 
 	def calculate_totals(self, require_rates=False):
 		net_amount = 0
+		ordered_quantity = 0
 		for row in self.items:
 			if not row.uom:
 				row.uom = TON_UOM
@@ -120,8 +130,18 @@ class TransportSalesOrder(Document):
 
 			row.amount = flt(row.quantity, 6) * flt(row.rate, 6)
 			net_amount += flt(row.amount, 6)
+			ordered_quantity += flt(row.quantity, 6)
 
 		self.net_amount = net_amount
+		self.ordered_quantity = ordered_quantity
+
+	def set_billing_progress(self):
+		if not self.name:
+			self.delivered_quantity = 0
+			self.billing_status = BILLING_STATUS_NOT_READY
+			return
+		self.delivered_quantity = get_sales_order_delivered_quantity(self.name)
+		self.billing_status = evaluate_sales_order_billing_status(self.name)
 
 	def can_resolve_rate(self, row):
 		return all((
@@ -317,7 +337,132 @@ def lock_sales_order_item(row_name):
 def update_conversion_status(sales_order):
 	doc = frappe.get_doc("Transport Sales Order", sales_order)
 	doc.set_conversion_status()
-	frappe.db.set_value("Transport Sales Order", sales_order, "status", doc.status, update_modified=False)
+	doc.set_billing_progress()
+	frappe.db.set_value(
+		"Transport Sales Order",
+		sales_order,
+		{"status": doc.status, "delivered_quantity": doc.delivered_quantity, "billing_status": doc.billing_status},
+		update_modified=False,
+	)
+
+
+def refresh_sales_order_billing_progress(sales_order):
+	if not sales_order or not frappe.db.exists("Transport Sales Order", sales_order):
+		return
+	values = {
+		"delivered_quantity": get_sales_order_delivered_quantity(sales_order),
+		"billing_status": evaluate_sales_order_billing_status(sales_order),
+	}
+	frappe.db.set_value("Transport Sales Order", sales_order, values, update_modified=False)
+
+
+def get_sales_order_delivered_quantity(sales_order):
+	result = frappe.db.sql(
+		"""
+		select coalesce(sum(delivered_quantity), 0)
+		from `tabTransport Job`
+		where sales_order = %s
+			and status != 'Cancelled'
+		""",
+		(sales_order,),
+	)
+	return flt(result[0][0] if result else 0, 6)
+
+
+def evaluate_sales_order_billing_status(sales_order):
+	invoice = get_active_transport_invoice_for_sales_order(sales_order)
+	if invoice:
+		if invoice.docstatus == 0:
+			return BILLING_STATUS_IN_PROGRESS
+		if invoice.docstatus == 1:
+			return BILLING_STATUS_INVOICED
+
+	jobs = get_sales_order_jobs(sales_order)
+	if not jobs:
+		return BILLING_STATUS_NOT_READY
+
+	for job in jobs:
+		if flt(job.remaining_quantity, 6) != 0:
+			return BILLING_STATUS_NOT_READY
+		if flt(job.delivered_quantity, 6) <= 0:
+			return BILLING_STATUS_NOT_READY
+
+	trips = frappe.get_all(
+		"Transport Trip",
+		filters={"transport_job": ["in", [job.name for job in jobs]], "status": ["!=", "CANCELLED"]},
+		fields=["name", "status"],
+	)
+	if not trips:
+		return BILLING_STATUS_NOT_READY
+	if any(trip.status in BILLING_ACTIVE_TRIP_STATUSES or trip.status == "EXCEPTION" for trip in trips):
+		return BILLING_STATUS_NOT_READY
+	if any(trip.status != BILLING_READY_TRIP_STATUS for trip in trips):
+		return BILLING_STATUS_NOT_READY
+
+	return BILLING_STATUS_READY
+
+
+def get_active_transport_invoice_for_sales_order(sales_order):
+	invoice_name = frappe.db.get_value("Transport Sales Order", sales_order, "transport_sales_invoice")
+	filters = {
+		"transport_sales_order": sales_order,
+		"tms_invoice_type": "Transport",
+		"docstatus": ["<", 2],
+	}
+	if invoice_name:
+		rows = frappe.get_all(
+			"Sales Invoice",
+			filters={**filters, "name": invoice_name},
+			fields=["name", "docstatus"],
+			order_by="creation desc",
+			limit=1,
+		)
+		if rows:
+			return rows[0]
+	rows = frappe.get_all("Sales Invoice", filters=filters, fields=["name", "docstatus"], order_by="creation desc", limit=1)
+	return rows[0] if rows else None
+
+
+def get_sales_order_jobs(sales_order):
+	return frappe.get_all(
+		"Transport Job",
+		filters={"sales_order": sales_order, "status": ["!=", "Cancelled"]},
+		fields=[
+			"name",
+			"sales_order_item",
+			"material",
+			"loading_site",
+			"unloading_site",
+			"requested_quantity",
+			"delivered_quantity",
+			"remaining_quantity",
+			"status",
+			"agreed_rate",
+		],
+		order_by="creation asc",
+	)
+
+
+@frappe.whitelist()
+def prepare_billing(sales_order):
+	if not sales_order or not frappe.db.exists("Transport Sales Order", sales_order):
+		frappe.throw(_("Transport Sales Order must exist."))
+	if not _user_can_prepare_billing():
+		frappe.throw(_("You are not permitted to prepare Transport Sales Order billing."), frappe.PermissionError)
+	refresh_sales_order_billing_progress(sales_order)
+	billing_status = frappe.db.get_value("Transport Sales Order", sales_order, "billing_status")
+	if billing_status != BILLING_STATUS_READY:
+		frappe.throw(_("Transport Sales Order {0} is not ready for billing.").format(sales_order))
+	return {
+		"transport_sales_order": sales_order,
+		"billing_status": billing_status,
+		"route": "tms-billing-review",
+	}
+
+
+def _user_can_prepare_billing(user=None):
+	user = user or frappe.session.user
+	return bool(BILLING_ROLES.intersection(frappe.get_roles(user)))
 
 
 def get_active_linked_jobs(sales_order):

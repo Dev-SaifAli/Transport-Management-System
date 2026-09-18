@@ -96,7 +96,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Masters",
-   "link_count": 6,
+   "link_count": 7,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -127,6 +127,16 @@
    "label": "Transport Rates",
    "link_count": 0,
    "link_to": "Transport Rate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Transport Charge Rule",
+   "link_count": 0,
+   "link_to": "Transport Charge Rule",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -181,7 +191,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-09-16 15:22:24.797094",
+ "modified": "2026-09-18 08:19:18.850607",
  "modified_by": "Administrator",
  "module": "Transport Management",
  "name": "Transport Management",

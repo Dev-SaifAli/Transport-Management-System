@@ -37,7 +37,13 @@
   "loaded_quantity",
   "column_break_quantity_progress",
   "delivered_quantity",
-  "remaining_quantity"
+  "remaining_quantity",
+  "billing_readiness_section",
+  "transport_sales_invoice",
+  "billing_status",
+  "toll_billing_section",
+  "toll_sales_invoice",
+  "toll_billing_status"
  ],
  "fields": [
   {
@@ -48,9 +54,12 @@
   {
    "fieldname": "customer",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Customer",
    "options": "Customer",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "requested_date",
@@ -65,6 +74,7 @@
   {
    "fieldname": "loading_site",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Loading Site",
    "options": "Transport Location",
    "reqd": 1
@@ -79,13 +89,17 @@
   {
    "fieldname": "material",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Material",
    "options": "Cargo Types",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "requested_quantity",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Requested Quantity",
    "reqd": 1
   },
@@ -101,7 +115,10 @@
   {
    "fieldname": "sale_order_reference",
    "fieldtype": "Data",
-   "label": "Sale Order Reference"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sale Order Reference",
+   "search_index": 1
   },
   {
    "fieldname": "business_references_tab",
@@ -200,13 +217,60 @@
   {
    "fieldname": "delivered_quantity",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Delivered Quantity",
    "read_only": 1
   },
   {
    "fieldname": "remaining_quantity",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Remaining Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "billing_readiness_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Billing Readiness"
+  },
+  {
+   "fieldname": "transport_sales_invoice",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Transport Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "default": "Not Ready",
+   "fieldname": "billing_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 0,
+   "label": "Billing Status",
+   "options": "Not Ready\nReady for Billing\nBilling In Progress\nInvoiced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "toll_billing_section",
+   "fieldtype": "Section Break",
+   "label": "Toll / Extra Charges Billing"
+  },
+  {
+   "fieldname": "toll_sales_invoice",
+   "fieldtype": "Link",
+   "label": "Toll Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "default": "Not Applicable",
+   "fieldname": "toll_billing_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Toll Billing Status",
+   "options": "Not Applicable\nReady for Toll Billing\nToll Billing In Progress\nToll Invoiced",
    "read_only": 1
   },
   {
@@ -223,8 +287,11 @@
    "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nReady\nIn Progress\nCompleted\nCancelled"
+   "options": "Draft\nReady\nIn Progress\nCompleted\nCancelled",
+   "search_index": 1
   }
  ],
  "grid_page_length": 50,

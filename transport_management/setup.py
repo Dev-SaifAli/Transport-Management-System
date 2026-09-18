@@ -7,6 +7,7 @@ from transport_management.location_master import ensure_transport_location_field
 from transport_management.navigation import sync_tms_navigation
 from transport_management.party_master import ensure_supplier_transport_fields
 from transport_management.rbac import ensure_tms_rbac
+from transport_management.tms_billing_setup import ensure_tms_billing_setup
 from transport_management.truck_driver_master import migrate_truck_driver_ownership
 from transport_management.truck_master import ensure_owned_truck_fields, migrate_truck_ownership
 from transport_management.truck_type_master import migrate_truck_type_ownership, normalize_operational_truck_types
@@ -29,5 +30,6 @@ def after_migrate():
 	migrate_hired_vehicle_text_to_links()
 	retire_transport_shipment_and_cleanup_fleet_customizations()
 	ensure_ton_uom()
+	ensure_tms_billing_setup()
 	ensure_tms_rbac()
 	sync_tms_navigation()

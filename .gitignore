@@ -57,6 +57,7 @@ jspm_packages/
 **/__pycache__/
 build/
 .env.*
+!.env.example
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
