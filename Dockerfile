@@ -33,9 +33,12 @@ RUN bench get-app \
     && git fetch --depth 1 "${ERPNEXT_REPO}" "${ERPNEXT_REF}" \
     && git checkout --detach FETCH_HEAD
 
-COPY --chown=frappe:frappe . /tmp/transport_management
+ARG TMS_REPO=https://github.com/Dev-SaifAli/Transport-Management-System.git
+ARG TMS_BRANCH=develop
 
-RUN bench get-app file:///tmp/transport_management \
+RUN bench get-app \
+    --branch "${TMS_BRANCH}" \
+    "${TMS_REPO}" \
     && bench build --production
 
 FROM ${BENCH_IMAGE} AS runtime
