@@ -17,4 +17,4 @@ if not site:
 frappe.app._site = site
 frappe.app._sites_path = sites_path
 
-application = frappe.app.application
+application = frappe.app.application_with_statics()
