@@ -84,4 +84,4 @@ ENV FRAPPE_BENCH_ROOT=/home/frappe/frappe-bench \
 
 ENTRYPOINT ["/home/frappe/frappe-bench/railway-entrypoint.sh"]
 
-CMD ["bash", "-lc", "cd /home/frappe/frappe-bench/sites && exec /home/frappe/frappe-bench/env/bin/gunicorn --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-4} --timeout ${GUNICORN_TIMEOUT:-120} frappe.app:application --preload"]
+CMD ["bash", "-lc", "cd /home/frappe/frappe-bench/sites && exec /home/frappe/frappe-bench/env/bin/gunicorn --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-4} --timeout ${GUNICORN_TIMEOUT:-120} transport_management.railway_wsgi:application --preload"]
