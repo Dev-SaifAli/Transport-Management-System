@@ -12,6 +12,12 @@ if [ ! -f "${SITES_DIR}/apps.txt" ] && [ -d "${SITES_TEMPLATE_DIR}" ]; then
 	cp -a "${SITES_TEMPLATE_DIR}/." "${SITES_DIR}/"
 fi
 
+if [ -d "${SITES_TEMPLATE_DIR}/assets" ]; then
+	rm -rf "${SITES_DIR}/assets"
+	cp -a "${SITES_TEMPLATE_DIR}/assets" "${SITES_DIR}/assets"
+	chown -hR frappe:frappe "${SITES_DIR}/assets" 2>/dev/null || true
+fi
+
 python - <<'PY'
 import json
 import os
