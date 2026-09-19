@@ -82,6 +82,7 @@
   {
    "fieldname": "unloading_site",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Unloading Site",
    "options": "Transport Location",
    "reqd": 1
@@ -217,14 +218,14 @@
   {
    "fieldname": "delivered_quantity",
    "fieldtype": "Float",
-   "in_list_view": 1,
+   "in_list_view": 0,
    "label": "Delivered Quantity",
    "read_only": 1
   },
   {
    "fieldname": "remaining_quantity",
    "fieldtype": "Float",
-   "in_list_view": 1,
+   "in_list_view": 0,
    "label": "Remaining Quantity",
    "read_only": 1
   },
@@ -246,8 +247,7 @@
    "default": "Not Ready",
    "fieldname": "billing_status",
    "fieldtype": "Select",
-   "hidden": 1,
-   "in_list_view": 0,
+   "in_list_view": 1,
    "label": "Billing Status",
    "options": "Not Ready\nReady for Billing\nBilling In Progress\nInvoiced",
    "read_only": 1

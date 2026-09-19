@@ -5,8 +5,6 @@ frappe.listview_settings["Transport Job"] = {
 		"loading_site",
 		"unloading_site",
 		"requested_quantity",
-		"delivered_quantity",
-		"remaining_quantity",
 		"status",
 		"billing_status",
 		"sale_order_reference",
@@ -43,19 +41,15 @@ frappe.listview_settings["Transport Job"] = {
 			return text_display(value);
 		},
 
-		loading_site(value, df, doc) {
-			return route_display(doc.loading_site, doc.unloading_site);
+		loading_site(value) {
+			return text_display(value);
+		},
+
+		unloading_site(value) {
+			return text_display(value);
 		},
 
 		requested_quantity(value) {
-			return quantity_display(value);
-		},
-
-		delivered_quantity(value) {
-			return quantity_display(value);
-		},
-
-		remaining_quantity(value) {
 			return quantity_display(value);
 		},
 
@@ -79,12 +73,6 @@ function setup_tms_job_list(listview) {
 	}
 
 	ensure_tms_list_styles();
-}
-
-function route_display(loading_site, unloading_site) {
-	return [loading_site, unloading_site]
-		.filter(Boolean)
-		.join(" → ");
 }
 
 function quantity_display(value) {
@@ -147,11 +135,13 @@ function ensure_tms_list_styles() {
 				text-overflow: ellipsis;
 			}
 
-			/* Route */
+			/* Route fields */
 			.tms-transport-job-list
-			.list-row-col[data-fieldname="loading_site"] {
-				min-width: 280px;
-				max-width: 360px;
+			.list-row-col[data-fieldname="loading_site"],
+			.tms-transport-job-list
+			.list-row-col[data-fieldname="unloading_site"] {
+				min-width: 135px;
+				max-width: 180px;
 				white-space: nowrap;
 				overflow: hidden;
 				text-overflow: ellipsis;
@@ -159,11 +149,7 @@ function ensure_tms_list_styles() {
 
 			/* Quantities */
 			.tms-transport-job-list
-			.list-row-col[data-fieldname="requested_quantity"],
-			.tms-transport-job-list
-			.list-row-col[data-fieldname="delivered_quantity"],
-			.tms-transport-job-list
-			.list-row-col[data-fieldname="remaining_quantity"] {
+			.list-row-col[data-fieldname="requested_quantity"] {
 				min-width: 115px;
 				white-space: nowrap;
 			}

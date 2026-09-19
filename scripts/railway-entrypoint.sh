@@ -52,5 +52,4 @@ sites_dir.mkdir(parents=True, exist_ok=True)
 config_path.write_text(json.dumps(config, indent=1, sort_keys=True) + "\n")
 PY
 
-cd "${BENCH_DIR}"
 exec "$@"
