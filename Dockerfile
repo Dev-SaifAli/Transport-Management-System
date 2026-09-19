@@ -35,10 +35,15 @@ RUN bench get-app \
 
 ARG TMS_REPO=https://github.com/Dev-SaifAli/Transport-Management-System.git
 ARG TMS_BRANCH=develop
+ARG TMS_REF=67e8835f55d129edbe3ee6c83cc7e8a28a25b179
 
 RUN bench get-app \
-    --branch "${TMS_BRANCH}" \
-    "${TMS_REPO}" \
+        --branch "${TMS_BRANCH}" \
+        "${TMS_REPO}" \
+    && cd apps/transport_management \
+    && git fetch --depth 1 "${TMS_REPO}" "${TMS_REF}" \
+    && git checkout --detach FETCH_HEAD \
+    && cd ../.. \
     && bench build --production
 
 FROM ${BENCH_IMAGE} AS runtime
