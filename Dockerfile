@@ -33,16 +33,13 @@ RUN bench get-app \
     && git fetch --depth 1 "${ERPNEXT_REPO}" "${ERPNEXT_REF}" \
     && git checkout --detach FETCH_HEAD
 
+
 ARG TMS_REPO=https://github.com/Dev-SaifAli/Transport-Management-System.git
 ARG TMS_BRANCH=develop
-ARG TMS_REF=67e8835f55d129edbe3ee6c83cc7e8a28a25b179
 
 RUN bench get-app \
         --branch "${TMS_BRANCH}" \
         "${TMS_REPO}" \
-    && cd apps/transport_management \
-    && git fetch --depth 1 "${TMS_REPO}" "${TMS_REF}" \
-    && git checkout --detach FETCH_HEAD \
     && cd ../.. \
     && bench build --production
 
@@ -76,10 +73,15 @@ COPY --chown=frappe:frappe \
     scripts/railway-migrate.sh \
     /home/frappe/frappe-bench/railway-migrate.sh
 
+COPY --chown=frappe:frappe \
+    scripts/railway-clear-asset-cache.py \
+    /home/frappe/frappe-bench/railway-clear-asset-cache.py
+
 RUN chmod +x \
     /home/frappe/frappe-bench/railway-entrypoint.sh \
     /home/frappe/frappe-bench/railway-bootstrap.sh \
-    /home/frappe/frappe-bench/railway-migrate.sh
+    /home/frappe/frappe-bench/railway-migrate.sh \
+    /home/frappe/frappe-bench/railway-clear-asset-cache.py
 
 USER frappe
 WORKDIR /home/frappe/frappe-bench

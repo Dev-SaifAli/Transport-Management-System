@@ -3,6 +3,7 @@ set -euo pipefail
 
 BENCH_DIR="${FRAPPE_BENCH_ROOT:-/home/frappe/frappe-bench}"
 SITES_DIR="${SITES_DIR:-${BENCH_DIR}/sites}"
+SITES_PATH="${SITES_PATH:-${SITES_DIR}}"
 SITE_NAME="${FRAPPE_SITE:-tms.localhost}"
 SITES_TEMPLATE_DIR="${SITES_TEMPLATE_DIR:-/opt/frappe/sites-template}"
 
@@ -57,5 +58,20 @@ config.pop("file_watcher_port", None)
 sites_dir.mkdir(parents=True, exist_ok=True)
 config_path.write_text(json.dumps(config, indent=1, sort_keys=True) + "\n")
 PY
+
+if [[ " $* " == *"gunicorn"* ]]; then
+	if [ "$(id -u)" = "0" ] && id frappe >/dev/null 2>&1 && command -v runuser >/dev/null 2>&1; then
+		runuser -u frappe -- env \
+			FRAPPE_SITE="${SITE_NAME}" \
+			SITES_PATH="${SITES_PATH}" \
+			FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
+			"${BENCH_DIR}/env/bin/python" "${BENCH_DIR}/railway-clear-asset-cache.py"
+	else
+		FRAPPE_SITE="${SITE_NAME}" \
+			SITES_PATH="${SITES_PATH}" \
+			FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
+			"${BENCH_DIR}/env/bin/python" "${BENCH_DIR}/railway-clear-asset-cache.py"
+	fi
+fi
 
 exec "$@"
