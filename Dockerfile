@@ -40,7 +40,6 @@ ARG TMS_BRANCH=develop
 RUN bench get-app \
         --branch "${TMS_BRANCH}" \
         "${TMS_REPO}" \
-    && cd ../.. \
     && bench build --production
 
 FROM ${BENCH_IMAGE} AS runtime
