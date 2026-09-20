@@ -93,7 +93,7 @@ function format_quantity(value) {
 }
 
 function text_display(value) {
-	return value || "";
+	return frappe.utils.escape_html(value || "");
 }
 
 function ensure_tms_list_styles() {
@@ -111,37 +111,42 @@ function ensure_tms_list_styles() {
 
 			.tms-transport-job-list .list-row-col {
 				align-items: center;
-				padding-top: 6px;
 				padding-bottom: 6px;
+				padding-left: 10px;
+				padding-right: 10px;
+				padding-top: 6px;
+				min-width: 0;
+			}
+
+			.tms-transport-job-list .list-subject {
+				min-width: 135px;
+				padding-right: 12px;
 			}
 
 			/* Customer */
 			.tms-transport-job-list
 			.list-row-col[data-fieldname="customer"] {
-				min-width: 190px;
-				max-width: 240px;
+				flex: 1.35 1 230px;
+				min-width: 210px;
+				max-width: 320px;
 				white-space: nowrap;
 				overflow: hidden;
 				text-overflow: ellipsis;
+			}
+
+			/* Billing Status */
+			.tms-transport-job-list
+			.list-row-col[data-fieldname="billing_status"] {
+				flex: 0 0 145px;
+				white-space: nowrap;
 			}
 
 			/* Material */
 			.tms-transport-job-list
 			.list-row-col[data-fieldname="material"] {
-				min-width: 140px;
-				max-width: 180px;
-				white-space: nowrap;
-				overflow: hidden;
-				text-overflow: ellipsis;
-			}
-
-			/* Route fields */
-			.tms-transport-job-list
-			.list-row-col[data-fieldname="loading_site"],
-			.tms-transport-job-list
-			.list-row-col[data-fieldname="unloading_site"] {
-				min-width: 135px;
-				max-width: 180px;
+				flex: 1 1 170px;
+				min-width: 150px;
+				max-width: 230px;
 				white-space: nowrap;
 				overflow: hidden;
 				text-overflow: ellipsis;
@@ -150,8 +155,21 @@ function ensure_tms_list_styles() {
 			/* Quantities */
 			.tms-transport-job-list
 			.list-row-col[data-fieldname="requested_quantity"] {
-				min-width: 115px;
+				flex: 0 0 110px;
 				white-space: nowrap;
+			}
+
+			/* Route fields */
+			.tms-transport-job-list
+			.list-row-col[data-fieldname="loading_site"],
+			.tms-transport-job-list
+			.list-row-col[data-fieldname="unloading_site"] {
+				flex: 1 1 165px;
+				min-width: 150px;
+				max-width: 230px;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
 			}
 
 			/* Status */
@@ -161,18 +179,12 @@ function ensure_tms_list_styles() {
 				white-space: nowrap;
 			}
 
-			/* Billing Status */
-			.tms-transport-job-list
-			.list-row-col[data-fieldname="billing_status"] {
-				min-width: 150px;
-				white-space: nowrap;
-			}
-
 			/* Sales Order */
 			.tms-transport-job-list
 			.list-row-col[data-fieldname="sale_order_reference"] {
-				min-width: 150px;
-				max-width: 180px;
+				flex: 0 1 165px;
+				min-width: 145px;
+				max-width: 190px;
 				white-space: nowrap;
 				overflow: hidden;
 				text-overflow: ellipsis;
