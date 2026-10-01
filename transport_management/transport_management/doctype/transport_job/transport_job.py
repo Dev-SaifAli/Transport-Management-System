@@ -1,12 +1,13 @@
 # Copyright (c) 2026, Digital Data Enterprises and contributors
 # For license information, please see license.txt
 
+import json
 from math import isfinite
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, today
+from frappe.utils import flt, getdate, today
 
 from transport_management.location_master import validate_transport_location_usage
 from transport_management.tms_billing_setup import TOLL_SERVICE_ITEM, TRANSPORT_SERVICE_ITEM, ensure_tms_billing_setup
@@ -28,6 +29,8 @@ TOLL_STATUS_INVOICED = "Toll Invoiced"
 BILLING_ROLES = {"Transport Manager", "Transport Admin", "System Manager"}
 BILLING_ACTIVE_TRIP_STATUSES = {"PLANNED", "ASSIGNED", "LOADED", "IN_TRANSIT"}
 BILLING_READY_TRIP_STATUS = "CLOSED"
+BILLING_BOUNDARY_TRIP_STATUSES = {"IN_TRANSIT", "CLOSED"}
+BILLING_BLOCKED_STATUSES = {"Draft Invoice", "Invoiced"}
 
 
 class TransportJob(Document):
@@ -285,8 +288,8 @@ def prepare_billing(transport_job):
 		"transport_job": transport_job,
 		"transport_sales_order": sales_order,
 		"billing_status": result.get("billing_status"),
-		"route": "tms-billing-review",
-		"message": _("Opening Billing Review for Transport Sales Order {0}.").format(sales_order),
+		"route": ["Form", "Sales Invoice", "new-sales-invoice"],
+		"message": _("Opening Sales Invoice for Transport Sales Order {0}.").format(sales_order),
 	}
 
 
@@ -317,8 +320,9 @@ def _user_can_prepare_billing(user=None):
 
 
 @frappe.whitelist()
-def get_billing_review(transport_sales_order=None, transport_job=None):
+def get_billing_review(transport_sales_order=None, transport_job=None, from_date=None, to_date=None):
 	sales_order = get_sales_order_for_transport_billing(transport_sales_order, transport_job)
+	from_date, to_date = validate_billing_date_range(from_date, to_date, require_dates=False)
 
 	if not _user_can_prepare_billing():
 		frappe.throw(_("You are not permitted to review Transport Sales Order billing."), frappe.PermissionError)
@@ -329,15 +333,14 @@ def get_billing_review(transport_sales_order=None, transport_job=None):
 
 	refresh_sales_order_billing_progress(sales_order)
 	order = frappe.get_doc("Transport Sales Order", sales_order)
-	if order.billing_status not in {BILLING_STATUS_READY, BILLING_STATUS_IN_PROGRESS}:
-		frappe.throw(_("Transport Sales Order {0} is not ready for billing.").format(sales_order))
 
 	jobs = get_sales_order_billing_jobs(sales_order)
-	trips = get_sales_order_billable_trips(sales_order)
+	trips = get_sales_order_billable_trips(sales_order, from_date=from_date, to_date=to_date)
 	rows = [build_sales_order_billing_trip_row(trip) for trip in trips]
 	groups = group_sales_order_invoice_trips(trips) if trips else []
 	return {
 		"summary": build_sales_order_billing_summary(order, jobs),
+		"filters": {"from_date": from_date, "to_date": to_date},
 		"jobs": [build_sales_order_job_review_row(job) for job in jobs],
 		"trips": rows,
 		"groups": [build_billing_group_row(group) for group in groups],
@@ -737,24 +740,235 @@ def get_billable_trips(job):
 	)
 
 
-def get_sales_order_billable_trips(sales_order):
+def validate_billing_date_range(from_date=None, to_date=None, require_dates=True):
+	if not from_date and not to_date and not require_dates:
+		return None, None
+	if not from_date or not to_date:
+		frappe.throw(_("From Date and To Date are required for Transport Invoice trip selection."))
+
+	from_date = getdate(from_date)
+	to_date = getdate(to_date)
+	if from_date > to_date:
+		frappe.throw(_("From Date cannot be after To Date."))
+	return from_date, to_date
+
+
+def get_sales_order_billable_trips(sales_order, from_date=None, to_date=None):
+	from_date, to_date = validate_billing_date_range(from_date, to_date, require_dates=False)
+	date_condition = ""
+	params = {"sales_order": sales_order, "closed_status": BILLING_READY_TRIP_STATUS}
+	if from_date and to_date:
+		date_condition = """
+			and (
+				(
+					trip.status = %(closed_status)s
+					and date(trip.delivery_datetime) between %(from_date)s and %(to_date)s
+				)
+				or (
+					trip.status in %(boundary_statuses)s
+					and date(trip.loading_datetime) = %(to_date)s
+				)
+			)
+		"""
+		params.update({
+			"from_date": from_date,
+			"to_date": to_date,
+			"boundary_statuses": tuple(sorted(BILLING_BOUNDARY_TRIP_STATUSES)),
+		})
+	else:
+		date_condition = "and trip.status = %(closed_status)s"
+
+	return frappe.db.sql(
+		f"""
+		select
+			trip.name, trip.trip_date, trip.execution_source, trip.vehicle, trip.hired_vehicle,
+			trip.driver, trip.hired_driver, trip.status, trip.material, trip.loading_site, trip.unloading_site,
+			trip.gdn, trip.loading_no, trip.loading_datetime, trip.delivery_datetime,
+			trip.loaded_quantity, trip.delivered_quantity,
+			trip.rak_toll, trip.sharjah_toll, trip.fnrc_extra_charge,
+			trip.transport_billing_status, trip.transport_sales_invoice,
+			job.name as transport_job, job.sales_order_item, job.agreed_rate
+		from `tabTransport Trip` trip
+		inner join `tabTransport Job` job on job.name = trip.transport_job
+		where job.sales_order = %(sales_order)s
+			and job.status != 'Cancelled'
+			and coalesce(trip.transport_sales_invoice, '') = ''
+			and coalesce(trip.transport_billing_status, 'Not Billed') not in %(blocked_statuses)s
+			{date_condition}
+		order by trip.trip_date asc, trip.name asc
+		""",
+		{**params, "blocked_statuses": tuple(sorted(BILLING_BLOCKED_STATUSES))},
+		as_dict=True,
+	)
+
+
+@frappe.whitelist()
+def get_customer_transport_invoice_trips(customer, from_date, to_date):
+	if not _user_can_prepare_billing():
+		frappe.throw(_("You are not permitted to review Transport Trips for billing."), frappe.PermissionError)
+	if not customer:
+		frappe.throw(_("Customer is required."))
+
+	trips = get_customer_billable_trips(customer, from_date=from_date, to_date=to_date)
+	return {
+		"trips": [build_sales_order_billing_trip_row(trip) for trip in trips],
+		"totals": calculate_billing_totals([build_sales_order_billing_trip_row(trip) for trip in trips]),
+	}
+
+
+def get_customer_billable_trips(customer, from_date=None, to_date=None):
+	from_date, to_date = validate_billing_date_range(from_date, to_date)
 	return frappe.db.sql(
 		"""
 		select
 			trip.name, trip.trip_date, trip.execution_source, trip.vehicle, trip.hired_vehicle,
-			trip.driver, trip.hired_driver, trip.material, trip.loading_site, trip.unloading_site,
-			trip.gdn, trip.loading_no, trip.delivery_datetime, trip.delivered_quantity,
+			trip.driver, trip.hired_driver, trip.status, trip.material, trip.loading_site, trip.unloading_site,
+			trip.gdn, trip.loading_no, trip.loading_datetime, trip.delivery_datetime,
+			trip.loaded_quantity, trip.delivered_quantity,
 			trip.rak_toll, trip.sharjah_toll, trip.fnrc_extra_charge,
-			job.name as transport_job, job.sales_order_item, job.agreed_rate
+			trip.transport_billing_status, trip.transport_sales_invoice,
+			job.name as transport_job, job.sales_order, job.sales_order_item, job.agreed_rate
 		from `tabTransport Trip` trip
 		inner join `tabTransport Job` job on job.name = trip.transport_job
-		where job.sales_order = %s
+		where job.customer = %(customer)s
 			and job.status != 'Cancelled'
-			and trip.status = %s
+			and coalesce(trip.transport_sales_invoice, '') = ''
+			and coalesce(trip.transport_billing_status, 'Not Billed') not in %(blocked_statuses)s
+			and (
+				(
+					trip.status = %(closed_status)s
+					and date(trip.delivery_datetime) between %(from_date)s and %(to_date)s
+				)
+				or (
+					trip.status in %(boundary_statuses)s
+					and date(trip.loading_datetime) = %(to_date)s
+				)
+			)
 		order by trip.trip_date asc, trip.name asc
 		""",
-		(sales_order, BILLING_READY_TRIP_STATUS),
+		{
+			"customer": customer,
+			"from_date": from_date,
+			"to_date": to_date,
+			"closed_status": BILLING_READY_TRIP_STATUS,
+			"boundary_statuses": tuple(sorted(BILLING_BOUNDARY_TRIP_STATUSES)),
+			"blocked_statuses": tuple(sorted(BILLING_BLOCKED_STATUSES)),
+		},
 		as_dict=True,
+	)
+
+
+@frappe.whitelist()
+def get_transport_sales_invoice_payload(customer, from_date, to_date, trip_names, company=None):
+	if not _user_can_prepare_billing():
+		frappe.throw(_("You are not permitted to prepare Transport Invoice items."), frappe.PermissionError)
+	if isinstance(trip_names, str):
+		trip_names = json.loads(trip_names) if trip_names else []
+	trip_names = list(dict.fromkeys(trip_names or []))
+	if not trip_names:
+		frappe.throw(_("Select at least one Transport Trip."))
+
+	eligible_trips = get_customer_billable_trips(customer, from_date=from_date, to_date=to_date)
+	trips_by_name = {trip.name: trip for trip in eligible_trips}
+	missing = [trip for trip in trip_names if trip not in trips_by_name]
+	if missing:
+		frappe.throw(_("Some selected Trips are no longer eligible for billing: {0}").format(", ".join(missing)))
+
+	validate_invoice_trips_available_for_invoice(trip_names)
+	selected_trips = [trips_by_name[trip] for trip in trip_names]
+	groups = group_sales_order_invoice_trips(selected_trips)
+	jobs = get_invoice_source_jobs_for_trips(trip_names)
+	company = company or get_default_company()
+	validate_company_currency(company)
+	service_item = get_transport_service_item()
+	tax_template = get_sales_vat_template(company)
+	income_account = get_income_account(company, service_item)
+	cost_center = get_cost_center(company)
+	sales_orders = sorted({job.sales_order for job in jobs if job.sales_order})
+	customer_lpo_number = ""
+	if len(sales_orders) == 1:
+		customer_lpo_number = frappe.db.get_value("Transport Sales Order", sales_orders[0], "customer_lpo_number") or ""
+
+	return {
+		"header": {
+			"customer": customer,
+			"company": company,
+			"currency": "AED",
+			"taxes_and_charges": tax_template,
+			"transport_sales_order": sales_orders[0] if len(sales_orders) == 1 else "",
+			"customer_lpo_number": customer_lpo_number,
+			"tms_invoice_type": "Transport",
+			"tms_transport_trips": json.dumps(trip_names),
+		},
+		"source_jobs": [build_invoice_source_job_row(job) for job in jobs],
+		"items": build_transport_invoice_item_rows(groups, service_item, income_account, cost_center),
+		"taxes": get_sales_tax_rows(tax_template),
+		"trip_names": trip_names,
+	}
+
+
+def get_invoice_source_jobs_for_trips(trip_names):
+	return frappe.db.sql(
+		"""
+		select distinct
+			job.name, job.sales_order, job.sales_order_item, job.material,
+			job.loading_site, job.unloading_site, job.delivered_quantity, job.agreed_rate
+		from `tabTransport Job` job
+		inner join `tabTransport Trip` trip on trip.transport_job = job.name
+		where trip.name in %(trip_names)s
+		order by job.creation asc, job.name asc
+		""",
+		{"trip_names": tuple(trip_names)},
+		as_dict=True,
+	)
+
+
+def build_invoice_source_job_row(job):
+	return {
+		"transport_job": job.name,
+		"sales_order_item": job.sales_order_item,
+		"material": job.material,
+		"loading_location": job.loading_site,
+		"unloading_location": job.unloading_site,
+		"delivered_quantity": flt(job.delivered_quantity, 6),
+		"amount": flt(flt(job.delivered_quantity, 6) * flt(job.agreed_rate, 2), 2),
+	}
+
+
+def build_transport_invoice_item_rows(groups, service_item, income_account, cost_center=None):
+	rows = []
+	for group in groups:
+		description = "{0} - {1} - {2}".format(group["loading_site"], group["unloading_site"], group["material"])
+		row = {
+			"item_code": service_item,
+			"item_name": service_item,
+			"description": description,
+			"qty": group["qty"],
+			"uom": TON_UOM,
+			"conversion_factor": 1,
+			"rate": group["rate"],
+			"income_account": income_account,
+			"tms_loading_location": group["loading_site"],
+			"tms_unloading_location": group["unloading_site"],
+			"tms_material": group["material"],
+			"tms_route_description": description,
+		}
+		if len(group["job_names"]) == 1:
+			row["tms_transport_job"] = group["job_names"][0]
+		if cost_center:
+			row["cost_center"] = cost_center
+		rows.append(row)
+	return rows
+
+
+def get_sales_tax_rows(tax_template):
+	if not tax_template:
+		return []
+	return frappe.get_all(
+		"Sales Taxes and Charges",
+		filters={"parent": tax_template},
+		fields=["charge_type", "account_head", "description", "rate", "cost_center"],
+		order_by="idx asc",
 	)
 
 
@@ -791,7 +1005,7 @@ def build_billing_trip_row(job, trip):
 
 
 def build_sales_order_billing_trip_row(trip):
-	delivered_quantity = flt(trip.delivered_quantity, 6)
+	delivered_quantity = get_trip_billing_quantity(trip)
 	unit_rate = flt(trip.agreed_rate, 2)
 	amounts = calculate_trip_transport_amount(delivered_quantity, unit_rate)
 	charge_totals = get_transport_trip_charge_totals(trip.name)
@@ -801,7 +1015,10 @@ def build_sales_order_billing_trip_row(trip):
 		"transport_job": trip.transport_job,
 		"sales_order_item": trip.sales_order_item,
 		"trip_date": trip.trip_date,
+		"loading_datetime": trip.loading_datetime,
 		"gdn_date": trip.delivery_datetime or trip.trip_date,
+		"delivery_datetime": trip.delivery_datetime,
+		"status": trip.status,
 		"loading_no": trip.loading_no,
 		"execution_source": trip.execution_source,
 		"vehicle": trip.hired_vehicle if trip.execution_source == "HIRED" else trip.vehicle,
@@ -859,12 +1076,16 @@ def group_sales_order_invoice_trips(trips):
 				"job_names": set(),
 			},
 		)
-		group["qty"] = flt(group["qty"] + flt(trip.delivered_quantity, 6), 6)
+		group["qty"] = flt(group["qty"] + get_trip_billing_quantity(trip), 6)
 		group["trip_names"].append(trip.name)
 		group["job_names"].add(trip.transport_job)
 	for group in groups.values():
 		group["job_names"] = sorted(group["job_names"])
 	return list(groups.values())
+
+
+def get_trip_billing_quantity(trip):
+	return flt(trip.delivered_quantity, 6) or flt(trip.get("loaded_quantity"), 6)
 
 
 def calculate_trip_transport_amount(delivered_quantity, unit_rate):
@@ -917,21 +1138,19 @@ def format_route(loading_site, unloading_site):
 
 
 @frappe.whitelist()
-def create_transport_invoice(transport_sales_order=None, transport_job=None, trip_names=None):
+def create_transport_invoice(transport_sales_order=None, transport_job=None, trip_names=None, from_date=None, to_date=None):
 	if not _user_can_prepare_billing():
 		frappe.throw(_("You are not permitted to create Transport Invoices."), frappe.PermissionError)
 
 	ensure_tms_billing_setup()
 	sales_order = get_sales_order_for_transport_billing(transport_sales_order, transport_job)
+	from_date, to_date = validate_billing_date_range(from_date, to_date)
 	from transport_management.transport_management.doctype.transport_sales_order.transport_sales_order import (
 		refresh_sales_order_billing_progress,
 	)
 
 	refresh_sales_order_billing_progress(sales_order)
 	order = frappe.get_doc("Transport Sales Order", sales_order)
-	existing_invoice = get_active_transport_invoice_for_sales_order(order.name)
-	if existing_invoice:
-		frappe.throw(_("Transport Invoice {0} already exists for Sales Order {1}.").format(existing_invoice.name, order.name))
 	legacy_invoices = get_legacy_active_transport_invoices_for_sales_order(order.name)
 	if legacy_invoices:
 		frappe.throw(
@@ -939,9 +1158,6 @@ def create_transport_invoice(transport_sales_order=None, transport_job=None, tri
 				legacy_invoices[0].name, order.name
 			)
 		)
-	if order.billing_status != BILLING_STATUS_READY:
-		frappe.throw(_("Transport Sales Order {0} is not ready for billing.").format(order.name))
-
 	company = get_default_company()
 	validate_company_currency(company)
 	service_item = get_transport_service_item()
@@ -949,9 +1165,10 @@ def create_transport_invoice(transport_sales_order=None, transport_job=None, tri
 	income_account = get_income_account(company, service_item)
 	cost_center = get_cost_center(company)
 
-	trips = get_sales_order_billable_trips(order.name)
+	trips = get_sales_order_billable_trips(order.name, from_date=from_date, to_date=to_date)
 	if not trips:
-		frappe.throw(_("No CLOSED Trips are available for Transport Sales Order {0}.").format(order.name))
+		frappe.throw(_("No billable Trips are available for Transport Sales Order {0} in the selected date range.").format(order.name))
+	validate_invoice_trips_not_already_billed([trip.name for trip in trips])
 	groups = group_sales_order_invoice_trips(trips)
 	jobs = get_sales_order_billing_jobs(order.name)
 	invoice = build_transport_sales_order_invoice(
@@ -966,6 +1183,7 @@ def create_transport_invoice(transport_sales_order=None, transport_job=None, tri
 	)
 	invoice.insert(ignore_permissions=True)
 	validate_invoice_totals(invoice, groups)
+	validate_invoice_trips_not_already_billed([trip.name for trip in trips])
 	mark_trips_draft_invoiced([trip.name for trip in trips], invoice.name)
 	frappe.db.set_value(
 		"Transport Sales Order",
@@ -1196,6 +1414,77 @@ def get_selected_invoice_trips(job, trip_names):
 	return trips
 
 
+def validate_invoice_trips_not_already_billed(trip_names):
+	validate_invoice_trips_available_for_invoice(trip_names)
+
+
+def validate_invoice_trips_available_for_invoice(trip_names, invoice_name=None):
+	if not trip_names:
+		return
+	rows = frappe.db.sql(
+		"""
+		select name, transport_sales_invoice, transport_billing_status
+		from `tabTransport Trip`
+		where name in %(trip_names)s
+		for update
+		""",
+		{"trip_names": tuple(trip_names)},
+		as_dict=True,
+	)
+	for row in rows:
+		if row.transport_sales_invoice and row.transport_sales_invoice != invoice_name:
+			frappe.throw(
+				_("Trip {0} is already included in Sales Invoice {1}.").format(
+					row.name, row.transport_sales_invoice
+				)
+			)
+		if row.transport_billing_status in BILLING_BLOCKED_STATUSES and row.transport_sales_invoice != invoice_name:
+			frappe.throw(
+				_("Trip {0} is already included in Sales Invoice {1}.").format(
+					row.name, row.transport_sales_invoice or _("another invoice")
+				)
+			)
+
+
+def validate_transport_sales_invoice(doc, method=None):
+	if getattr(doc, "tms_invoice_type", None) != "Transport":
+		return
+	trip_names = get_invoice_transport_trip_names_from_doc(doc)
+	if not trip_names:
+		return
+	validate_invoice_trips_available_for_invoice(trip_names, doc.name)
+	customer = getattr(doc, "customer", None)
+	if customer:
+		wrong_customer = frappe.db.sql(
+			"""
+			select trip.name
+			from `tabTransport Trip` trip
+			inner join `tabTransport Job` job on job.name = trip.transport_job
+			where trip.name in %(trip_names)s
+				and job.customer != %(customer)s
+			""",
+			{"trip_names": tuple(trip_names), "customer": customer},
+			as_dict=True,
+		)
+		if wrong_customer:
+			frappe.throw(_("Selected Trips do not belong to Customer {0}.").format(customer))
+
+
+def get_invoice_transport_trip_names_from_doc(doc):
+	raw_value = getattr(doc, "tms_transport_trips", None)
+	if not raw_value:
+		return []
+	if isinstance(raw_value, (list, tuple)):
+		return list(dict.fromkeys(raw_value))
+	try:
+		values = json.loads(raw_value)
+	except (TypeError, ValueError):
+		frappe.throw(_("TMS selected Transport Trips could not be parsed."))
+	if not isinstance(values, list):
+		frappe.throw(_("TMS selected Transport Trips must be a list."))
+	return list(dict.fromkeys(values))
+
+
 def group_invoice_trips(job, trips):
 	groups = {}
 	for trip in trips:
@@ -1390,6 +1679,9 @@ def mark_trips_draft_invoiced(trip_names, invoice):
 def sync_transport_invoice_lifecycle(doc, method=None):
 	if getattr(doc, "tms_invoice_type", None) not in {"Transport", TOLL_INVOICE_TYPE}:
 		return
+	if doc.tms_invoice_type == "Transport" and get_invoice_transport_trip_names_from_doc(doc):
+		sync_direct_transport_invoice_lifecycle(doc, method=method)
+		return
 	if doc.tms_invoice_type == "Transport" and getattr(doc, "transport_sales_order", None):
 		sync_sales_order_transport_invoice_lifecycle(doc, method=method)
 		return
@@ -1430,6 +1722,90 @@ def sync_transport_invoice_lifecycle(doc, method=None):
 			{"transport_sales_invoice": doc.name, "billing_status": BILLING_STATUS_IN_PROGRESS},
 			update_modified=False,
 		)
+
+
+def sync_direct_transport_invoice_lifecycle(doc, method=None):
+	trip_names = get_invoice_transport_trip_names_from_doc(doc)
+	if method == "on_trash" or doc.docstatus == 2:
+		clear_direct_transport_invoice_reference(doc.name, trip_names)
+		refresh_invoice_source_progress(trip_names)
+		return
+
+	status = "Invoiced" if doc.docstatus == 1 else "Draft Invoice"
+	for trip in trip_names:
+		frappe.db.set_value(
+			"Transport Trip",
+			trip,
+			{
+				"transport_billing_status": status,
+				"transport_sales_invoice": doc.name,
+			},
+			update_modified=False,
+		)
+	refresh_invoice_source_progress(trip_names, invoice=doc.name, submitted=doc.docstatus == 1)
+
+
+def clear_direct_transport_invoice_reference(invoice, trip_names=None):
+	trip_names = trip_names or frappe.get_all(
+		"Transport Trip",
+		filters={"transport_sales_invoice": invoice},
+		pluck="name",
+	)
+	for trip in trip_names:
+		if frappe.db.get_value("Transport Trip", trip, "transport_sales_invoice") == invoice:
+			frappe.db.set_value(
+				"Transport Trip",
+				trip,
+				{
+					"transport_billing_status": "Not Billed",
+					"transport_sales_invoice": None,
+				},
+				update_modified=False,
+			)
+
+
+def refresh_invoice_source_progress(trip_names, invoice=None, submitted=False):
+	if not trip_names:
+		return
+	jobs = frappe.get_all(
+		"Transport Trip",
+		filters={"name": ["in", trip_names]},
+		pluck="transport_job",
+	)
+	jobs = sorted(set(jobs))
+	sales_orders = []
+	for job in jobs:
+		refresh_quantity_progress(job)
+		if invoice:
+			frappe.db.set_value(
+				"Transport Job",
+				job,
+				{
+					"transport_sales_invoice": invoice,
+					"billing_status": BILLING_STATUS_INVOICED if submitted else BILLING_STATUS_IN_PROGRESS,
+				},
+				update_modified=False,
+			)
+		sales_order = frappe.db.get_value("Transport Job", job, "sales_order")
+		if sales_order:
+			sales_orders.append(sales_order)
+	for sales_order in sorted(set(sales_orders)):
+		if invoice:
+			frappe.db.set_value(
+				"Transport Sales Order",
+				sales_order,
+				{
+					"transport_sales_invoice": invoice,
+					"billing_status": BILLING_STATUS_INVOICED if submitted else BILLING_STATUS_IN_PROGRESS,
+				},
+				update_modified=False,
+			)
+		else:
+			from transport_management.transport_management.doctype.transport_sales_order.transport_sales_order import (
+				refresh_sales_order_billing_progress,
+			)
+
+			refresh_sales_order_billing_progress(sales_order)
 
 
 def sync_sales_order_transport_invoice_lifecycle(doc, method=None):

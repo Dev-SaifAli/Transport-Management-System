@@ -170,26 +170,24 @@ function add_billing_actions(frm) {
 	}
 
 	if (frm.doc.billing_status === "Ready for Billing") {
-		frm.add_custom_button(__("Prepare Billing"), () => {
-			frappe.call({
-				method:
-					"transport_management.transport_management.doctype.transport_sales_order.transport_sales_order.prepare_billing",
-				args: {
-					sales_order: frm.doc.name
-				},
-				callback(r) {
-					const route = r.message && r.message.route;
-					frappe.route_options = { transport_sales_order: frm.doc.name };
-					frappe.set_route(route || "tms-billing-review");
-				}
-			});
+		frm.add_custom_button(__("Create Transport Invoice"), () => {
+			open_transport_sales_invoice(frm);
 		}, __("Billing")).addClass("btn-primary");
 	} else if (frm.doc.billing_status === "Billing In Progress") {
-		frm.add_custom_button(__("Review Billing"), () => {
-			frappe.route_options = { transport_sales_order: frm.doc.name };
-			frappe.set_route("tms-billing-review");
+		frm.add_custom_button(__("Create Transport Invoice"), () => {
+			open_transport_sales_invoice(frm);
 		}, __("Billing")).addClass("btn-primary");
 	}
+}
+
+function open_transport_sales_invoice(frm) {
+	frappe.route_options = {
+		customer: frm.doc.customer,
+		transport_sales_order: frm.doc.name,
+		customer_lpo_number: frm.doc.customer_lpo_number,
+		tms_invoice_type: "Transport",
+	};
+	frappe.new_doc("Sales Invoice");
 }
 
 function show_create_jobs_dialog(frm) {

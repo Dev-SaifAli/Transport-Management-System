@@ -456,7 +456,7 @@ def prepare_billing(sales_order):
 	return {
 		"transport_sales_order": sales_order,
 		"billing_status": billing_status,
-		"route": "tms-billing-review",
+		"route": ["Form", "Sales Invoice", "new-sales-invoice"],
 	}
 
 

@@ -148,6 +148,7 @@ doctype_js = {
 
 doc_events = {
 	"Sales Invoice": {
+		"validate": "transport_management.transport_management.doctype.transport_job.transport_job.validate_transport_sales_invoice",
 		"on_update": "transport_management.transport_management.doctype.transport_job.transport_job.sync_transport_invoice_lifecycle",
 		"on_submit": "transport_management.transport_management.doctype.transport_job.transport_job.sync_transport_invoice_lifecycle",
 		"on_cancel": "transport_management.transport_management.doctype.transport_job.transport_job.sync_transport_invoice_lifecycle",

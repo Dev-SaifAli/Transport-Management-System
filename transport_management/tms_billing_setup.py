@@ -58,6 +58,43 @@ SALES_INVOICE_FIELDS = (
 		"read_only": 1,
 		"module": "Transport Management",
 	},
+	{
+		"fieldname": "tms_transport_billing_section",
+		"label": "Transport Billing",
+		"fieldtype": "Section Break",
+		"insert_after": "tms_source_jobs",
+		"module": "Transport Management",
+	},
+	{
+		"fieldname": "tms_billing_from_date",
+		"label": "From Date",
+		"fieldtype": "Date",
+		"insert_after": "tms_transport_billing_section",
+		"module": "Transport Management",
+	},
+	{
+		"fieldname": "tms_billing_to_date",
+		"label": "To Date",
+		"fieldtype": "Date",
+		"insert_after": "tms_billing_from_date",
+		"module": "Transport Management",
+	},
+	{
+		"fieldname": "tms_get_transport_trips",
+		"label": "Get Trips",
+		"fieldtype": "Button",
+		"insert_after": "tms_billing_to_date",
+		"module": "Transport Management",
+	},
+	{
+		"fieldname": "tms_transport_trips",
+		"label": "TMS Selected Transport Trips",
+		"fieldtype": "Long Text",
+		"insert_after": "tms_get_transport_trips",
+		"hidden": 1,
+		"read_only": 1,
+		"module": "Transport Management",
+	},
 )
 
 SALES_INVOICE_ITEM_FIELDS = (
@@ -477,9 +514,9 @@ def ensure_custom_field(doctype, field):
 
 def update_existing_custom_field(custom_field, field):
 	updates = {}
-	for key in ("label", "options", "read_only", "in_list_view", "columns"):
+	for key in ("label", "options", "insert_after", "read_only", "in_list_view", "columns", "hidden"):
 		if key in field:
-			updates[key] = cint(field[key]) if key in {"read_only", "in_list_view", "columns"} else field[key]
+			updates[key] = cint(field[key]) if key in {"read_only", "in_list_view", "columns", "hidden"} else field[key]
 	if updates:
 		frappe.db.set_value("Custom Field", custom_field, updates, update_modified=False)
 
