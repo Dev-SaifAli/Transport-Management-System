@@ -1,13 +1,10 @@
 frappe.listview_settings["Transport Charge Rule"] = {
 	add_fields: [
 		"rule_name",
-		"charge_type",
 		"loading_area_zone",
 		"loading_location",
+		"unloading_area_zone",
 		"unloading_location",
-		"material",
-		"rate_basis",
-		"amount",
 		"active",
 	],
 
