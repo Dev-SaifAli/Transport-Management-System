@@ -28,8 +28,8 @@ app_license = "mit"
 # app_include_css = "/assets/transport_management/css/transport_management.css"
 
 # include js, css files in header of web template
-# web_include_css = "/assets/transport_management/css/transport_management.css"
-# web_include_js = "/assets/transport_management/js/transport_management.js"
+web_include_css = ["/assets/transport_management/css/tms_login.css"]
+web_include_js = ["/assets/transport_management/js/tms_login.js"]
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "transport_management/public/scss/website"
