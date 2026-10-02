@@ -195,6 +195,7 @@
  ],
  "row_format": "Dynamic",
  "search_fields": "full_name",
+ "show_title_field_in_link": 1,
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

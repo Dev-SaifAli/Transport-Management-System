@@ -84,7 +84,8 @@ function effective_vehicle_display(doc) {
 }
 
 function effective_driver_display(doc) {
-	const value = doc.execution_source === "HIRED" ? doc.hired_driver : doc.driver;
+	const value =
+		doc.execution_source === "HIRED" ? doc.hired_driver : doc.driver_full_name || doc.driver;
 	return trip_text_display(value, "tms-list-driver");
 }
 

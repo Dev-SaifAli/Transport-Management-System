@@ -52,9 +52,9 @@ function fetch_area_zone(frm, location_field, zone_field) {
 }
 
 function update_rule_name(frm) {
-	const loading = frm.doc.loading_location || frm.doc.loading_area_zone || __("Any Loading");
-	const unloading = frm.doc.unloading_location || frm.doc.unloading_area_zone || __("Any Unloading");
-	const rule_name = `${loading} → ${unloading}`;
+	const loading = frm.doc.loading_location || frm.doc.loading_area_zone;
+	const unloading = frm.doc.unloading_location || frm.doc.unloading_area_zone;
+	const rule_name = loading && unloading ? `${loading} → ${unloading}` : "";
 
 	if (frm.doc.rule_name !== rule_name) {
 		frm.set_value("rule_name", rule_name);

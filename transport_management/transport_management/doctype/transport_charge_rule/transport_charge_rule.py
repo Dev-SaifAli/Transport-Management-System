@@ -22,7 +22,7 @@ class TransportChargeRule(Document):
 	def autoname(self):
 		sync_route_area_zones(self)
 		self.rule_name = make_route_rule_name(self)
-		self.name = self.rule_name
+		self.name = self.rule_name or "New Transport Charge Rule {0}".format(frappe.generate_hash(length=8).upper())
 
 	def before_validate(self):
 		sync_route_area_zones(self)
@@ -83,8 +83,10 @@ def route_location_was_cleared(rule, fieldname):
 
 
 def make_route_rule_name(rule):
-	loading = rule.loading_location or rule.loading_area_zone or _("Any Loading")
-	unloading = rule.unloading_location or rule.unloading_area_zone or _("Any Unloading")
+	loading = rule.loading_location or rule.loading_area_zone
+	unloading = rule.unloading_location or rule.unloading_area_zone
+	if not loading or not unloading:
+		return ""
 	base = _("{0} → {1}").format(loading, unloading)
 	if not route_rule_name_exists(base, rule.name):
 		return base
