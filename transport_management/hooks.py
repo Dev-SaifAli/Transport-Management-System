@@ -43,6 +43,8 @@ web_include_js = ["/assets/transport_management/js/tms_login.js"]
 
 # include js in doctype views
 doctype_js = {
+	"Expense Claim": "public/js/expense_claim.js",
+	"Purchase Invoice": "public/js/purchase_invoice.js",
 	"Sales Invoice": "public/js/sales_invoice.js",
 }
 # doctype_js = {"doctype" : "public/js/doctype.js"}
@@ -60,6 +62,7 @@ doctype_js = {
 
 # application home page (will override Website Settings)
 # home_page = "login"
+get_website_user_home_page = "transport_management.tms_landing.get_tms_home_page"
 
 # website user home page (by Role)
 # role_home_page = {
@@ -147,6 +150,12 @@ doctype_js = {
 # Hook on document methods and events
 
 doc_events = {
+	"Expense Claim": {
+		"validate": "transport_management.tms_driver_expense.normalize_expense_claim_tms_references",
+	},
+	"Purchase Invoice": {
+		"validate": "transport_management.tms_expense_traceability.normalize_purchase_invoice_tms_references",
+	},
 	"Sales Invoice": {
 		"validate": "transport_management.transport_management.doctype.transport_job.transport_job.validate_transport_sales_invoice",
 		"on_update": "transport_management.transport_management.doctype.transport_job.transport_job.sync_transport_invoice_lifecycle",

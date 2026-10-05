@@ -9,6 +9,7 @@ TRANSPORT_SERVICE_ITEM = "Transport Service"
 TOLL_SERVICE_ITEM = "Toll / Extra Charges"
 SALES_INVOICE = "Sales Invoice"
 SALES_INVOICE_ITEM = "Sales Invoice Item"
+PURCHASE_INVOICE_ITEM = "Purchase Invoice Item"
 TMS_TRANSPORT_INVOICE_PRINT_FORMAT = "TMS Transport Invoice"
 TMS_TRANSPORT_TRIP_SHEET_PRINT_FORMAT = "TMS Transport Trip Sheet"
 TMS_TOLL_INVOICE_PRINT_FORMAT = "TMS Toll / Extra Charges Invoice"
@@ -181,6 +182,57 @@ SALES_INVOICE_ITEM_FIELDS = (
 		"options": "Transport Charge Rule",
 		"insert_after": "tms_rate_basis",
 		"read_only": 1,
+		"module": "Transport Management",
+	},
+)
+
+PURCHASE_INVOICE_ITEM_FIELDS = (
+	{
+		"fieldname": "tms_transport_trip",
+		"label": "Transport Trip",
+		"fieldtype": "Link",
+		"options": "Transport Trip",
+		"insert_after": "description",
+		"in_list_view": 1,
+		"columns": 2,
+		"module": "Transport Management",
+	},
+	{
+		"fieldname": "tms_transport_job",
+		"label": "Transport Job",
+		"fieldtype": "Link",
+		"options": "Transport Job",
+		"insert_after": "tms_transport_trip",
+		"in_list_view": 1,
+		"columns": 2,
+		"module": "Transport Management",
+	},
+	{
+		"fieldname": "tms_transport_sales_order",
+		"label": "Transport Sales Order",
+		"fieldtype": "Link",
+		"options": "Transport Sales Order",
+		"insert_after": "tms_transport_job",
+		"module": "Transport Management",
+	},
+	{
+		"fieldname": "tms_truck",
+		"label": "Truck",
+		"fieldtype": "Link",
+		"options": "Truck",
+		"insert_after": "tms_transport_sales_order",
+		"in_list_view": 1,
+		"columns": 2,
+		"module": "Transport Management",
+	},
+	{
+		"fieldname": "tms_hired_vehicle",
+		"label": "Hired Vehicle",
+		"fieldtype": "Link",
+		"options": "Hired Vehicle",
+		"insert_after": "tms_truck",
+		"in_list_view": 1,
+		"columns": 2,
 		"module": "Transport Management",
 	},
 )
@@ -476,6 +528,7 @@ TMS_TOLL_INVOICE_HTML = """
 def ensure_tms_billing_setup():
 	ensure_sales_invoice_fields()
 	ensure_sales_invoice_item_fields()
+	ensure_purchase_invoice_item_fields()
 	ensure_transport_invoice_print_format()
 	ensure_transport_trip_sheet_print_format()
 	ensure_toll_invoice_print_format()
@@ -498,6 +551,14 @@ def ensure_sales_invoice_item_fields():
 	for field in SALES_INVOICE_ITEM_FIELDS:
 		ensure_custom_field(SALES_INVOICE_ITEM, field)
 	frappe.clear_cache(doctype=SALES_INVOICE_ITEM)
+
+
+def ensure_purchase_invoice_item_fields():
+	if not frappe.db.exists("DocType", PURCHASE_INVOICE_ITEM):
+		return
+	for field in PURCHASE_INVOICE_ITEM_FIELDS:
+		ensure_custom_field(PURCHASE_INVOICE_ITEM, field)
+	frappe.clear_cache(doctype=PURCHASE_INVOICE_ITEM)
 
 
 def ensure_custom_field(doctype, field):

@@ -30,9 +30,11 @@
   "loading_delivery_tab",
   "loaded_quantity",
   "loading_datetime",
+  "driver_started_at",
   "column_break_loading_delivery",
   "delivered_quantity",
   "delivery_datetime",
+  "driver_delivered_at",
   "actual_quantity",
   "charges_tab",
   "toll_applicable",
@@ -52,7 +54,11 @@
   "unloading_no",
   "transport_billing_section",
   "transport_billing_status",
-  "transport_sales_invoice"
+  "transport_sales_invoice",
+  "assignment_notification_section",
+  "assignment_notification_status",
+  "assignment_notified_at",
+  "assignment_notification_error"
  ],
  "fields": [
   {
@@ -227,6 +233,12 @@
    "label": "Loading Date/Time"
   },
   {
+   "fieldname": "driver_started_at",
+   "fieldtype": "Datetime",
+   "label": "Driver Started At",
+   "read_only": 1
+  },
+  {
    "fieldname": "column_break_loading_delivery",
    "fieldtype": "Column Break"
   },
@@ -240,6 +252,12 @@
    "fieldname": "delivery_datetime",
    "fieldtype": "Datetime",
    "label": "Delivery Date/Time"
+  },
+  {
+   "fieldname": "driver_delivered_at",
+   "fieldtype": "Datetime",
+   "label": "Driver Delivered At",
+   "read_only": 1
   },
   {
    "fieldname": "actual_quantity",
@@ -353,6 +371,32 @@
    "hidden": 1,
    "label": "Transport Sales Invoice",
    "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assignment_notification_section",
+   "fieldtype": "Section Break",
+   "label": "Driver Assignment Notification",
+   "collapsible": 1
+  },
+  {
+   "default": "NOT_SENT",
+   "fieldname": "assignment_notification_status",
+   "fieldtype": "Select",
+   "label": "Assignment Notification Status",
+   "options": "NOT_SENT\nSENT\nFAILED\nSKIPPED",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assignment_notified_at",
+   "fieldtype": "Datetime",
+   "label": "Assignment Notified At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assignment_notification_error",
+   "fieldtype": "Small Text",
+   "label": "Assignment Notification Error",
    "read_only": 1
   }
  ],

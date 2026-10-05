@@ -66,11 +66,40 @@ class TransportTrip(Document):
 		self.validate_reserved_quantity()
 		sync_legacy_charge_totals(self)
 
+	def before_save(self):
+		self.set_driver_assignment_notification_flags()
+
 	def on_update(self):
 		refresh_quantity_progress(self.transport_job)
+		self.enqueue_driver_assignment_notification()
 
 	def on_trash(self):
 		refresh_quantity_progress(self.transport_job)
+
+	def set_driver_assignment_notification_flags(self):
+		self.flags.previous_driver = None
+		self.flags.notify_assigned_driver = False
+
+		if not self.driver:
+			return
+
+		if self.is_new():
+			self.flags.notify_assigned_driver = True
+			return
+
+		previous_driver = frappe.db.get_value(self.doctype, self.name, "driver")
+		self.flags.previous_driver = previous_driver
+		self.flags.notify_assigned_driver = bool(previous_driver != self.driver)
+
+	def enqueue_driver_assignment_notification(self):
+		if not self.flags.notify_assigned_driver:
+			return
+
+		from transport_management.services.driver_notifications import (
+			queue_driver_trip_assignment_notification,
+		)
+
+		queue_driver_trip_assignment_notification(self.name, self.flags.previous_driver)
 
 	def validate_transport_job_exists(self):
 		if not self.transport_job or not frappe.db.exists("Transport Job", self.transport_job):
@@ -263,6 +292,9 @@ class TransportTrip(Document):
 
 		if previous_status == "CLOSED":
 			frappe.throw(_("Closed Transport Trips cannot be reopened or changed."))
+
+		if self.flags.get("driver_portal_start_trip") and previous_status == "ASSIGNED" and self.status == "IN_TRANSIT":
+			return
 
 		if self.status == "CANCELLED":
 			if previous_status == "CLOSED":

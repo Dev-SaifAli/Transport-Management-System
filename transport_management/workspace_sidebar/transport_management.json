@@ -13,8 +13,8 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Home",
-   "link_to": "Transport Management",
-   "link_type": "Workspace",
+   "link_to": "tms-trip-operations",
+   "link_type": "Page",
    "show_arrow": 0,
    "type": "Link"
   },
@@ -22,6 +22,7 @@
    "child": 0,
    "collapsible": 1,
    "indent": 0,
+   "icon": "briefcase",
    "keep_closed": 0,
    "label": "Operations / Commercial",
    "link_type": "DocType",
@@ -31,6 +32,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "file",
    "indent": 0,
    "keep_closed": 0,
    "label": "Sales Orders",
@@ -42,6 +44,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "briefcase",
    "indent": 0,
    "keep_closed": 0,
    "label": "Transport Job",
@@ -53,6 +56,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "truck",
    "indent": 0,
    "keep_closed": 0,
    "label": "Transport Trip",
@@ -64,6 +68,7 @@
   {
    "child": 0,
    "collapsible": 1,
+   "icon": "truck",
    "indent": 0,
    "keep_closed": 0,
    "label": "Fleet",
@@ -74,6 +79,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "truck",
    "indent": 0,
    "keep_closed": 0,
    "label": "Owned Trucks",
@@ -85,6 +91,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "car",
    "indent": 0,
    "keep_closed": 0,
    "label": "Hired Vehicles",
@@ -96,6 +103,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "users",
    "indent": 0,
    "keep_closed": 0,
    "label": "Drivers",
@@ -107,6 +115,7 @@
   {
    "child": 0,
    "collapsible": 1,
+   "icon": "settings",
    "indent": 0,
    "keep_closed": 0,
    "label": "Masters",
@@ -117,6 +126,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "building",
    "indent": 0,
    "keep_closed": 0,
    "label": "Customers",
@@ -128,6 +138,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "building",
    "indent": 0,
    "keep_closed": 0,
    "label": "Suppliers / Transporters",
@@ -139,6 +150,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "calculator",
    "indent": 0,
    "keep_closed": 0,
    "label": "Transport Rates",
@@ -150,6 +162,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "receipt",
    "indent": 0,
    "keep_closed": 0,
    "label": "Transport Charge Rule",
@@ -161,6 +174,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "map-pin",
    "indent": 0,
    "keep_closed": 0,
    "label": "Transport Locations",
@@ -172,6 +186,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "package",
    "indent": 0,
    "keep_closed": 0,
    "label": "Materials",
@@ -183,6 +198,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "tags",
    "indent": 0,
    "keep_closed": 0,
    "label": "Truck Types",
@@ -194,6 +210,7 @@
   {
    "child": 0,
    "collapsible": 1,
+   "icon": "settings",
    "indent": 0,
    "keep_closed": 0,
    "label": "Tools",
@@ -204,6 +221,7 @@
   {
    "child": 1,
    "collapsible": 1,
+   "icon": "file",
    "indent": 0,
    "keep_closed": 0,
    "label": "Data Import",

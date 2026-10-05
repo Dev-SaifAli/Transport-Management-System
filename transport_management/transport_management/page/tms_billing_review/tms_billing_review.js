@@ -7,6 +7,7 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 
 	const state = {
 		review: null,
+		filters: get_default_filters(),
 	};
 
 	page.set_primary_action(__("Back to Sales Order"), () => {
@@ -20,6 +21,19 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 		<div class="tms-billing-review">
 			<div class="frappe-card p-4" data-field="summary-card">
 				<div class="text-muted">${__("Loading billing review...")}</div>
+			</div>
+			<div class="frappe-card p-4 mt-4">
+				<div class="d-flex flex-wrap align-items-end gap-3">
+					<div>
+						<label class="control-label">${__("From Date")}</label>
+						<input type="date" class="form-control form-control-sm" data-field="from-date">
+					</div>
+					<div>
+						<label class="control-label">${__("To Date")}</label>
+						<input type="date" class="form-control form-control-sm" data-field="to-date">
+					</div>
+					<button class="btn btn-default btn-sm" data-action="apply-date-filter">${__("Apply")}</button>
+				</div>
 			</div>
 			<div class="frappe-card p-4 mt-4 hide" data-field="invoice-summary-card"></div>
 			<div class="frappe-card p-4 mt-4">
@@ -47,7 +61,7 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 			</div>
 			<div class="frappe-card p-4 mt-4">
 				<div class="d-flex justify-content-between align-items-center mb-3">
-					<h5 class="m-0">${__("Closed Source Trips")}</h5>
+					<h5 class="m-0">${__("Invoice Source Trips")}</h5>
 					<div class="d-flex align-items-center gap-2">
 						<span class="text-muted small" data-field="trip-count"></span>
 						<button class="btn btn-primary btn-sm" data-action="create-transport-invoice">
@@ -62,13 +76,16 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 								<th>${__("Trip No.")}</th>
 								<th>${__("Transport Job")}</th>
 								<th>${__("Trip Date")}</th>
+								<th>${__("Loading Date")}</th>
+								<th>${__("Delivery Date")}</th>
+								<th>${__("Status")}</th>
 								<th>${__("GDN")}</th>
 								<th>${__("Loading No.")}</th>
 								<th>${__("Vehicle / Hired Vehicle")}</th>
 								<th>${__("Driver / Hired Driver")}</th>
 								<th>${__("Material")}</th>
 								<th>${__("Route")}</th>
-								<th class="text-right">${__("Delivered Quantity")}</th>
+								<th class="text-right">${__("Billable Quantity")}</th>
 								<th class="text-right">${__("Unit Rate")}</th>
 								<th class="text-right">${__("Taxable Amount")}</th>
 								<th class="text-right">${__("VAT %")}</th>
@@ -77,7 +94,7 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 							</tr>
 						</thead>
 						<tbody data-field="trip-rows">
-							<tr><td colspan="15" class="text-muted">${__("No billing review loaded.")}</td></tr>
+							<tr><td colspan="18" class="text-muted">${__("No billing review loaded.")}</td></tr>
 						</tbody>
 					</table>
 				</div>
@@ -100,8 +117,23 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 	`);
 
 	const $body = $(page.body);
+	$body.find('[data-field="from-date"]').val(state.filters.from_date);
+	$body.find('[data-field="to-date"]').val(state.filters.to_date);
 	$body.find('[data-action="create-transport-invoice"]').on("click", () => create_transport_invoice());
+	$body.find('[data-action="apply-date-filter"]').on("click", () => {
+		state.filters.from_date = $body.find('[data-field="from-date"]').val();
+		state.filters.to_date = $body.find('[data-field="to-date"]').val();
+		load_review();
+	});
 	load_review();
+
+	function get_default_filters() {
+		const today = frappe.datetime.get_today();
+		return {
+			from_date: frappe.datetime.month_start ? frappe.datetime.month_start(today) : today,
+			to_date: today,
+		};
+	}
 
 	function get_transport_sales_order() {
 		const route_options = frappe.route_options || {};
@@ -118,7 +150,11 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 
 		frappe.call({
 			method: "transport_management.transport_management.doctype.transport_job.transport_job.get_billing_review",
-			args: { transport_sales_order },
+			args: {
+				transport_sales_order,
+				from_date: state.filters.from_date,
+				to_date: state.filters.to_date,
+			},
 			freeze: true,
 			freeze_message: __("Loading Billing Review"),
 			callback(r) {
@@ -149,6 +185,8 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 			["Ordered Quantity", format_qty(summary.ordered_quantity)],
 			["Delivered Quantity", format_qty(summary.delivered_quantity)],
 			["Billing Status", summary.billing_status],
+			["From Date", state.filters.from_date],
+			["To Date", state.filters.to_date],
 		];
 		$body.find('[data-field="summary-card"]').html(`
 			<h5 class="m-0">${__("Sales Order Summary")}</h5>
@@ -218,7 +256,7 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 		$body.find('[data-field="trip-count"]').text(__("{0} invoice source trips", [trips.length]));
 		if (!trips.length) {
 			$body.find('[data-field="trip-rows"]').html(
-				`<tr><td colspan="15" class="text-muted">${__("No closed billable trips found.")}</td></tr>`
+				`<tr><td colspan="18" class="text-muted">${__("No billable trips found for this date range.")}</td></tr>`
 			);
 			return;
 		}
@@ -231,6 +269,9 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 				<td>${link_to("Transport Trip", row.trip)}</td>
 				<td>${link_to("Transport Job", row.transport_job)}</td>
 				<td>${escape_html(row.trip_date || "")}</td>
+				<td>${escape_html(format_datetime(row.loading_datetime))}</td>
+				<td>${escape_html(format_datetime(row.delivery_datetime))}</td>
+				<td>${escape_html(row.status || "")}</td>
 				<td>${escape_html(row.gdn || "")}</td>
 				<td>${escape_html(row.loading_no || "")}</td>
 				<td>${escape_html(row.vehicle || "")}</td>
@@ -302,23 +343,33 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 		const trip_count = (state.review && state.review.trips ? state.review.trips : []).length;
 		const $button = $body.find('[data-action="create-transport-invoice"]');
 		if (summary.transport_sales_invoice) {
-			$button.removeClass("hide").prop("disabled", false).text(__("Open Transport Invoice"));
+			$button.removeClass("hide").prop("disabled", trip_count > 0).text(
+				trip_count > 0 ? __("Create Transport Invoice") : __("Open Transport Invoice")
+			);
+			if (!trip_count) {
+				$button.prop("disabled", false);
+			}
 			return;
 		}
-		const can_create = summary.billing_status === "Ready for Billing" && trip_count > 0;
+		const can_create = trip_count > 0;
 		$button.toggleClass("hide", !can_create).prop("disabled", !can_create).text(__("Create Transport Invoice"));
 	}
 
 	function create_transport_invoice() {
 		const transport_sales_order = get_transport_sales_order();
 		const summary = state.review.summary || {};
-		if (summary.transport_sales_invoice) {
+		const trip_count = (state.review && state.review.trips ? state.review.trips : []).length;
+		if (summary.transport_sales_invoice && !trip_count) {
 			frappe.set_route("Form", "Sales Invoice", summary.transport_sales_invoice);
 			return;
 		}
 		frappe.call({
 			method: "transport_management.transport_management.doctype.transport_job.transport_job.create_transport_invoice",
-			args: { transport_sales_order },
+			args: {
+				transport_sales_order,
+				from_date: state.filters.from_date,
+				to_date: state.filters.to_date,
+			},
 			freeze: true,
 			freeze_message: __("Creating Draft Transport Invoice"),
 			callback(r) {
@@ -399,12 +450,16 @@ frappe.pages["tms-billing-review"].on_page_load = function (wrapper) {
 		})}%`;
 	}
 
+	function format_datetime(value) {
+		return value ? frappe.datetime.str_to_user(value) : "";
+	}
+
 	function escape_html(value) {
 		return frappe.utils.escape_html(String(value == null ? "" : value));
 	}
 
 	$(`<style>
-		.tms-billing-review .table { min-width: 1900px; }
+		.tms-billing-review .table { min-width: 2100px; }
 		.tms-billing-route {
 			display: inline-block;
 			max-width: 240px;

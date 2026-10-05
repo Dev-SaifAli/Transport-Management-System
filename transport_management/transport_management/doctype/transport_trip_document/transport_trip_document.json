@@ -1,0 +1,320 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "format:TTDOC-{YYYY}-{#####}",
+ "creation": "2026-10-05 00:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "document_section",
+  "transport_trip",
+  "document_type",
+  "file",
+  "column_break_document",
+  "uploaded_by_driver",
+  "uploaded_by_employee",
+  "uploaded_at",
+  "upload_source",
+  "processing_section",
+  "ai_status",
+  "ai_confidence",
+  "ai_extracted_json",
+  "extracted_section",
+  "extracted_ticket_number",
+  "extracted_receipt_number",
+  "extracted_document_datetime",
+  "extracted_truck_number",
+  "column_break_extracted",
+  "extracted_customer",
+  "extracted_material",
+  "extracted_destination",
+  "extracted_station_or_gate",
+  "weights_section",
+  "extracted_gross_weight",
+  "extracted_tare_weight",
+  "extracted_net_weight",
+  "extracted_amount",
+  "verification_section",
+  "verification_status",
+  "review_notes",
+  "verified_by",
+  "verified_at"
+ ],
+ "fields": [
+  {
+   "fieldname": "document_section",
+   "fieldtype": "Section Break",
+   "label": "Document"
+  },
+  {
+   "fieldname": "transport_trip",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Transport Trip",
+   "options": "Transport Trip",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Document Type",
+   "options": "LOADING_PAPER\nABER_TOLL\nSHARJAH_TOLL\nFNRC_RECEIPT\nOFFLOADING_PAPER",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "label": "File",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_document",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "uploaded_by_driver",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Uploaded By Driver",
+   "options": "Truck Driver",
+   "reqd": 1
+  },
+  {
+   "fieldname": "uploaded_by_employee",
+   "fieldtype": "Link",
+   "label": "Uploaded By Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "uploaded_at",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Uploaded At",
+   "read_only": 1
+  },
+  {
+   "default": "DRIVER_PORTAL",
+   "fieldname": "upload_source",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Upload Source",
+   "options": "DRIVER_PORTAL\nBACK_OFFICE",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "processing_section",
+   "fieldtype": "Section Break",
+   "label": "AI Processing"
+  },
+  {
+   "default": "NOT_PROCESSED",
+   "fieldname": "ai_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "AI Status",
+   "options": "NOT_PROCESSED\nPENDING\nPROCESSING\nPROCESSED\nFAILED",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_confidence",
+   "fieldtype": "Float",
+   "label": "AI Confidence",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_extracted_json",
+   "fieldtype": "Long Text",
+   "label": "AI Extracted JSON",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "extracted_section",
+   "fieldtype": "Section Break",
+   "label": "Extracted Values"
+  },
+  {
+   "fieldname": "extracted_ticket_number",
+   "fieldtype": "Data",
+   "label": "Extracted Ticket Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_receipt_number",
+   "fieldtype": "Data",
+   "label": "Extracted Receipt Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_document_datetime",
+   "fieldtype": "Datetime",
+   "label": "Extracted Document Date/Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_truck_number",
+   "fieldtype": "Data",
+   "label": "Extracted Truck Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_extracted",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "extracted_customer",
+   "fieldtype": "Data",
+   "label": "Extracted Customer",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_material",
+   "fieldtype": "Data",
+   "label": "Extracted Material",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_destination",
+   "fieldtype": "Data",
+   "label": "Extracted Destination",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_station_or_gate",
+   "fieldtype": "Data",
+   "label": "Extracted Station or Gate",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "weights_section",
+   "fieldtype": "Section Break",
+   "label": "Extracted Weights and Amount"
+  },
+  {
+   "fieldname": "extracted_gross_weight",
+   "fieldtype": "Float",
+   "label": "Extracted Gross Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_tare_weight",
+   "fieldtype": "Float",
+   "label": "Extracted Tare Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_net_weight",
+   "fieldtype": "Float",
+   "label": "Extracted Net Weight",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_amount",
+   "fieldtype": "Currency",
+   "label": "Extracted Amount",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "verification_section",
+   "fieldtype": "Section Break",
+   "label": "Verification"
+  },
+  {
+   "default": "PENDING_REVIEW",
+   "fieldname": "verification_status",
+   "fieldtype": "Select",
+   "in_standard_filter": 1,
+   "label": "Verification Status",
+   "options": "PENDING_REVIEW\nAPPROVED\nREJECTED",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_notes",
+   "fieldtype": "Small Text",
+   "label": "Review Notes"
+  },
+  {
+   "fieldname": "verified_by",
+   "fieldtype": "Link",
+   "label": "Verified By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verified_at",
+   "fieldtype": "Datetime",
+   "label": "Verified At",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-05 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Transport Trip Document",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "TMS Trip Data Entry"
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transport Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transport Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "document_type",
+ "track_changes": 1
+}
