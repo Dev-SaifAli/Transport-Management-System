@@ -12,6 +12,9 @@ ARG ERPNEXT_REPO=https://github.com/frappe/erpnext.git
 ARG ERPNEXT_BRANCH=version-16
 ARG ERPNEXT_REF=4048fb70e14d1843956fcdabb7c3cca75a1cbcdd
 
+ARG HRMS_REPO=https://github.com/frappe/hrms.git
+ARG HRMS_BRANCH=version-16
+ARG HRMS_REF=6f5ac249283f6fa1013fd5616f3d95f686ba7bb2
 USER frappe
 WORKDIR /home/frappe
 
@@ -33,6 +36,12 @@ RUN bench get-app \
     && git fetch --depth 1 "${ERPNEXT_REPO}" "${ERPNEXT_REF}" \
     && git checkout --detach FETCH_HEAD
 
+RUN bench get-app \
+        --branch "${HRMS_BRANCH}" \
+        "${HRMS_REPO}" \
+    && cd apps/hrms \
+    && git fetch --depth 1 "${HRMS_REPO}" "${HRMS_REF}" \
+    && git checkout --detach FETCH_HEAD
 
 ARG TMS_REPO=https://github.com/Dev-SaifAli/Transport-Management-System.git
 ARG TMS_BRANCH=develop

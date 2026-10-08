@@ -81,8 +81,9 @@ else
 		--db-port "${DB_PORT}"
 		--admin-password "${ADMIN_PASSWORD}"
 		--install-app erpnext
-		--install-app transport_management
-		--set-default
+--install-app hrms
+--install-app transport_management
+--set-default
 	)
 
 	if [ -n "${DB_NAME:-}" ]; then
@@ -105,6 +106,13 @@ else
 	fi
 
 	bench new-site "${new_site_args[@]}"
+fi
+
+if ! bench --site "${SITE_NAME}" list-apps | awk '{print $1}' | grep -qx "hrms"; then
+        echo "HRMS is not installed on ${SITE_NAME}. Installing..."
+        bench --site "${SITE_NAME}" install-app hrms
+else
+        echo "HRMS is already installed on ${SITE_NAME}."
 fi
 
 bench --site "${SITE_NAME}" set-config db_host "${DB_HOST}"

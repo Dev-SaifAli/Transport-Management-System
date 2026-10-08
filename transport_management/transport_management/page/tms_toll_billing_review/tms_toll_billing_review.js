@@ -1,4 +1,5 @@
 frappe.pages["tms-toll-billing-review"].on_page_load = function (wrapper) {
+	const TOLL_PRINT_FORMAT = "Toll Tax Invoice - AL RANA";
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: __("Toll / Extra Charges Billing Review"),
@@ -244,110 +245,26 @@ frappe.pages["tms-toll-billing-review"].on_page_load = function (wrapper) {
 		}
 
 		$body.find('[data-field="invoice-preview"]').html(`
-			<div class="tms-toll-invoice-toolbar">
-				<div>
-					<span class="text-muted">${__("Sales Invoice")}:</span>
-					${link_to("Sales Invoice", invoice.name)}
-					<span class="badge badge-secondary ml-2">${escape_html(invoice.status || "")}</span>
-				</div>
-				<button class="btn btn-sm btn-primary" data-action="print-toll-invoice">${__("Print Invoice")}</button>
-			</div>
-			${render_invoice_document(invoice)}
-		`);
-	}
-
-	function render_invoice_document(invoice) {
-		const rows = invoice.items || [];
-		const taxes = invoice.taxes || [];
-		return `
-			<section class="tms-tax-invoice-preview" data-field="printable-toll-invoice">
-				<table class="tms-tax-invoice-header">
-					<tr>
-						<td class="party-cell">
-							<div class="party-title">${escape_html(invoice.company || "AL RANA TRANSPORT LLC")}</div>
-							${header_line("Invoice No", invoice.name)}
-							${header_line("Date", format_date(invoice.posting_date))}
-							${header_line("PO No", invoice.po_no || invoice.customer_lpo_number)}
-							${header_line("PO Box", extract_po_box(invoice.company_address))}
-							${header_line("Phone", invoice.company_phone)}
-							${header_line("TRN", invoice.company_tax_id)}
-						</td>
-						<td class="title-cell">
-							<div class="invoice-title">${__("TAX INVOICE")}</div>
-						</td>
-						<td class="party-cell">
-							<div class="party-title">${escape_html(invoice.customer_name || invoice.customer || "")}</div>
-							${header_line("Address", multiline(invoice.customer_address), true)}
-							${header_line("PO Box", extract_po_box(invoice.customer_address))}
-							${header_line("Phone", invoice.customer_phone)}
-							${header_line("TRN", invoice.customer_tax_id)}
-						</td>
-					</tr>
-				</table>
-
-				<table class="tms-tax-invoice-items">
-					<thead>
-						<tr>
-							<th>${__("Sr.No")}</th>
-							<th>${__("Description")}</th>
-							<th>${__("Qty")}</th>
-							<th>${__("Unit Price / AED")}</th>
-							<th>${__("Taxable Amount")}</th>
-							<th>${__("VAT Rate")}</th>
-							<th>${__("VAT Amount")}</th>
-							<th>${__("AED / Net Amount")}</th>
-						</tr>
-					</thead>
-					<tbody>
-						${rows.map((row) => `
-							<tr>
-								<td class="text-center">${escape_html(row.idx)}</td>
-								<td>${escape_html(row.description || "")}</td>
-								<td class="text-right">${format_number(row.qty)}</td>
-								<td class="text-right">${format_money(row.rate)}</td>
-								<td class="text-right">${format_money(row.taxable_amount)}</td>
-								<td class="text-right">${format_percent(row.vat_rate)}</td>
-								<td class="text-right">${format_money(row.vat_amount)}</td>
-								<td class="text-right">${format_money(row.net_amount)}</td>
-							</tr>
-						`).join("")}
-					</tbody>
-					<tfoot>
-						<tr>
-							<td colspan="4" class="text-right">${__("Net Total")}</td>
-							<td class="text-right">${format_money(invoice.net_total)}</td>
-							<td></td>
-							<td class="text-right">${format_money(invoice.total_taxes_and_charges)}</td>
-							<td class="text-right">${format_money(invoice.grand_total)}</td>
-						</tr>
-					</tfoot>
-				</table>
-
-				<div class="tms-tax-invoice-bottom">
-					<div class="amount-words">
-						<strong>${__("Amount in Words")}:</strong>
-						${escape_html(invoice.in_words || "")}
-						${render_tax_accounts(taxes)}
+			<div class="frappe-card p-4 tms-toll-print-preview">
+				<div class="d-flex justify-content-between align-items-start flex-wrap">
+					<div class="mb-2">
+						<h5 class="m-0">${__("Toll Tax Invoice")}</h5>
+						<div class="mt-2">
+							<span class="text-muted">${__("Sales Invoice")}:</span>
+							${link_to("Sales Invoice", invoice.name)}
+							<span class="badge badge-secondary ml-2">${escape_html(invoice.status || "")}</span>
+						</div>
+						<div class="text-muted small mt-1">
+							${__("Preview and print the actual Sales Invoice using native Frappe Print Format:")}
+							<strong>${escape_html(TOLL_PRINT_FORMAT)}</strong>
+						</div>
 					</div>
-					<table class="tms-tax-invoice-totals">
-						<tr><td>${__("Net Total")}</td><td>${format_money(invoice.net_total)}</td></tr>
-						<tr><td>${__("Total VAT")}</td><td>${format_money(invoice.total_taxes_and_charges)}</td></tr>
-						<tr><td>${__("Grand Total")}</td><td>${format_money(invoice.grand_total)}</td></tr>
-						<tr><td>${__("Outstanding Amount")}</td><td>${format_money(invoice.outstanding_amount)}</td></tr>
-					</table>
+					<button class="btn btn-sm btn-primary" data-action="print-toll-invoice">
+						${__("Open Print Preview")}
+					</button>
 				</div>
-			</section>
-		`;
-	}
-
-	function render_tax_accounts(taxes) {
-		if (!taxes || !taxes.length) return "";
-		return `
-			<div class="tax-account-note">
-				<strong>${__("Tax Rows")}:</strong>
-				${taxes.map((tax) => `${escape_html(tax.account_head || tax.description || "")} (${format_percent(tax.rate)}: ${format_money(tax.tax_amount)})`).join(", ")}
 			</div>
-		`;
+		`);
 	}
 
 	function create_toll_invoice() {
@@ -379,26 +296,13 @@ frappe.pages["tms-toll-billing-review"].on_page_load = function (wrapper) {
 	}
 
 	function print_invoice_preview() {
-		const printable = $body.find('[data-field="printable-toll-invoice"]').get(0);
-		if (!printable) return;
-		const print_window = window.open("", "_blank");
+		const invoice = state.invoice_preview && state.invoice_preview.name;
+		if (!invoice) return;
+		const print_url = `/printview?doctype=Sales%20Invoice&name=${encodeURIComponent(invoice)}&format=${encodeURIComponent(TOLL_PRINT_FORMAT)}&no_letterhead=0`;
+		const print_window = window.open(print_url, "_blank");
 		if (!print_window) {
 			frappe.msgprint(__("Please allow popups to print the invoice preview."));
-			return;
 		}
-		print_window.document.write(`
-			<!doctype html>
-			<html>
-				<head>
-					<title>${__("Toll Invoice")}</title>
-					<style>${get_invoice_print_css()}</style>
-				</head>
-				<body>${printable.outerHTML}</body>
-			</html>
-		`);
-		print_window.document.close();
-		print_window.focus();
-		print_window.print();
 	}
 
 	function render_error(message) {
@@ -423,30 +327,6 @@ frappe.pages["tms-toll-billing-review"].on_page_load = function (wrapper) {
 		const escaped = escape_html(name);
 		const slug = doctype.toLowerCase().replace(/\s+/g, "-");
 		return `<a href="/app/${slug}/${encodeURIComponent(name)}">${escaped}</a>`;
-	}
-
-	function header_line(label, value, value_is_html) {
-		const display_value = value ? (value_is_html ? value : escape_html(value)) : "-";
-		return `
-			<div class="header-line">
-				<span>${__(label)}:</span>
-				<strong>${display_value}</strong>
-			</div>
-		`;
-	}
-
-	function multiline(value) {
-		return escape_html(value || "").replace(/\n/g, "<br>");
-	}
-
-	function extract_po_box(address) {
-		const value = String(address || "");
-		const match = value.match(/P\\.?\\s*O\\.?\\s*Box[^<\\n,]*/i);
-		return match ? escape_html(match[0]) : "";
-	}
-
-	function format_date(value) {
-		return value ? frappe.datetime.str_to_user(value) : "";
 	}
 
 	function format_currency(value) {
@@ -478,62 +358,8 @@ frappe.pages["tms-toll-billing-review"].on_page_load = function (wrapper) {
 		return frappe.utils.escape_html(String(value == null ? "" : value));
 	}
 
-	function get_invoice_print_css() {
-		return `
-			@page { size: A4 portrait; margin: 10mm; }
-			body { background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; font-size: 10.5px; }
-			.tms-tax-invoice-preview { background: #fff; color: #111; margin: 0 auto; max-width: 210mm; }
-			.tms-tax-invoice-header,
-			.tms-tax-invoice-items,
-			.tms-tax-invoice-totals { border-collapse: collapse; width: 100%; }
-			.tms-tax-invoice-header td,
-			.tms-tax-invoice-items th,
-			.tms-tax-invoice-items td,
-			.tms-tax-invoice-totals td { border: 1px solid #222; padding: 4px 5px; vertical-align: top; }
-			.tms-tax-invoice-header { margin-bottom: 8px; }
-			.tms-tax-invoice-header .party-cell { width: 38%; }
-			.tms-tax-invoice-header .title-cell { text-align: center; vertical-align: top; width: 24%; }
-			.tms-tax-invoice-preview .party-title { font-size: 12px; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; }
-			.tms-tax-invoice-preview .invoice-title { font-size: 15px; font-weight: 700; margin-top: 2px; text-transform: uppercase; }
-			.tms-tax-invoice-preview .header-line { display: flex; gap: 5px; line-height: 1.35; }
-			.tms-tax-invoice-preview .header-line span { min-width: 58px; }
-			.tms-tax-invoice-preview .header-line strong { font-weight: 600; }
-			.tms-tax-invoice-items th { background: #f3f3f3; font-weight: 700; text-align: center; }
-			.tms-tax-invoice-items tfoot td { font-weight: 700; }
-			.tms-tax-invoice-preview .text-right { text-align: right; }
-			.tms-tax-invoice-preview .text-center { text-align: center; }
-			.tms-tax-invoice-bottom { display: grid; gap: 10px; grid-template-columns: 1fr 220px; margin-top: 8px; }
-			.tms-tax-invoice-preview .amount-words { border: 1px solid #222; min-height: 72px; padding: 6px; }
-			.tms-tax-invoice-preview .tax-account-note { margin-top: 8px; }
-			.tms-tax-invoice-totals td:first-child { font-weight: 700; }
-			.tms-tax-invoice-totals td:last-child { text-align: right; }
-		`;
-	}
-
 	$(`<style>
 		.tms-toll-billing-review .table { min-width: 1400px; }
-		.tms-toll-invoice-toolbar {
-			align-items: center;
-			display: flex;
-			justify-content: space-between;
-			margin-bottom: 12px;
-		}
-		.tms-tax-invoice-preview {
-			background: #fff;
-			border: 1px solid #d8d8d8;
-			box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-			color: #111;
-			font-family: Arial, Helvetica, sans-serif;
-			font-size: 10.5px;
-			margin: 0 auto;
-			max-width: 210mm;
-			padding: 10mm;
-		}
-		${get_invoice_print_css()}
-		@media print {
-			body * { visibility: hidden; }
-			[data-field="printable-toll-invoice"], [data-field="printable-toll-invoice"] * { visibility: visible; }
-			[data-field="printable-toll-invoice"] { left: 0; position: absolute; top: 0; width: 100%; }
-		}
+		.tms-toll-print-preview { border-left: 4px solid var(--blue-500, #2490ef); }
 	</style>`).appendTo("head");
 };

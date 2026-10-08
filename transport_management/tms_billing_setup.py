@@ -13,6 +13,7 @@ PURCHASE_INVOICE_ITEM = "Purchase Invoice Item"
 TMS_TRANSPORT_INVOICE_PRINT_FORMAT = "TMS Transport Invoice"
 TMS_TRANSPORT_TRIP_SHEET_PRINT_FORMAT = "TMS Transport Trip Sheet"
 TMS_TOLL_INVOICE_PRINT_FORMAT = "TMS Toll / Extra Charges Invoice"
+AL_RANA_TOLL_TAX_INVOICE_PRINT_FORMAT = "Toll Tax Invoice - AL RANA"
 
 SALES_INVOICE_FIELDS = (
 	{
@@ -524,6 +525,188 @@ TMS_TOLL_INVOICE_HTML = """
 </div>
 """
 
+AL_RANA_TOLL_TAX_INVOICE_HTML = """
+<style>
+	@page { size: A4 portrait; margin: 10mm; }
+	.alrana-toll-tax-invoice {
+		background: #fff;
+		color: #111;
+		font-family: Arial, Helvetica, sans-serif;
+		font-size: 10.5px;
+		line-height: 1.35;
+	}
+	.alrana-toll-tax-invoice table { border-collapse: collapse; width: 100%; }
+	.alrana-toll-tax-invoice .text-center { text-align: center; }
+	.alrana-toll-tax-invoice .text-right { text-align: right; }
+	.alrana-toll-tax-invoice .title {
+		font-size: 15px;
+		font-weight: 700;
+		margin: 0 0 8px;
+		text-align: center;
+		text-transform: uppercase;
+	}
+	.alrana-toll-tax-invoice .header-table { margin-bottom: 8px; }
+	.alrana-toll-tax-invoice .header-table td {
+		border: 1px solid #222;
+		padding: 4px 6px;
+		vertical-align: top;
+	}
+	.alrana-toll-tax-invoice .party-cell { width: 42%; }
+	.alrana-toll-tax-invoice .title-cell { text-align: center; width: 16%; }
+	.alrana-toll-tax-invoice .party-title {
+		font-size: 12px;
+		font-weight: 700;
+		margin-bottom: 5px;
+		text-transform: uppercase;
+	}
+	.alrana-toll-tax-invoice .meta-line {
+		display: grid;
+		gap: 4px;
+		grid-template-columns: 68px 1fr;
+		margin: 1px 0;
+	}
+	.alrana-toll-tax-invoice .meta-line span { color: #333; }
+	.alrana-toll-tax-invoice .meta-line strong { font-weight: 600; }
+	.alrana-toll-tax-invoice .items th,
+	.alrana-toll-tax-invoice .items td,
+	.alrana-toll-tax-invoice .totals-table td {
+		border: 1px solid #222;
+		padding: 4px 5px;
+		vertical-align: top;
+	}
+	.alrana-toll-tax-invoice .items th {
+		background: #f3f3f3;
+		font-weight: 700;
+		text-align: center;
+	}
+	.alrana-toll-tax-invoice .items tfoot td { font-weight: 700; }
+	.alrana-toll-tax-invoice .description { min-width: 210px; }
+	.alrana-toll-tax-invoice .bottom-grid {
+		display: grid;
+		gap: 10px;
+		grid-template-columns: 1fr 220px;
+		margin-top: 8px;
+	}
+	.alrana-toll-tax-invoice .amount-words {
+		border: 1px solid #222;
+		min-height: 72px;
+		padding: 6px;
+	}
+	.alrana-toll-tax-invoice .tax-note { margin-top: 8px; }
+	.alrana-toll-tax-invoice .totals-table td:first-child { font-weight: 700; }
+	.alrana-toll-tax-invoice .totals-table td:last-child { text-align: right; }
+	@media print {
+		.alrana-toll-tax-invoice { font-size: 10px; }
+	}
+</style>
+
+{% set company_address_doc = frappe.get_doc("Address", doc.company_address) if doc.company_address and frappe.db.exists("Address", doc.company_address) else None %}
+{% set customer_address_doc = frappe.get_doc("Address", doc.customer_address) if doc.customer_address and frappe.db.exists("Address", doc.customer_address) else None %}
+{% set company_tax_id = doc.company_tax_id or frappe.db.get_value("Company", doc.company, "tax_id") or "" %}
+{% set customer_tax_id = doc.tax_id or frappe.db.get_value("Customer", doc.customer, "tax_id") or "" %}
+{% set company_phone = company_address_doc.phone if company_address_doc and company_address_doc.phone else "" %}
+{% set customer_phone = customer_address_doc.phone if customer_address_doc and customer_address_doc.phone else (doc.contact_mobile or "") %}
+{% set company_po_box = company_address_doc.pincode if company_address_doc and company_address_doc.pincode else "" %}
+{% set customer_po_box = customer_address_doc.pincode if customer_address_doc and customer_address_doc.pincode else "" %}
+{% set currency = doc.currency or "AED" %}
+{% set ns = namespace(total_qty=0, total_tax=0) %}
+
+<div class="alrana-toll-tax-invoice">
+	<div class="title">{{ _("TAX INVOICE") }}</div>
+
+	<table class="header-table">
+		<tr>
+			<td class="party-cell">
+				<div class="party-title">{{ doc.company or _("AL RANA TRANSPORT LLC") }}</div>
+				<div class="meta-line"><span>{{ _("Invoice No") }}</span><strong>{{ doc.name }}</strong></div>
+				<div class="meta-line"><span>{{ _("Date") }}</span><strong>{{ frappe.format(doc.posting_date, {"fieldtype": "Date"}) }}</strong></div>
+				<div class="meta-line"><span>{{ _("PO No") }}</span><strong>{{ doc.po_no or doc.get("customer_lpo_number") or "" }}</strong></div>
+				<div class="meta-line"><span>{{ _("PO Box") }}</span><strong>{{ company_po_box }}</strong></div>
+				<div class="meta-line"><span>{{ _("Phone") }}</span><strong>{{ company_phone }}</strong></div>
+				<div class="meta-line"><span>{{ _("TRN") }}</span><strong>{{ company_tax_id }}</strong></div>
+			</td>
+			<td class="title-cell">
+				<strong>{{ _("TAX INVOICE") }}</strong>
+			</td>
+			<td class="party-cell">
+				<div class="party-title">{{ doc.customer_name or doc.customer or "" }}</div>
+				<div class="meta-line"><span>{{ _("Address") }}</span><strong>{{ doc.address_display or "" }}</strong></div>
+				<div class="meta-line"><span>{{ _("PO Box") }}</span><strong>{{ customer_po_box }}</strong></div>
+				<div class="meta-line"><span>{{ _("Phone") }}</span><strong>{{ customer_phone }}</strong></div>
+				<div class="meta-line"><span>{{ _("TRN") }}</span><strong>{{ customer_tax_id }}</strong></div>
+			</td>
+		</tr>
+	</table>
+
+	<table class="items">
+		<thead>
+			<tr>
+				<th>{{ _("Sr.No") }}</th>
+				<th class="description">{{ _("Description") }}</th>
+				<th>{{ _("Qty") }}</th>
+				<th>{{ _("Unit Price / AED") }}</th>
+				<th>{{ _("Taxable Amount") }}</th>
+				<th>{{ _("VAT Rate") }}</th>
+				<th>{{ _("VAT Amount") }}</th>
+				<th>{{ _("AED / Net Amount") }}</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for item in doc.items %}
+				{% set taxable = frappe.utils.flt(item.net_amount or item.amount, 2) %}
+				{% set row_tax_ratio = (taxable / (doc.net_total or 1)) if doc.net_total else 0 %}
+				{% set row_vat = frappe.utils.flt((doc.total_taxes_and_charges or 0) * row_tax_ratio, 2) %}
+				{% set row_net = frappe.utils.flt(taxable + row_vat, 2) %}
+				{% set row_vat_rate = frappe.utils.flt(row_vat * 100 / taxable, 2) if taxable else 0 %}
+				{% set ns.total_qty = ns.total_qty + (item.qty or 0) %}
+				{% set ns.total_tax = ns.total_tax + row_vat %}
+				<tr>
+					<td class="text-center">{{ loop.index }}</td>
+					<td>{{ item.get("tms_charge_type") or item.description or item.item_name or item.item_code or "" }}</td>
+					<td class="text-right">{{ "%.2f"|format(item.qty or 0) }}</td>
+					<td class="text-right">{{ "%.2f"|format(item.rate or 0) }}</td>
+					<td class="text-right">{{ "%.2f"|format(taxable) }}</td>
+					<td class="text-right">{{ "%.2f"|format(row_vat_rate) }}%</td>
+					<td class="text-right">{{ "%.2f"|format(row_vat) }}</td>
+					<td class="text-right">{{ "%.2f"|format(row_net) }}</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+		<tfoot>
+			<tr>
+				<td colspan="2" class="text-right">{{ _("Net Total") }}</td>
+				<td class="text-right">{{ "%.2f"|format(ns.total_qty) }}</td>
+				<td></td>
+				<td class="text-right">{{ "%.2f"|format(doc.net_total or 0) }}</td>
+				<td></td>
+				<td class="text-right">{{ "%.2f"|format(doc.total_taxes_and_charges or ns.total_tax) }}</td>
+				<td class="text-right">{{ "%.2f"|format(doc.grand_total or doc.net_total or 0) }}</td>
+			</tr>
+		</tfoot>
+	</table>
+
+	<div class="bottom-grid">
+		<div class="amount-words">
+			<strong>{{ _("Amount in Words") }}:</strong> {{ doc.in_words or "" }}
+			{% if doc.taxes %}
+				<div class="tax-note">
+					<strong>{{ _("Tax") }}:</strong>
+					{% for tax in doc.taxes %}
+						{{ tax.description or tax.account_head }} {{ "%.2f"|format(tax.rate or 0) }}% = {{ currency }} {{ "%.2f"|format(tax.tax_amount or 0) }}{% if not loop.last %}, {% endif %}
+					{% endfor %}
+				</div>
+			{% endif %}
+		</div>
+		<table class="totals-table">
+			<tr><td>{{ _("Net Total") }}</td><td>{{ currency }} {{ "%.2f"|format(doc.net_total or 0) }}</td></tr>
+			<tr><td>{{ _("Total VAT") }}</td><td>{{ currency }} {{ "%.2f"|format(doc.total_taxes_and_charges or 0) }}</td></tr>
+			<tr><td>{{ _("Grand Total") }}</td><td>{{ currency }} {{ "%.2f"|format(doc.grand_total or 0) }}</td></tr>
+			<tr><td>{{ _("Outstanding") }}</td><td>{{ currency }} {{ "%.2f"|format(doc.outstanding_amount or 0) }}</td></tr>
+		</table>
+	</div>
+</div>
+"""
+
 
 def ensure_tms_billing_setup():
 	ensure_sales_invoice_fields()
@@ -591,7 +774,8 @@ def ensure_transport_trip_sheet_print_format():
 
 
 def ensure_toll_invoice_print_format():
-	return ensure_print_format(TMS_TOLL_INVOICE_PRINT_FORMAT, TMS_TOLL_INVOICE_HTML)
+	ensure_print_format(TMS_TOLL_INVOICE_PRINT_FORMAT, TMS_TOLL_INVOICE_HTML)
+	return ensure_print_format(AL_RANA_TOLL_TAX_INVOICE_PRINT_FORMAT, AL_RANA_TOLL_TAX_INVOICE_HTML)
 
 
 def ensure_print_format(print_format_name, html):
