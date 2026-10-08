@@ -1,0 +1,23 @@
+{
+ "creation": "2026-10-07 06:18:06.330993",
+ "currency": "AED",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Transport Trip",
+ "filters_json": "[\n [\n  \"Transport Trip\",\n  \"status\",\n  \"=\",\n  \"DELIVERED\"\n ]\n]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 0,
+ "label": "Delivered Trips",
+ "modified": "2026-10-07 06:21:42.470962",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "Delivered Trips",
+ "owner": "Administrator",
+ "report_function": "Sum",
+ "show_full_number": 0,
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

@@ -88,9 +88,92 @@ def get_expense_claim_detail_tms_defaults(transport_trip=None, transport_job=Non
 	return {}
 
 
+@frappe.whitelist()
+def get_expense_claim_header_defaults(employee=None):
+	if not employee:
+		return {"department": None, "expense_approver": None}
+
+	frappe.has_permission("Employee", "read", employee, throw=True)
+	return resolve_expense_claim_header_defaults(employee)
+
+
+def resolve_expense_claim_header_defaults(employee):
+	employee_details = frappe.db.get_value(
+		"Employee",
+		employee,
+		["department", "expense_approver"],
+		as_dict=True,
+	)
+	if not employee_details:
+		frappe.throw(_("Employee {0} does not exist.").format(employee))
+
+	expense_approver = get_enabled_expense_approver(employee_details.expense_approver)
+	if not expense_approver and employee_details.department:
+		expense_approver = get_department_expense_approver(employee_details.department)
+
+	return {
+		"department": employee_details.department,
+		"expense_approver": expense_approver,
+	}
+
+
+def get_enabled_expense_approver(user):
+	if not user:
+		return None
+	return frappe.db.get_value("User", {"name": user, "enabled": 1}, "name")
+
+
+def get_department_expense_approver(department):
+	if not department:
+		return None
+
+	department_details = frappe.db.get_value("Department", department, ["lft", "rgt"], as_dict=True)
+	if not department_details:
+		return None
+
+	departments = frappe.get_all(
+		"Department",
+		filters={
+			"lft": ("<=", department_details.lft),
+			"rgt": (">=", department_details.rgt),
+			"disabled": 0,
+		},
+		pluck="name",
+		order_by="lft desc",
+	)
+
+	for department_name in departments:
+		approver = frappe.db.get_value(
+			"Department Approver",
+			{
+				"parent": department_name,
+				"parentfield": "expense_approvers",
+			},
+			"approver",
+			order_by="idx asc",
+		)
+		enabled_approver = get_enabled_expense_approver(approver)
+		if enabled_approver:
+			return enabled_approver
+
+	return None
+
+
 def normalize_expense_claim_tms_references(doc, method=None):
+	normalize_expense_claim_header(doc)
 	for row in doc.get("expenses", []):
 		normalize_expense_claim_detail(row)
+
+
+def normalize_expense_claim_header(doc):
+	if not doc.employee:
+		return
+
+	defaults = resolve_expense_claim_header_defaults(doc.employee)
+	if not doc.department and defaults.get("department"):
+		doc.department = defaults["department"]
+	if not doc.expense_approver and defaults.get("expense_approver"):
+		doc.expense_approver = defaults["expense_approver"]
 
 
 def normalize_expense_claim_detail(row):

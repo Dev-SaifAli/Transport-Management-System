@@ -1,0 +1,207 @@
+{
+ "app": "transport_management",
+ "charts": [
+  {
+   "chart_name": "AL RANA Trips by Status",
+   "label": "AL RANA Trips by Status"
+  }
+ ],
+ "content": "[{\"id\":\"arl_ops_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>AL RANA Operations</b></span>\",\"col\":12}},{\"id\":\"arl_ops_core\",\"type\":\"card\",\"data\":{\"card_name\":\"Operations\",\"col\":4}},{\"id\":\"arl_ops_fleet\",\"type\":\"card\",\"data\":{\"card_name\":\"Fleet\",\"col\":4}}]",
+ "creation": "2026-10-06 15:17:10.678227",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 1,
+ "icon": "truck",
+ "idx": 0,
+ "indicator_color": "blue",
+ "is_hidden": 0,
+ "label": "AL RANA Operations",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Operations",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Trip Operations",
+   "link_count": 0,
+   "link_to": "tms-trip-operations",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Jobs",
+   "link_count": 0,
+   "link_to": "Transport Job",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Trips",
+   "link_count": 0,
+   "link_to": "Transport Trip",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Transport Sales Orders",
+   "link_count": 0,
+   "link_to": "Transport Sales Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Trip Documents",
+   "link_count": 0,
+   "link_to": "Transport Trip Document",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Fleet",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Trucks",
+   "link_count": 0,
+   "link_to": "Truck",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Drivers",
+   "link_count": 0,
+   "link_to": "Truck Driver",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Hired Vehicles",
+   "link_count": 0,
+   "link_to": "Hired Vehicle",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-07 06:21:43.522470",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "AL RANA Operations",
+ "number_cards": [
+  {
+   "label": "In Transit Trips",
+   "number_card_name": "In Transit Trips"
+  },
+  {
+   "label": "Open Jobs",
+   "number_card_name": "Open Jobs"
+  },
+  {
+   "label": "Delivered Trips",
+   "number_card_name": "Delivered Trips"
+  },
+  {
+   "label": "Pending Documents",
+   "number_card_name": "Pending Documents"
+  }
+ ],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Transport Trip",
+   "label": "Active Trips",
+   "quick_list_filter": "[\n [\n  \"Transport Trip\",\n  \"status\",\n  \"not in\",\n  [\n   \"CLOSED\",\n   \"CANCELLED\"\n  ]\n ]\n]"
+  },
+  {
+   "document_type": "Transport Job",
+   "label": "Open Jobs",
+   "quick_list_filter": "[\n [\n  \"Transport Job\",\n  \"status\",\n  \"in\",\n  [\n   \"Ready\",\n   \"In Progress\"\n  ]\n ]\n]"
+  }
+ ],
+ "roles": [
+  {
+   "role": "TMS Trip Data Entry"
+  },
+  {
+   "role": "TMS + Expense Data Entry"
+  },
+  {
+   "role": "Transport Manager"
+  },
+  {
+   "role": "Transport Admin"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "doc_view": "New",
+   "label": "New Trip",
+   "link_to": "Transport Trip",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Trip Operations",
+   "link_to": "tms-trip-operations",
+   "stats_filter": "[]",
+   "type": "Page"
+  },
+  {
+   "doc_view": "List",
+   "label": "Transport Jobs",
+   "link_to": "Transport Job",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Transport Sales Orders",
+   "link_to": "Transport Sales Order",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "AL RANA Operations",
+ "type": "Workspace"
+}

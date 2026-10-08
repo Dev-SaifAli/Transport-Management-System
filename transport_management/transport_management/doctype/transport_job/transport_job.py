@@ -7,7 +7,7 @@ from math import isfinite
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate, today
+from frappe.utils import flt, getdate, money_in_words, today
 
 from transport_management.location_master import validate_transport_location_usage
 from transport_management.tms_billing_setup import TOLL_SERVICE_ITEM, TRANSPORT_SERVICE_ITEM, ensure_tms_billing_setup
@@ -1251,6 +1251,137 @@ def create_toll_invoice(transport_job):
 		"group_count": len(groups),
 		"route": ["Form", "Sales Invoice", invoice.name],
 	}
+
+
+@frappe.whitelist()
+def get_toll_invoice_preview(invoice=None, transport_job=None):
+	if not _user_can_prepare_billing():
+		frappe.throw(_("You are not permitted to view Toll / Extra Charges Invoice previews."), frappe.PermissionError)
+
+	if not invoice and transport_job:
+		active_invoice = get_active_toll_invoice_for_job(transport_job)
+		invoice = active_invoice.name if active_invoice else None
+
+	if not invoice or not frappe.db.exists("Sales Invoice", invoice):
+		return None
+
+	doc = frappe.get_doc("Sales Invoice", invoice)
+	if doc.tms_invoice_type != TOLL_INVOICE_TYPE:
+		frappe.throw(_("Sales Invoice {0} is not a Toll / Extra Charges invoice.").format(invoice))
+	if transport_job and doc.transport_job != transport_job:
+		frappe.throw(_("Sales Invoice {0} is not linked to Transport Job {1}.").format(invoice, transport_job))
+
+	doc.check_permission("read")
+	return build_toll_invoice_preview(doc)
+
+
+def build_toll_invoice_preview(doc):
+	items = build_toll_invoice_preview_items(doc)
+	return {
+		"name": doc.name,
+		"docstatus": doc.docstatus,
+		"status": get_invoice_status_label(doc.docstatus),
+		"customer": doc.customer,
+		"customer_name": doc.customer_name or doc.customer,
+		"posting_date": doc.posting_date,
+		"due_date": doc.due_date,
+		"po_no": doc.po_no or doc.customer_lpo_number,
+		"currency": doc.currency,
+		"company": doc.company,
+		"company_tax_id": frappe.db.get_value("Company", doc.company, "tax_id") or "",
+		"company_phone": get_company_phone(doc.company),
+		"company_address": get_company_address_display(doc.company),
+		"customer_tax_id": frappe.db.get_value("Customer", doc.customer, "tax_id") or "",
+		"customer_phone": get_customer_phone(doc.customer),
+		"customer_address": doc.address_display or get_address_display(doc.customer_address),
+		"transport_job": doc.transport_job,
+		"transport_sales_order": doc.transport_sales_order,
+		"customer_lpo_number": doc.customer_lpo_number,
+		"net_total": flt(doc.net_total, 2),
+		"total_taxes_and_charges": flt(doc.total_taxes_and_charges, 2),
+		"grand_total": flt(doc.grand_total, 2),
+		"outstanding_amount": flt(doc.outstanding_amount, 2),
+		"in_words": doc.in_words or money_in_words(doc.grand_total, doc.currency),
+		"items": items,
+		"taxes": build_toll_invoice_preview_taxes(doc),
+	}
+
+
+def build_toll_invoice_preview_items(doc):
+	net_total = flt(doc.net_total, 2)
+	tax_rows = build_toll_invoice_preview_taxes(doc)
+	items = []
+	for index, item in enumerate(doc.items, start=1):
+		taxable_amount = flt(item.net_amount or item.amount, 2)
+		row_vat_amount = 0
+		row_tax_accounts = []
+		for tax in tax_rows:
+			allocated_tax = flt(tax["tax_amount"] * taxable_amount / net_total, 2) if net_total else 0
+			row_vat_amount += allocated_tax
+			if tax["account_head"]:
+				row_tax_accounts.append(tax["account_head"])
+		items.append(
+			{
+				"idx": index,
+				"description": item.tms_charge_type or item.description or item.item_name or item.item_code,
+				"qty": flt(item.qty, 6),
+				"rate": flt(item.rate, 2),
+				"taxable_amount": taxable_amount,
+				"vat_rate": flt(row_vat_amount * 100 / taxable_amount, 2) if taxable_amount else 0,
+				"vat_amount": flt(row_vat_amount, 2),
+				"net_amount": flt(taxable_amount + row_vat_amount, 2),
+				"tax_accounts": row_tax_accounts,
+				"item_code": item.item_code,
+				"charge_type": item.tms_charge_type,
+				"charge_rule": item.tms_charge_rule,
+				"transport_job": item.tms_transport_job,
+			}
+		)
+	return items
+
+
+def build_toll_invoice_preview_taxes(doc):
+	return [
+		{
+			"account_head": tax.account_head,
+			"description": tax.description,
+			"rate": flt(tax.rate, 2),
+			"tax_amount": flt(tax.tax_amount, 2),
+			"total": flt(tax.total, 2),
+		}
+		for tax in doc.taxes
+	]
+
+
+def get_company_phone(company):
+	company_meta = frappe.get_meta("Company")
+	if company_meta.get_field("phone_no"):
+		return frappe.db.get_value("Company", company, "phone_no") or ""
+	if company_meta.get_field("phone"):
+		return frappe.db.get_value("Company", company, "phone") or ""
+	return ""
+
+
+def get_customer_phone(customer):
+	customer_meta = frappe.get_meta("Customer")
+	for fieldname in ("mobile_no", "phone"):
+		if customer_meta.get_field(fieldname):
+			value = frappe.db.get_value("Customer", customer, fieldname)
+			if value:
+				return value
+	return ""
+
+
+def get_company_address_display(company):
+	address_name = frappe.db.get_value("Dynamic Link", {"link_doctype": "Company", "link_name": company}, "parent")
+	return get_address_display(address_name)
+
+
+def get_address_display(address_name):
+	if not address_name or not frappe.db.exists("Address", address_name):
+		return ""
+	address = frappe.get_doc("Address", address_name)
+	return address.get_display()
 
 
 def get_default_company():

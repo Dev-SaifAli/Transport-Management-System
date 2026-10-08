@@ -9,8 +9,10 @@ from transport_management.tms_driver_expense import (
 	EXPENSE_CLAIM_TYPES,
 	ensure_driver_expense_foundation,
 	get_expense_claim_detail_tms_defaults,
+	get_expense_claim_header_defaults,
 	get_driver_employee_mapping_summary,
 	normalize_expense_claim_tms_references,
+	resolve_expense_claim_header_defaults,
 )
 
 
@@ -128,6 +130,44 @@ class TestDriverExpenseFoundation(unittest.TestCase):
 		if not frappe.db.exists("Gender", gender):
 			frappe.get_doc({"doctype": "Gender", "gender": gender}).insert(ignore_permissions=True)
 
+	def make_department(self, department_name=None):
+		department_name = department_name or f"TMS Expense Department {frappe.generate_hash(length=8)}"
+		return frappe.get_doc({
+			"doctype": "Department",
+			"department_name": department_name,
+			"company": self.fixture["company"],
+		}).insert(ignore_permissions=True)
+
+	def make_user(self, email=None):
+		email = email or f"tms-expense-{frappe.generate_hash(length=8)}@example.com"
+		if frappe.db.exists("User", email):
+			return frappe.get_doc("User", email)
+
+		user = frappe.get_doc({
+			"doctype": "User",
+			"email": email,
+			"first_name": "TMS",
+			"last_name": "Expense Approver",
+			"enabled": 1,
+			"user_type": "System User",
+			"send_welcome_email": 0,
+		}).insert(ignore_permissions=True)
+		user.add_roles("Expense Approver")
+		return user
+
+	def make_employee(self, **values):
+		doc = frappe.get_doc({
+			"doctype": "Employee",
+			"first_name": values.pop("first_name", "TMS Expense Employee"),
+			"gender": values.pop("gender", "Male"),
+			"date_of_birth": values.pop("date_of_birth", "1990-01-01"),
+			"date_of_joining": values.pop("date_of_joining", "2026-01-01"),
+			"company": values.pop("company", self.fixture["company"]),
+			"status": values.pop("status", "Active"),
+		})
+		doc.update(values)
+		return doc.insert(ignore_permissions=True)
+
 	def make_job(self, **values):
 		doc = frappe.new_doc("Transport Job")
 		doc.update({
@@ -194,6 +234,105 @@ class TestDriverExpenseFoundation(unittest.TestCase):
 		self.assertFalse(row.get("transport_job"))
 		self.assertFalse(row.get("truck"))
 		self.assertFalse(row.get("hired_vehicle"))
+
+	def test_employee_department_populates_expense_claim_header(self):
+		department = self.make_department()
+		employee = self.make_employee(department=department.name)
+		doc = self.make_expense_claim([{"expense_type": "Toll", "amount": 200}])
+		doc.employee = employee.name
+		doc.department = None
+
+		normalize_expense_claim_tms_references(doc)
+
+		self.assertEqual(doc.department, department.name)
+
+	def test_employee_direct_expense_approver_populates_header(self):
+		approver = self.make_user()
+		employee = self.make_employee(expense_approver=approver.name)
+		doc = self.make_expense_claim([{"expense_type": "Toll", "amount": 200}])
+		doc.employee = employee.name
+
+		normalize_expense_claim_tms_references(doc)
+
+		self.assertEqual(doc.expense_approver, approver.name)
+
+	def test_department_expense_approver_populates_header(self):
+		department = self.make_department()
+		approver = self.make_user()
+		department.append("expense_approvers", {"approver": approver.name})
+		department.save(ignore_permissions=True)
+		employee = self.make_employee(department=department.name)
+		doc = self.make_expense_claim([{"expense_type": "Toll", "amount": 200}])
+		doc.employee = employee.name
+
+		normalize_expense_claim_tms_references(doc)
+
+		self.assertEqual(doc.department, department.name)
+		self.assertEqual(doc.expense_approver, approver.name)
+
+	def test_direct_expense_approver_takes_priority_over_department(self):
+		department = self.make_department()
+		department_approver = self.make_user()
+		direct_approver = self.make_user()
+		department.append("expense_approvers", {"approver": department_approver.name})
+		department.save(ignore_permissions=True)
+		employee = self.make_employee(
+			department=department.name,
+			expense_approver=direct_approver.name,
+		)
+
+		defaults = resolve_expense_claim_header_defaults(employee.name)
+
+		self.assertEqual(defaults["department"], department.name)
+		self.assertEqual(defaults["expense_approver"], direct_approver.name)
+
+	def test_different_departments_resolve_different_approvers(self):
+		first_department = self.make_department()
+		second_department = self.make_department()
+		first_approver = self.make_user()
+		second_approver = self.make_user()
+		first_department.append("expense_approvers", {"approver": first_approver.name})
+		second_department.append("expense_approvers", {"approver": second_approver.name})
+		first_department.save(ignore_permissions=True)
+		second_department.save(ignore_permissions=True)
+		first_employee = self.make_employee(department=first_department.name)
+		second_employee = self.make_employee(department=second_department.name)
+
+		first_defaults = resolve_expense_claim_header_defaults(first_employee.name)
+		second_defaults = resolve_expense_claim_header_defaults(second_employee.name)
+
+		self.assertEqual(first_defaults["expense_approver"], first_approver.name)
+		self.assertEqual(second_defaults["expense_approver"], second_approver.name)
+
+	def test_employee_without_department_or_approver_is_safe(self):
+		employee = self.make_employee()
+
+		defaults = resolve_expense_claim_header_defaults(employee.name)
+
+		self.assertFalse(defaults["department"])
+		self.assertFalse(defaults["expense_approver"])
+
+	def test_manual_expense_approver_is_not_overwritten(self):
+		configured_approver = self.make_user()
+		manual_approver = self.make_user()
+		employee = self.make_employee(expense_approver=configured_approver.name)
+		doc = self.make_expense_claim([{"expense_type": "Toll", "amount": 200}])
+		doc.employee = employee.name
+		doc.expense_approver = manual_approver.name
+
+		normalize_expense_claim_tms_references(doc)
+
+		self.assertEqual(doc.expense_approver, manual_approver.name)
+
+	def test_client_defaults_api_returns_header_values(self):
+		department = self.make_department()
+		approver = self.make_user()
+		employee = self.make_employee(department=department.name, expense_approver=approver.name)
+
+		defaults = get_expense_claim_header_defaults(employee.name)
+
+		self.assertEqual(defaults["department"], department.name)
+		self.assertEqual(defaults["expense_approver"], approver.name)
 
 	def test_trip_selection_derives_job(self):
 		job = self.make_job()

@@ -1,0 +1,162 @@
+{
+ "app": "transport_management",
+ "charts": [
+  {
+   "chart_name": "AL RANA Expense Claims by Approval Status",
+   "label": "AL RANA Expense Claims by Approval Status"
+  }
+ ],
+ "content": "[{\"id\":\"arl_expenses_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>AL RANA Expenses</b></span>\",\"col\":12}},{\"id\":\"arl_expenses_core\",\"type\":\"card\",\"data\":{\"card_name\":\"Expenses\",\"col\":4}},{\"id\":\"arl_expenses_reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "creation": "2026-10-06 14:53:19.487750",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 1,
+ "icon": "expenses",
+ "idx": 0,
+ "indicator_color": "orange",
+ "is_hidden": 0,
+ "label": "AL RANA Expenses",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Expenses",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Expense Claims",
+   "link_count": 0,
+   "link_to": "Expense Claim",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Driver Advances",
+   "link_count": 0,
+   "link_to": "Employee Advance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Reports",
+   "link_count": 2,
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Employee Advance Summary",
+   "link_count": 0,
+   "link_to": "Employee Advance Summary",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Unpaid Expense Claim",
+   "link_count": 0,
+   "link_to": "Unpaid Expense Claim",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-07 06:21:43.994575",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "AL RANA Expenses",
+ "number_cards": [
+  {
+   "label": "Draft Expense Claims",
+   "number_card_name": "Draft Expense Claims"
+  },
+  {
+   "label": "Pending Approval",
+   "number_card_name": "Pending Approval"
+  },
+  {
+   "label": "Open Employee Advances",
+   "number_card_name": "Open Employee Advances"
+  }
+ ],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Expense Claim",
+   "label": "Expense Claims",
+   "quick_list_filter": "[\n [\n  \"Expense Claim\",\n  \"docstatus\",\n  \"<\",\n  2\n ]\n]"
+  },
+  {
+   "document_type": "Employee Advance",
+   "label": "Employee Advances",
+   "quick_list_filter": "[\n [\n  \"Employee Advance\",\n  \"status\",\n  \"not in\",\n  [\n   \"Claimed\",\n   \"Returned\",\n   \"Cancelled\"\n  ]\n ]\n]"
+  }
+ ],
+ "roles": [
+  {
+   "role": "TMS + Expense Data Entry"
+  },
+  {
+   "role": "Expense Approver"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "Transport Manager"
+  },
+  {
+   "role": "Transport Admin"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 3.0,
+ "shortcuts": [
+  {
+   "doc_view": "New",
+   "label": "New Expense Claim",
+   "link_to": "Expense Claim",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "New",
+   "label": "New Employee Advance",
+   "link_to": "Employee Advance",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Pending Expense Claims",
+   "link_to": "Expense Claim",
+   "stats_filter": "[\n [\n  \"Expense Claim\",\n  \"approval_status\",\n  \"=\",\n  \"Draft\"\n ]\n]",
+   "type": "DocType"
+  }
+ ],
+ "title": "AL RANA Expenses",
+ "type": "Workspace"
+}

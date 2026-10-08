@@ -22,6 +22,9 @@
   },
   {
    "role": "System Manager"
+  },
+  {
+   "role": "TMS + Expense Data Entry"
   }
  ],
  "script": null,

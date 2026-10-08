@@ -1,0 +1,23 @@
+{
+ "creation": "2026-10-07 06:18:06.479022",
+ "currency": "AED",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Purchase Invoice",
+ "filters_json": "[\n [\n  \"Purchase Invoice\",\n  \"docstatus\",\n  \"=\",\n  0\n ]\n]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 0,
+ "label": "Draft Purchase Invoices",
+ "modified": "2026-10-07 06:21:42.668560",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "Draft Purchase Invoices",
+ "owner": "Administrator",
+ "report_function": "Sum",
+ "show_full_number": 0,
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

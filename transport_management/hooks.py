@@ -43,6 +43,7 @@ web_include_js = ["/assets/transport_management/js/tms_login.js"]
 
 # include js in doctype views
 doctype_js = {
+	"Employee Advance": "public/js/employee_advance.js",
 	"Expense Claim": "public/js/expense_claim.js",
 	"Purchase Invoice": "public/js/purchase_invoice.js",
 	"Sales Invoice": "public/js/sales_invoice.js",
@@ -150,6 +151,9 @@ get_website_user_home_page = "transport_management.tms_landing.get_tms_home_page
 # Hook on document methods and events
 
 doc_events = {
+	"Employee Advance": {
+		"before_validate": "transport_management.tms_employee_advance.normalize_employee_advance_defaults",
+	},
 	"Expense Claim": {
 		"validate": "transport_management.tms_driver_expense.normalize_expense_claim_tms_references",
 	},

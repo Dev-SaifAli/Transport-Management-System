@@ -1,0 +1,23 @@
+{
+ "creation": "2026-10-07 06:18:06.443657",
+ "currency": "AED",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Employee Advance",
+ "filters_json": "[\n [\n  \"Employee Advance\",\n  \"status\",\n  \"not in\",\n  [\n   \"Claimed\",\n   \"Returned\",\n   \"Cancelled\"\n  ]\n ]\n]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 0,
+ "label": "Open Employee Advances",
+ "modified": "2026-10-07 06:21:42.617433",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "Open Employee Advances",
+ "owner": "Administrator",
+ "report_function": "Sum",
+ "show_full_number": 0,
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

@@ -142,6 +142,23 @@
    "permlevel": 0
   },
   {
+   "role": "TMS + Expense Data Entry",
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "import": 0,
+   "share": 0,
+   "print": 1,
+   "email": 1,
+   "permlevel": 0
+  },
+  {
    "role": "Transport Manager",
    "read": 1,
    "write": 1,

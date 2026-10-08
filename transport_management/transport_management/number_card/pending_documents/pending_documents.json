@@ -1,0 +1,23 @@
+{
+ "creation": "2026-10-07 06:18:06.347347",
+ "currency": "AED",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Transport Trip Document",
+ "filters_json": "[\n [\n  \"Transport Trip Document\",\n  \"verification_status\",\n  \"=\",\n  \"PENDING_REVIEW\"\n ]\n]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 0,
+ "label": "Pending Documents",
+ "modified": "2026-10-07 06:21:42.494007",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "Pending Documents",
+ "owner": "Administrator",
+ "report_function": "Sum",
+ "show_full_number": 0,
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

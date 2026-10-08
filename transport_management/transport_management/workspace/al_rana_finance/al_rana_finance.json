@@ -1,0 +1,209 @@
+{
+ "app": "transport_management",
+ "charts": [
+  {
+   "chart_name": "AL RANA Monthly Sales Invoice Value",
+   "label": "AL RANA Monthly Sales Invoice Value"
+  }
+ ],
+ "content": "[{\"id\":\"arl_finance_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>AL RANA Finance</b></span>\",\"col\":12}},{\"id\":\"arl_finance_docs\",\"type\":\"card\",\"data\":{\"card_name\":\"Finance Documents\",\"col\":4}},{\"id\":\"arl_finance_reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "creation": "2026-10-06 15:17:14.236866",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 1,
+ "icon": "accounting",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "AL RANA Finance",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finance Documents",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Invoices",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Purchase Invoices",
+   "link_count": 0,
+   "link_to": "Purchase Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Entries",
+   "link_count": 0,
+   "link_to": "Payment Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Reports",
+   "link_count": 3,
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "General Ledger",
+   "link_count": 0,
+   "link_to": "General Ledger",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Accounts Receivable",
+   "link_count": 0,
+   "link_to": "Accounts Receivable",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Accounts Payable",
+   "link_count": 0,
+   "link_to": "Accounts Payable",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-07 06:21:44.071194",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "AL RANA Finance",
+ "number_cards": [
+  {
+   "label": "Unpaid Sales Invoices",
+   "number_card_name": "Unpaid Sales Invoices"
+  },
+  {
+   "label": "Draft Sales Invoices",
+   "number_card_name": "Draft Sales Invoices"
+  },
+  {
+   "label": "Draft Purchase Invoices",
+   "number_card_name": "Draft Purchase Invoices"
+  },
+  {
+   "label": "Draft Payment Entries",
+   "number_card_name": "Draft Payment Entries"
+  }
+ ],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Sales Invoice",
+   "label": "Sales Invoices",
+   "quick_list_filter": "[\n [\n  \"Sales Invoice\",\n  \"docstatus\",\n  \"<\",\n  2\n ]\n]"
+  },
+  {
+   "document_type": "Purchase Invoice",
+   "label": "Purchase Invoices",
+   "quick_list_filter": "[\n [\n  \"Purchase Invoice\",\n  \"docstatus\",\n  \"<\",\n  2\n ]\n]"
+  },
+  {
+   "document_type": "Payment Entry",
+   "label": "Payment Entries",
+   "quick_list_filter": "[\n [\n  \"Payment Entry\",\n  \"docstatus\",\n  \"<\",\n  2\n ]\n]"
+  }
+ ],
+ "roles": [
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Transport Manager"
+  },
+  {
+   "role": "Transport Admin"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 4.0,
+ "shortcuts": [
+  {
+   "doc_view": "New",
+   "label": "New Sales Invoice",
+   "link_to": "Sales Invoice",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "New",
+   "label": "New Purchase Invoice",
+   "link_to": "Purchase Invoice",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "New",
+   "label": "New Payment Entry",
+   "link_to": "Payment Entry",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "Accounts Receivable",
+   "link_to": "Accounts Receivable",
+   "report_ref_doctype": "Sales Invoice",
+   "stats_filter": "[]",
+   "type": "Report"
+  },
+  {
+   "doc_view": "",
+   "label": "Accounts Payable",
+   "link_to": "Accounts Payable",
+   "report_ref_doctype": "Purchase Invoice",
+   "stats_filter": "[]",
+   "type": "Report"
+  },
+  {
+   "doc_view": "",
+   "label": "General Ledger",
+   "link_to": "General Ledger",
+   "report_ref_doctype": "GL Entry",
+   "stats_filter": "[]",
+   "type": "Report"
+  }
+ ],
+ "title": "AL RANA Finance",
+ "type": "Workspace"
+}

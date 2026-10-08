@@ -1,0 +1,166 @@
+{
+ "app": "transport_management",
+ "charts": [
+  {
+   "chart_name": "AL RANA Expense Claims by Approval Status",
+   "label": "AL RANA Expense Claims by Approval Status"
+  }
+ ],
+ "content": "[{\"id\":\"arl_hr_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>AL RANA HR</b></span>\",\"col\":12}},{\"id\":\"arl_hr_people\",\"type\":\"card\",\"data\":{\"card_name\":\"HR\",\"col\":4}}]",
+ "creation": "2026-10-06 15:18:09.426767",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 1,
+ "icon": "users",
+ "idx": 0,
+ "indicator_color": "purple",
+ "is_hidden": 0,
+ "label": "AL RANA HR",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "HR",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employees",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Expense Claims",
+   "link_count": 0,
+   "link_to": "Expense Claim",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Expense Approvals",
+   "link_count": 0,
+   "link_to": "Expense Claim",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee Advances",
+   "link_count": 0,
+   "link_to": "Employee Advance",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-07 06:21:44.147186",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "AL RANA HR",
+ "number_cards": [
+  {
+   "label": "Active Employees",
+   "number_card_name": "Active Employees"
+  },
+  {
+   "label": "Pending Approval",
+   "number_card_name": "Pending Approval"
+  },
+  {
+   "label": "Open Employee Advances",
+   "number_card_name": "Open Employee Advances"
+  }
+ ],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [
+  {
+   "document_type": "Employee",
+   "label": "Active Employees",
+   "quick_list_filter": "[\n [\n  \"Employee\",\n  \"status\",\n  \"=\",\n  \"Active\"\n ]\n]"
+  },
+  {
+   "document_type": "Expense Claim",
+   "label": "Expense Claims",
+   "quick_list_filter": "[\n [\n  \"Expense Claim\",\n  \"docstatus\",\n  \"<\",\n  2\n ]\n]"
+  },
+  {
+   "document_type": "Employee Advance",
+   "label": "Employee Advances",
+   "quick_list_filter": "[\n [\n  \"Employee Advance\",\n  \"status\",\n  \"not in\",\n  [\n   \"Claimed\",\n   \"Returned\",\n   \"Cancelled\"\n  ]\n ]\n]"
+  }
+ ],
+ "roles": [
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "Expense Approver"
+  },
+  {
+   "role": "Transport Admin"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 5.0,
+ "shortcuts": [
+  {
+   "doc_view": "List",
+   "label": "Employee",
+   "link_to": "Employee",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Expense Claim",
+   "link_to": "Expense Claim",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Employee Advance",
+   "link_to": "Employee Advance",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Attendance",
+   "link_to": "Attendance",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Leave Application",
+   "link_to": "Leave Application",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "AL RANA HR",
+ "type": "Workspace"
+}

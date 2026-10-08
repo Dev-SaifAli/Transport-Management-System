@@ -3,65 +3,20 @@
 		return document.body && document.body.getAttribute("data-path") === "login";
 	}
 
-	function render_brand_header() {
-		return [
-			'<div class="tms-login-brand" aria-label="AL RANA TRANSPORT LLC">',
-			'<div class="tms-login-logo-row">',
-			'<div class="tms-login-logo" aria-hidden="true">AR</div>',
-			'<div class="tms-login-company-name">AL RANA TRANSPORT LLC</div>',
-			"</div>",
-			"<h1>Welcome Back</h1>",
-			"<p>Sign in to your TMS account</p>",
-			"</div>",
-		].join("");
-	}
-
 	function render_visual_panel() {
 		var visual = document.createElement("aside");
 		visual.className = "tms-login-visual";
-		visual.setAttribute("aria-label", "Transport Management System");
-		visual.innerHTML = [
-			'<div class="tms-login-visual-content">',
-			'<div class="tms-login-kicker">AL RANA TRANSPORT LLC</div>',
-			"<h2>Transport Management System</h2>",
-			"<p>Moving Business Forward</p>",
-			"</div>",
-		].join("");
+		visual.setAttribute("aria-label", "AL RANA transport image");
 		return visual;
 	}
 
 	function update_login_text() {
-		var labels = document.querySelectorAll('label[for="login_email"]');
-		Array.prototype.forEach.call(labels, function (label) {
-			label.textContent = "Email or Username";
-		});
-
-		var headings = document.querySelectorAll(".for-login .page-card-head h4, .for-email-login .page-card-head h4");
-		Array.prototype.forEach.call(headings, function (heading) {
-			heading.textContent = "Welcome Back";
-		});
-
-		var subtitles = document.querySelectorAll(".for-login .page-card-subtitle, .for-email-login .page-card-subtitle");
-		Array.prototype.forEach.call(subtitles, function (subtitle) {
-			subtitle.textContent = "Sign in to your TMS account";
-		});
-
 		var buttons = document.querySelectorAll(".btn-login");
 		Array.prototype.forEach.call(buttons, function (button) {
 			if (button.textContent.trim() === "Continue") {
 				button.textContent = "Sign In";
 			}
 		});
-	}
-
-	function add_footer(form_inner) {
-		if (form_inner.querySelector(".tms-login-footer")) {
-			return;
-		}
-		var footer = document.createElement("div");
-		footer.className = "tms-login-footer";
-		footer.innerHTML = '© AL RANA TRANSPORT LLC <span aria-hidden="true">|</span> <a href="mailto:support@example.com">Support</a>';
-		form_inner.appendChild(footer);
 	}
 
 	function bind_loading_state() {
@@ -123,16 +78,14 @@
 
 		var form_inner = document.createElement("div");
 		form_inner.className = "tms-login-form-inner";
-		form_inner.innerHTML = render_brand_header();
 
 		while (page_content.firstChild) {
 			form_inner.appendChild(page_content.firstChild);
 		}
 
-		add_footer(form_inner);
 		form_panel.appendChild(form_inner);
-		shell.appendChild(form_panel);
 		shell.appendChild(render_visual_panel());
+		shell.appendChild(form_panel);
 		page_content.appendChild(shell);
 		bind_loading_state();
 	}

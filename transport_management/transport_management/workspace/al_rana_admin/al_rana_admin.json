@@ -1,0 +1,176 @@
+{
+ "app": "transport_management",
+ "charts": [],
+ "content": "[{\"id\":\"arl_admin_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>AL RANA Admin</b></span>\",\"col\":12}},{\"id\":\"arl_admin_config\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration\",\"col\":4}},{\"id\":\"arl_admin_tools\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}}]",
+ "creation": "2026-10-06 15:18:38.562762",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 1,
+ "icon": "settings",
+ "idx": 0,
+ "indicator_color": "gray",
+ "is_hidden": 0,
+ "label": "AL RANA Admin",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Configuration",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Charge Rules",
+   "link_count": 0,
+   "link_to": "Transport Charge Rule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Transport Rates",
+   "link_count": 0,
+   "link_to": "Transport Rate",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Locations",
+   "link_count": 0,
+   "link_to": "Transport Location",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Truck Types",
+   "link_count": 0,
+   "link_to": "Truck Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Materials",
+   "link_count": 0,
+   "link_to": "Cargo Types",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "TMS Settings",
+   "link_count": 0,
+   "link_to": "TMS Billing Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Tools",
+   "link_count": 1,
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Data Import",
+   "link_count": 0,
+   "link_to": "tms-data-import",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-07 06:21:44.312067",
+ "modified_by": "Administrator",
+ "module": "",
+ "name": "AL RANA Admin",
+ "number_cards": [],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Transport Admin"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 6.0,
+ "shortcuts": [
+  {
+   "doc_view": "List",
+   "label": "Transport Charge Rules",
+   "link_to": "Transport Charge Rule",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Transport Rates",
+   "link_to": "Transport Rate",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Locations",
+   "link_to": "Transport Location",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Truck Types",
+   "link_to": "Truck Type",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Cargo Types",
+   "link_to": "Cargo Types",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "",
+   "label": "TMS Data Import",
+   "link_to": "tms-data-import",
+   "stats_filter": "[]",
+   "type": "Page"
+  },
+  {
+   "doc_view": "List",
+   "label": "TMS Settings",
+   "link_to": "TMS Billing Settings",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "AL RANA Admin",
+ "type": "Workspace"
+}
