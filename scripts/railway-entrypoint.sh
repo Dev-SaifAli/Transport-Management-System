@@ -13,6 +13,42 @@ if [ ! -f "${SITES_DIR}/apps.txt" ] && [ -d "${SITES_TEMPLATE_DIR}" ]; then
 	cp -a "${SITES_TEMPLATE_DIR}/." "${SITES_DIR}/"
 fi
 
+# Synchronize Bench apps from the Docker image with the persistent volume.
+TEMPLATE_APPS="${SITES_TEMPLATE_DIR}/apps.txt"
+PERSISTENT_APPS="${SITES_DIR}/apps.txt"
+
+if [[ -f "${TEMPLATE_APPS}" && -f "${PERSISTENT_APPS}" ]]; then
+        (
+                flock -x 9
+
+                TEMP_APPS="$(mktemp "${SITES_DIR}/.apps-sync.XXXXXX")"
+                trap 'rm -f "${TEMP_APPS}"' EXIT
+
+                cp "${PERSISTENT_APPS}" "${TEMP_APPS}"
+
+                while IFS= read -r app || [[ -n "${app}" ]]; do
+                        [[ -z "${app}" ]] && continue
+
+                        if ! grep -Fxq -- "${app}" "${TEMP_APPS}"; then
+                                # Add a newline if the last existing line has none.
+                                if [[ -s "${TEMP_APPS}" ]] &&
+                                   [[ "$(tail -c 1 "${TEMP_APPS}" | wc -l)" -eq 0 ]]; then
+                                        printf '\n' >> "${TEMP_APPS}"
+                                fi
+
+                                printf '%s\n' "${app}" >> "${TEMP_APPS}"
+                                echo "Registered Bench app: ${app}"
+                        fi
+                done < "${TEMPLATE_APPS}"
+
+                if ! cmp -s "${PERSISTENT_APPS}" "${TEMP_APPS}"; then
+        chmod --reference="${PERSISTENT_APPS}" "${TEMP_APPS}"
+        chown --reference="${PERSISTENT_APPS}" "${TEMP_APPS}"
+        mv -f "${TEMP_APPS}" "${PERSISTENT_APPS}"
+fi
+        ) 9>"${SITES_DIR}/.apps-sync.lock"
+fi
+
 if [ -d "${SITES_TEMPLATE_DIR}/assets" ]; then
 	rm -rf "${SITES_DIR}/assets"
 	cp -a "${SITES_TEMPLATE_DIR}/assets" "${SITES_DIR}/assets"
