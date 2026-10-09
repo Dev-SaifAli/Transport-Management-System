@@ -78,6 +78,10 @@ COPY --chown=frappe:frappe \
     /home/frappe/frappe-bench/railway-bootstrap.sh
 
 COPY --chown=frappe:frappe \
+    scripts/railway-install-hrms.sh \
+    /home/frappe/frappe-bench/railway-install-hrms.sh
+
+COPY --chown=frappe:frappe \
     scripts/railway-migrate.sh \
     /home/frappe/frappe-bench/railway-migrate.sh
 
@@ -89,7 +93,8 @@ RUN chmod +x \
     /home/frappe/frappe-bench/railway-entrypoint.sh \
     /home/frappe/frappe-bench/railway-bootstrap.sh \
     /home/frappe/frappe-bench/railway-migrate.sh \
-    /home/frappe/frappe-bench/railway-clear-asset-cache.py
+    /home/frappe/frappe-bench/railway-clear-asset-cache.py \
+    /home/frappe/frappe-bench/railway-install-hrms.sh
 
 USER frappe
 WORKDIR /home/frappe/frappe-bench

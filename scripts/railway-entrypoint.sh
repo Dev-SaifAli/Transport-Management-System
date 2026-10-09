@@ -73,5 +73,16 @@ if [[ " $* " == *"gunicorn"* ]]; then
 			"${BENCH_DIR}/env/bin/python" "${BENCH_DIR}/railway-clear-asset-cache.py"
 	fi
 fi
+# Optional HRMS installation for an explicitly authorized deployment.
+if [[ "${RAILWAY_INSTALL_HRMS:-0}" == "1" ]]; then
+        if [[ " $* " == *"gunicorn"* ]]; then
+                echo "HRMS installation enabled for ${SITE_NAME}."
+
+                FRAPPE_SITE="${SITE_NAME}" \
+                FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
+                SITES_DIR="${SITES_DIR}" \
+                bash "${BENCH_DIR}/railway-install-hrms.sh"
+        fi
+fi
 
 exec "$@"
