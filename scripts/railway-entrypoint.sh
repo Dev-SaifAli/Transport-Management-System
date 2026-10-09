@@ -118,6 +118,13 @@ if [[ "$(id -u)" == "0" ]]; then
         -maxdepth 1 -type f -user root \
         -exec chown frappe:frappe {} +
 
+    # Fix only root-owned files in site logs directories.
+    if [[ -d "${SITES_DIR}" ]]; then
+        find "${SITES_DIR}" \
+            -mindepth 2 -maxdepth 2 -type d -name "logs" \
+            -exec find {} -maxdepth 1 -type f -user root -exec chown frappe:frappe {} + \;
+    fi
+
     # Entrypoint may have written this configuration as root.
     if [[ -f "${SITES_DIR}/common_site_config.json" ]]; then
         chown frappe:frappe "${SITES_DIR}/common_site_config.json"
