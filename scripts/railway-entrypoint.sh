@@ -109,20 +109,28 @@ if [[ " $* " == *"gunicorn"* ]]; then
 			"${BENCH_DIR}/env/bin/python" "${BENCH_DIR}/railway-clear-asset-cache.py"
 	fi
 fi
+
 # Run application processes as frappe, never root.
 if [[ "$(id -u)" == "0" ]]; then
     echo "Preparing Frappe runtime permissions..."
 
     # Fix only root-owned files in the Bench logs directory.
-    find "${BENCH_DIR}/logs" \
-        -maxdepth 1 -type f -user root \
-        -exec chown frappe:frappe {} +
+    if [[ -d "${BENCH_DIR}/logs" ]]; then
+        find "${BENCH_DIR}/logs" \
+            -maxdepth 1 -type f -user root \
+            -exec chown frappe:frappe {} +
+    fi
 
     # Fix only root-owned files in site logs directories.
     if [[ -d "${SITES_DIR}" ]]; then
-        find "${SITES_DIR}" \
-            -mindepth 2 -maxdepth 2 -type d -name "logs" \
-            -exec find {} -maxdepth 1 -type f -user root -exec chown frappe:frappe {} + \;
+        while IFS= read -r -d '' log_dir; do
+            find "$log_dir" -maxdepth 1 -type f -user root \
+                -exec chown frappe:frappe {} +
+        done < <(
+            find "${SITES_DIR}" \
+                -mindepth 2 -maxdepth 2 -type d -name "logs" \
+                -print0
+        )
     fi
 
     # Entrypoint may have written this configuration as root.
@@ -158,5 +166,3 @@ if [[ "${RAILWAY_INSTALL_HRMS:-0}" == "1" ]] &&
 fi
 
 exec "$@"
-
- 
