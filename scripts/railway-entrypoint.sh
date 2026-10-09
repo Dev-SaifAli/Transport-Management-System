@@ -109,16 +109,47 @@ if [[ " $* " == *"gunicorn"* ]]; then
 			"${BENCH_DIR}/env/bin/python" "${BENCH_DIR}/railway-clear-asset-cache.py"
 	fi
 fi
-# Optional HRMS installation for an explicitly authorized deployment.
-if [[ "${RAILWAY_INSTALL_HRMS:-0}" == "1" ]]; then
-        if [[ " $* " == *"gunicorn"* ]]; then
-                echo "HRMS installation enabled for ${SITE_NAME}."
+# Run application processes as frappe, never root.
+if [[ "$(id -u)" == "0" ]]; then
+    echo "Preparing Frappe runtime permissions..."
 
-                FRAPPE_SITE="${SITE_NAME}" \
-                FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
-                SITES_DIR="${SITES_DIR}" \
-                bash "${BENCH_DIR}/railway-install-hrms.sh"
-        fi
+    # Fix only root-owned files in the Bench logs directory.
+    find "${BENCH_DIR}/logs" \
+        -maxdepth 1 -type f -user root \
+        -exec chown frappe:frappe {} +
+
+    # Entrypoint may have written this configuration as root.
+    if [[ -f "${SITES_DIR}/common_site_config.json" ]]; then
+        chown frappe:frappe "${SITES_DIR}/common_site_config.json"
+    fi
+
+    # Perform installation as the frappe user.
+    if [[ "${RAILWAY_INSTALL_HRMS:-0}" == "1" ]] &&
+       [[ " $* " == *"gunicorn"* ]]; then
+        echo "Starting guarded HRMS installation as frappe..."
+
+        runuser -u frappe -- env \
+            HOME=/home/frappe \
+            PATH="/home/frappe/.local/bin:${PATH}" \
+            FRAPPE_SITE="${SITE_NAME}" \
+            FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
+            SITES_DIR="${SITES_DIR}" \
+            bash "${BENCH_DIR}/railway-install-hrms.sh"
+    fi
+
+    echo "Starting application as frappe..."
+    exec runuser -u frappe -- "$@"
+fi
+
+# Also support Docker environments already running as frappe.
+if [[ "${RAILWAY_INSTALL_HRMS:-0}" == "1" ]] &&
+   [[ " $* " == *"gunicorn"* ]]; then
+    FRAPPE_SITE="${SITE_NAME}" \
+    FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
+    SITES_DIR="${SITES_DIR}" \
+    bash "${BENCH_DIR}/railway-install-hrms.sh"
 fi
 
 exec "$@"
+
+ 
