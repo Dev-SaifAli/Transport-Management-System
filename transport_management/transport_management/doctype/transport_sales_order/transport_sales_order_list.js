@@ -23,11 +23,11 @@ frappe.listview_settings["Transport Sales Order"] = {
 
 	formatters: {
 		customer(value) {
-			return text_display(value, "tms-list-customer");
+			return plain_text_display(value);
 		},
 
 		customer_lpo_number(value) {
-			return text_display(value, "tms-list-reference");
+			return plain_text_display(value);
 		},
 
 		ordered_quantity(value) {
@@ -64,6 +64,10 @@ function text_display(value, class_name) {
 	const text = value || "";
 	const escaped = frappe.utils.escape_html(text);
 	return `<span class="${class_name}" title="${escaped}">${escaped}</span>`;
+}
+
+function plain_text_display(value) {
+	return value || "";
 }
 
 function status_badge(value, color_map) {

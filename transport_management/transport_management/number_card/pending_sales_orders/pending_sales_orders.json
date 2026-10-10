@@ -1,0 +1,23 @@
+{
+ "creation": "2026-10-10 00:14:40.869151",
+ "currency": "AED",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Transport Sales Order",
+ "filters_json": "[\n [\n  \"Transport Sales Order\",\n  \"status\",\n  \"in\",\n  [\n   \"Submitted\",\n   \"Partially Converted\"\n  ]\n ]\n]",
+ "function": "Count",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "Pending Sales Orders",
+ "modified": "2026-10-10 00:35:22.653531",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Pending Sales Orders",
+ "owner": "Administrator",
+ "report_function": "Sum",
+ "show_full_number": 0,
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

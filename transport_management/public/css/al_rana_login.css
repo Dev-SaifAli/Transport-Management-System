@@ -1,0 +1,1284 @@
+/* ==========================================================================
+   AL RANA Transport Management - login page re-skin
+   --------------------------------------------------------------------------
+   Plain-CSS conversion of the Tailwind design. Everything is scoped under
+   `.al-login` (the wrapper rendered by transport_management/www/login.html)
+   so this file never leaks onto other web pages or collides with Frappe's
+   Bootstrap styles.
+
+   Frappe's own `login.bundle.css` still provides the markup contract
+   (.page-card, .form-group, .btn-login, .toggle-password, .field-error, ...);
+   this file only restyles it. No selector used by login.js was renamed, and
+   no login behaviour is changed.
+   ========================================================================== */
+
+/* --- Self-hosted Inter (with a system-font fallback) --------------------- */
+
+@font-face {
+	font-family: "Inter";
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url("/assets/transport_management/fonts/Inter-Regular.woff2") format("woff2");
+}
+@font-face {
+	font-family: "Inter";
+	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url("/assets/transport_management/fonts/Inter-Medium.woff2") format("woff2");
+}
+@font-face {
+	font-family: "Inter";
+	font-style: normal;
+	font-weight: 600;
+	font-display: swap;
+	src: url("/assets/transport_management/fonts/Inter-SemiBold.woff2") format("woff2");
+}
+@font-face {
+	font-family: "Inter";
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src: url("/assets/transport_management/fonts/Inter-Bold.woff2") format("woff2");
+}
+@font-face {
+	font-family: "Inter";
+	font-style: normal;
+	font-weight: 800;
+	font-display: swap;
+	src: url("/assets/transport_management/fonts/Inter-ExtraBold.woff2") format("woff2");
+}
+
+/* --- Design tokens -------------------------------------------------------- */
+
+.al-login {
+	--al-teal: #0e7c86;
+	--al-teal-hover: #09545b;
+	--al-teal-soft: #e6f4f6;
+	--al-navy: #0b2545;
+	--al-sky: #38bdf8;
+	--al-amber: #f59e0b;
+	--al-bg: #f4f8fb;
+	--al-text: #0f172a;
+	--al-text-muted: #475569;
+	--al-border: #d9e2ec;
+	--al-error: #dc2626;
+	--al-error-bg: #fef2f2;
+	--al-success: #16a34a;
+	--al-success-bg: #ecfdf3;
+	--al-radius: 10px;
+	--al-input-h: 48px;
+
+	font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+		"Helvetica Neue", Arial, sans-serif;
+	color: var(--al-text);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Page shell ----------------------------------------------------------- */
+
+/* Tokens live on `.al-login` so they cannot leak; the shell repeats only the
+   literal light background it needs. */
+
+body[data-path="login"] {
+	overflow-x: hidden;
+	background: #f4f8fb;
+}
+
+body[data-path="login"] .navbar,
+body[data-path="login"] .web-footer,
+body[data-path="login"] .page-breadcrumbs,
+body[data-path="login"] .page-header-wrapper,
+body[data-path="login"] .page-footer {
+	display: none !important;
+}
+
+body[data-path="login"] .page-content-wrapper {
+	min-height: 100dvh;
+	padding: 0 !important;
+}
+
+body[data-path="login"] main.container,
+body[data-path="login"] .page_content {
+	margin: 0 !important;
+	max-width: none !important;
+	padding: 0 !important;
+	width: 100% !important;
+}
+
+.al-login {
+	display: flex;
+	flex-direction: column;
+	min-height: 100dvh;
+	width: 100%;
+}
+
+.al-login *,
+.al-login *::before,
+.al-login *::after {
+	box-sizing: border-box;
+}
+
+/* ==========================================================================
+   LEFT: brand / hero panel
+   ========================================================================== */
+
+.al-hero {
+	display: none; /* hidden below lg */
+	flex-direction: column;
+	justify-content: space-between;
+	gap: 24px;
+	padding: 40px;
+	background: linear-gradient(to bottom, #ffffff 0%, #edf3f8 50%, #ffffff 100%);
+}
+
+.al-hero-brand {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	z-index: 2;
+}
+
+.al-hero-logo {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	flex: 0 0 44px;
+	border-radius: 12px;
+	background: var(--al-teal);
+	color: #ffffff;
+	box-shadow: 0 4px 10px rgba(14, 124, 134, 0.22);
+	outline: 4px solid rgba(14, 124, 134, 0.1);
+}
+
+.al-hero-logo-icon {
+	width: 24px;
+	height: 24px;
+}
+
+.al-hero-brand-text {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.25;
+}
+
+.al-hero-brand-name {
+	font-size: 18px;
+	font-weight: 800;
+	letter-spacing: -0.01em;
+	text-transform: uppercase;
+	color: var(--al-navy);
+}
+
+.al-hero-brand-sub {
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.05em;
+	color: var(--al-text-muted);
+}
+
+/* --- photo + overlays ----------------------------------------------------- */
+
+.al-hero-media {
+	position: relative;
+	width: calc(100% + 56px);
+	margin-inline: -28px;
+	margin-block: auto;
+	z-index: 0;
+}
+
+.al-hero-img {
+	display: block;
+	width: 100%;
+	height: auto;
+	user-select: none;
+	-webkit-user-select: none;
+	/* soft fade into the gradient background: top, bottom and right edges */
+	-webkit-mask-image: linear-gradient(to bottom,
+			transparent 0, #000 26%, #000 80%, transparent 100%),
+		linear-gradient(to right, transparent 0, #000 2%, #000 96%, transparent 100%);
+	-webkit-mask-composite: source-in;
+	mask-image: linear-gradient(to bottom,
+			transparent 0, #000 26%, #000 80%, transparent 100%),
+		linear-gradient(to right, transparent 0, #000 2%, #000 96%, transparent 100%);
+	mask-composite: intersect;
+}
+
+.al-hero-route {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.al-route-line {
+	animation: al-route 1.6s linear infinite;
+}
+
+.al-pin {
+	animation: al-pin 2.6s ease-in-out infinite;
+}
+
+@keyframes al-route {
+	to {
+		stroke-dashoffset: -19;
+	}
+}
+
+@keyframes al-pin {
+	50% {
+		transform: translateY(-6px);
+	}
+}
+
+/* --- "Fleet on-time rate" card (decorative placeholder) ------------------- */
+
+.al-hero-kpi {
+	position: absolute;
+	inset-inline-end: 4%;
+	top: -9%;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.9);
+	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
+	box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
+	outline: 1px solid rgba(217, 226, 236, 0.9);
+}
+
+.al-hero-kpi-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	flex: 0 0 40px;
+	border-radius: 999px;
+	background: var(--al-success-bg);
+	color: var(--al-success);
+}
+
+.al-hero-kpi-icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.al-hero-kpi-text {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.3;
+}
+
+.al-hero-kpi-label {
+	display: block;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--al-text-muted);
+}
+
+.al-hero-kpi-value {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.al-hero-kpi-num {
+	font-size: 20px;
+	font-weight: 800;
+	color: var(--al-navy);
+}
+
+.al-hero-kpi-delta {
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: #d1fae5;
+	font-size: 10px;
+	font-weight: 700;
+	color: #047857;
+}
+
+/* --- "trips in transit" chip (decorative placeholder) --------------------- */
+
+.al-hero-chip {
+	position: absolute;
+	inset-inline-start: 6%;
+	bottom: 4%;
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 16px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.95);
+	font-size: 12px;
+	font-weight: 700;
+	color: var(--al-navy);
+	box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
+	outline: 1px solid rgba(217, 226, 236, 0.9);
+}
+
+.al-hero-chip-dot {
+	position: relative;
+	display: inline-flex;
+	width: 10px;
+	height: 10px;
+	flex: 0 0 10px;
+	border-radius: 999px;
+	background: var(--al-teal);
+}
+
+.al-hero-chip-ping {
+	position: absolute;
+	inset: 0;
+	border-radius: 999px;
+	background: var(--al-teal);
+	opacity: 0.4;
+	animation: al-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes al-ping {
+	75%,
+	100% {
+		transform: scale(2.2);
+		opacity: 0;
+	}
+}
+
+/* --- headline + feature pills -------------------------------------------- */
+
+.al-hero-footer {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	z-index: 2;
+}
+
+.al-hero-headline {
+	margin: 0;
+	font-size: 26px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.2;
+	color: var(--al-navy);
+}
+
+.al-hero-pills {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.al-hero-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 14px;
+	border-radius: 999px;
+	background: #ffffff;
+	border: 1px solid rgba(217, 226, 236, 0.9);
+	font-size: 12px;
+	font-weight: 600;
+	color: #334155;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.al-hero-pill-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 999px;
+	background: var(--al-success);
+	animation: al-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.al-hero-pill-icon {
+	width: 14px;
+	height: 14px;
+	color: var(--al-teal);
+}
+
+@keyframes al-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
+}
+
+/* ==========================================================================
+   RIGHT: sign-in panel
+   ========================================================================== */
+
+.al-panel {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	gap: 24px;
+	width: 100%;
+	min-height: 100dvh;
+	padding: 32px 24px;
+	background: #ffffff;
+}
+
+/* --- mobile-only compact brand header ------------------------------------ */
+
+.al-mobile-brand {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding-bottom: 24px;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.al-mobile-brand-left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.al-mobile-logo {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	flex: 0 0 36px;
+	border-radius: 8px;
+	background: var(--al-teal);
+	color: #ffffff;
+}
+
+.al-mobile-logo svg {
+	width: 20px;
+	height: 20px;
+}
+
+.al-mobile-brand-text {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.25;
+}
+
+.al-mobile-brand-name {
+	font-size: 14px;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	color: var(--al-navy);
+}
+
+.al-mobile-brand-sub {
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--al-text-muted);
+}
+
+.al-mobile-live {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: var(--al-success-bg);
+	font-size: 12px;
+	font-weight: 600;
+	color: #047857;
+}
+
+.al-mobile-live-dot {
+	position: relative;
+	width: 6px;
+	height: 6px;
+	border-radius: 999px;
+	background: var(--al-success);
+	animation: al-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* --- form column ---------------------------------------------------------- */
+
+.al-form-wrap {
+	width: 100%;
+	max-width: 420px;
+	margin-inline: auto;
+	margin-block: auto;
+}
+
+.al-form-head {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	margin-bottom: 28px;
+}
+
+.al-form-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	margin-bottom: 20px;
+	border-radius: 12px;
+	background: #f1f5f9;
+	border: 1px solid rgba(217, 226, 236, 0.8);
+	color: var(--al-navy);
+}
+
+.al-form-badge svg {
+	width: 24px;
+	height: 24px;
+}
+
+.al-form-title {
+	margin: 0;
+	font-size: 30px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.15;
+	color: var(--al-text);
+}
+
+.al-form-sub {
+	margin: 4px 0 0;
+	font-size: 15px;
+	font-weight: 400;
+	color: var(--al-text-muted);
+}
+
+/* ==========================================================================
+   Frappe markup overrides
+   --------------------------------------------------------------------------
+   Each selector deliberately mirrors login.bundle.css's own nesting
+   (`.for-<route> .page-card .page-card-body ...`) and adds `.al-form-wrap`
+   plus the `body[data-path="login"]` prefix, so it is always strictly more
+   specific than Frappe's rule rather than relying on source order:
+
+     login.bundle.css : .for-login .page-card .page-card-body input[type=text]
+                        specificity (0, 3, 1)
+     this file        : body[data-path="login"] .al-form-wrap .page-card
+                                  .page-card-body input.form-control
+                        specificity (0, 5, 2)
+   ========================================================================== */
+
+body[data-path="login"] .al-form-wrap .login-content.page-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	width: 100%;
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+}
+
+/* --- card head: hidden on the primary views, restyled on the others -------- */
+
+body[data-path="login"] .al-form-wrap .page-card-head {
+	display: none !important;
+}
+
+body[data-path="login"] .al-form-wrap[data-al-route="forgot"] .for-forgot .page-card-head,
+body[data-path="login"] .al-form-wrap[data-al-route="login_with_email_link"] .for-login-with-email-link .page-card-head,
+body[data-path="login"] .al-form-wrap[data-al-route="signup"] .for-signup .page-card-head,
+body[data-path="login"] .al-form-wrap[data-al-route="email"] .for-email-login .page-card-head,
+body[data-path="login"] .al-form-wrap #twofactor_div .page-card-head {
+	display: flex !important;
+	flex-direction: column;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+body[data-path="login"] .al-form-wrap[data-al-route="forgot"] .al-form-head,
+body[data-path="login"] .al-form-wrap[data-al-route="login_with_email_link"] .al-form-head,
+body[data-path="login"] .al-form-wrap[data-al-route="signup"] .al-form-head,
+body[data-path="login"] .al-form-wrap[data-al-route="email"] .al-form-head {
+	display: none;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-head img.app-logo {
+	display: none;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-head .page-card-head-text {
+	margin: 0;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-head h4 {
+	margin: 0;
+	font-family: inherit;
+	font-size: 24px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.2;
+	color: var(--al-text);
+}
+
+body[data-path="login"] .al-form-wrap .page-card-head .page-card-subtitle {
+	margin: 0;
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.5;
+	color: var(--al-text-muted);
+}
+
+body[data-path="login"] .al-form-wrap #twofactor_div .page-card-head .indicator {
+	color: var(--al-teal);
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 700;
+}
+
+body[data-path="login"] .al-form-wrap #twofactor_div #otp_div {
+	margin-bottom: 12px;
+	font-family: inherit;
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--al-text-muted);
+}
+
+/* --- Caps Lock hint (shares the row with the Password label) -------------- */
+
+body[data-path="login"] .al-form-wrap .page-card-body .al-password-label-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	width: 100%;
+	margin: 0;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .al-caps-hint {
+	display: none;
+	align-items: center;
+	flex: 0 0 auto;
+	padding: 2px 8px;
+	border: 1px solid #fcd34d;
+	border-radius: 6px;
+	background: #fffbeb;
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.5;
+	white-space: nowrap;
+	color: #b45309;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .al-caps-hint.al-is-visible {
+	display: inline-flex;
+}
+
+/* --- labels --------------------------------------------------------------- */
+
+body[data-path="login"] .al-form-wrap .page-card-body .form-label {
+	width: 100%;
+	margin: 0 0 6px;
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.3;
+	color: #334155;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .al-password-label-row .form-label {
+	margin-bottom: 0;
+}
+
+/* --- field wrappers and inputs -------------------------------------------- */
+
+body[data-path="login"] .al-form-wrap .page-card-body .form-group {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	align-self: stretch;
+	width: 100%;
+	margin: 0 0 16px;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .email-field,
+body[data-path="login"] .al-form-wrap .page-card-body .password-field {
+	position: relative;
+	width: 100%;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .field-icon {
+	position: absolute;
+	left: 14px;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 3;
+	fill: #94a3b8;
+	pointer-events: none;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .password-field .toggle-password {
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 3;
+	cursor: pointer;
+	fill: #94a3b8;
+	border-radius: 6px;
+	transition: fill 0.16s ease;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .password-field .toggle-password:hover {
+	fill: var(--al-teal);
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .toggle-password:focus-visible {
+	outline: 2px solid var(--al-teal);
+	outline-offset: 2px;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body input.form-control {
+	width: 100%;
+	height: var(--al-input-h);
+	min-height: 44px;
+	padding: 10px 14px 10px 42px;
+	background: #ffffff;
+	border: 1px solid var(--al-border);
+	border-radius: var(--al-radius);
+	box-shadow: none;
+	color: var(--al-text);
+	font-family: inherit;
+	font-size: 15px;
+	line-height: 1.3;
+	transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .password-field input.form-control {
+	padding-right: 42px;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body input.form-control::placeholder {
+	color: #94a3b8;
+	opacity: 1;
+}
+
+/* Visible 2px teal focus ring (WCAG AA) */
+body[data-path="login"] .al-form-wrap .page-card-body input.form-control:focus {
+	background: #ffffff;
+	border-color: var(--al-teal);
+	box-shadow: 0 0 0 2px var(--al-teal);
+	outline: none;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body input.form-control:focus-visible {
+	outline: none;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body input:-webkit-autofill,
+body[data-path="login"] .al-form-wrap .page-card-body input:-webkit-autofill:hover,
+body[data-path="login"] .al-form-wrap .page-card-body input:-webkit-autofill:focus,
+body[data-path="login"] .al-form-wrap .page-card-body input:-webkit-autofill:active {
+	-webkit-text-fill-color: var(--al-text);
+	box-shadow: 0 0 0 1000px #ffffff inset;
+	caret-color: var(--al-text);
+	transition: background-color 9999s ease-in-out 0s;
+}
+
+/* --- field errors --------------------------------------------------------- */
+
+body[data-path="login"] .al-form-wrap .page-card-body .field-error {
+	display: none;
+	margin: 0;
+	font-family: inherit;
+	font-size: 13px;
+	line-height: 1.4;
+	color: var(--al-error);
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .form-group.invalid .field-error {
+	display: block;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .form-group.invalid input.form-control,
+body[data-path="login"] .al-form-wrap .page-card-body.invalid input.form-control {
+	border-color: var(--al-error);
+	background: #ffffff;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .form-group.invalid input.form-control:focus,
+body[data-path="login"] .al-form-wrap .page-card-body.invalid input.form-control:focus {
+	border-color: var(--al-error);
+	box-shadow: 0 0 0 2px var(--al-error);
+}
+
+/* --- error / success banners --------------------------------------------- */
+
+body[data-path="login"] .al-form-wrap .page-card-body .login-error-banner,
+body[data-path="login"] .al-form-wrap .page-card-body .login-success-banner {
+	display: none;
+	align-items: flex-start;
+	gap: 10px;
+	align-self: stretch;
+	width: 100%;
+	margin: 0 0 16px;
+	padding: 12px 14px;
+	border-radius: var(--al-radius);
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1.45;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .login-error-banner {
+	background: var(--al-error-bg) !important;
+	border: 1px solid #fecaca !important;
+	color: #b91c1c !important;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .login-error-banner svg {
+	fill: var(--al-error);
+	flex-shrink: 0;
+	margin-top: 1px;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .login-success-banner {
+	background: var(--al-success-bg) !important;
+	border: 1px solid #a7f3d0 !important;
+	color: #047857 !important;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .login-success-banner svg {
+	fill: var(--al-success);
+	flex-shrink: 0;
+	margin-top: 1px;
+}
+
+/* --- buttons -------------------------------------------------------------- */
+
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-ldap-login,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-forgot,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-signup,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login-option,
+body[data-path="login"] .al-form-wrap .signup-disabled-message .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	height: var(--al-input-h);
+	min-height: 44px;
+	margin: 0 !important;
+	padding: 0 16px !important;
+	border-radius: var(--al-radius) !important;
+	font-family: inherit;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.2;
+	text-decoration: none;
+	box-shadow: none;
+	text-shadow: none;
+	transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease,
+		transform 0.08s ease, box-shadow 0.16s ease;
+	cursor: pointer;
+}
+
+/* primary teal */
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-ldap-login.btn-primary,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-forgot,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-signup:not(:disabled) {
+	background: var(--al-teal) !important;
+	border: 1px solid var(--al-teal) !important;
+	color: #ffffff !important;
+	box-shadow: 0 1px 2px rgba(14, 124, 134, 0.25);
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login:hover,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-ldap-login.btn-primary:hover,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-forgot:hover,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-signup:not(:disabled):hover {
+	background: var(--al-teal-hover) !important;
+	border-color: var(--al-teal-hover) !important;
+	color: #ffffff !important;
+	box-shadow: 0 4px 10px rgba(14, 124, 134, 0.28);
+}
+
+/* secondary */
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login-option,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-signup:disabled {
+	background: #f1f5f9 !important;
+	border: 1px solid var(--al-border) !important;
+	color: var(--al-navy) !important;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .al-or-divider,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login-with-email-link {
+	display: none !important;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login-option:hover {
+	background: #e2e8f0 !important;
+	border-color: #c8d3df !important;
+	color: var(--al-navy) !important;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login:active,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-forgot:active,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-signup:not(:disabled):active,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login-option:active {
+	transform: translateY(1px);
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login:focus-visible,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-ldap-login:focus-visible,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-forgot:focus-visible,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-signup:focus-visible,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-login-option:focus-visible,
+body[data-path="login"] .al-form-wrap a:focus-visible {
+	outline: 2px solid var(--al-teal);
+	outline-offset: 2px;
+	box-shadow: none;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-forgot:disabled,
+body[data-path="login"] .al-form-wrap .page-card-actions .btn-signup:disabled {
+	cursor: not-allowed;
+	opacity: 0.65;
+}
+
+/* --- loading state (spinner + disabled fields) --------------------------- */
+
+body[data-path="login"] .al-form-wrap form.al-is-submitting .btn-login,
+body[data-path="login"] .al-form-wrap form.al-is-submitting .btn-forgot,
+body[data-path="login"] .al-form-wrap form.al-is-submitting .btn-login-with-email-link {
+	pointer-events: none;
+	opacity: 0.85;
+}
+
+body[data-path="login"] .al-form-wrap form.al-is-submitting .btn-login::before,
+body[data-path="login"] .al-form-wrap form.al-is-submitting .btn-forgot::before,
+body[data-path="login"] .al-form-wrap form.al-is-submitting .btn-login-with-email-link::before {
+	content: "";
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	margin-inline-end: 8px;
+	border: 2px solid rgba(255, 255, 255, 0.4);
+	border-top-color: #ffffff;
+	border-radius: 50%;
+	animation: al-spin 0.7s linear infinite;
+}
+
+@keyframes al-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+body[data-path="login"] .al-form-wrap form.al-is-submitting .form-control,
+body[data-path="login"] .al-form-wrap form.al-is-submitting #login_token {
+	background: #f8fafc;
+}
+
+/* --- "or" divider --------------------------------------------------------- */
+
+body[data-path="login"] .al-form-wrap .page-card-actions .al-or-divider {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 2px 0;
+	font-family: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: #94a3b8;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .al-or-divider::before,
+body[data-path="login"] .al-form-wrap .page-card-actions .al-or-divider::after {
+	content: "";
+	flex: 1 1 auto;
+	height: 1px;
+	background: var(--al-border);
+}
+
+/* --- misc stock bits ------------------------------------------------------ */
+
+body[data-path="login"] .al-form-wrap .page-card-body .forgot-password-message {
+	align-self: stretch;
+	margin: 0;
+	line-height: 1.4;
+	text-align: right;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .forgot-password-message a {
+	color: var(--al-teal);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .forgot-password-message a:hover {
+	color: var(--al-teal-hover);
+	text-decoration: underline;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-body .sign-up-message,
+body[data-path="login"] .al-form-wrap .signup-disabled-message .sign-up-message {
+	margin: 18px 0 0;
+	font-family: inherit;
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 1.5;
+	color: var(--al-text-muted);
+}
+
+body[data-path="login"] .al-form-wrap .sign-up-message a {
+	color: var(--al-teal);
+	font-weight: 600;
+	text-decoration: underline;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .social-logins {
+	margin: 0;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .social-login-buttons {
+	margin-top: 4px;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .login-button-wrapper {
+	min-width: 50%;
+	margin: 0 0 8px;
+	padding: 0 4px;
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .resend-link {
+	display: none;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 4px;
+	font-family: inherit;
+	font-size: 13px;
+	color: var(--al-text-muted);
+}
+
+body[data-path="login"] .al-form-wrap .page-card-actions .resend-link a {
+	color: var(--al-teal);
+	font-weight: 600;
+}
+
+/* --- OTP / 2FA inputs injected by login.js -------------------------------- */
+
+body[data-path="login"] .al-form-wrap #twofactor_div #login_token {
+	width: 100%;
+	height: var(--al-input-h);
+	min-height: 44px;
+	margin-bottom: 12px;
+	padding: 10px 14px;
+	background: #ffffff;
+	border: 1px solid var(--al-border);
+	border-radius: var(--al-radius);
+	box-shadow: none;
+	color: var(--al-text);
+	font-family: inherit;
+	font-size: 15px;
+}
+
+body[data-path="login"] .al-form-wrap #twofactor_div #login_token:focus {
+	border-color: var(--al-teal);
+	box-shadow: 0 0 0 2px var(--al-teal);
+	outline: none;
+}
+
+body[data-path="login"] .al-form-wrap #twofactor_div #verify_token {
+	width: 100%;
+	height: var(--al-input-h);
+	min-height: 44px;
+	margin-top: 4px;
+	border: 1px solid var(--al-teal);
+	border-radius: var(--al-radius);
+	background: var(--al-teal);
+	box-shadow: none;
+	color: #ffffff;
+	font-family: inherit;
+	font-size: 15px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+body[data-path="login"] .al-form-wrap #twofactor_div #verify_token:hover {
+	background: var(--al-teal-hover);
+	border-color: var(--al-teal-hover);
+}
+
+/* --- help text + footer --------------------------------------------------- */
+
+.al-help-text {
+	display: none !important;
+}
+
+.al-panel-footer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	padding-top: 20px;
+	border-top: 1px solid #f1f5f9;
+	font-size: 12px;
+	line-height: 1.5;
+	color: #94a3b8;
+	text-align: center;
+}
+
+.al-panel-secure {
+	display: none !important;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+	color: var(--al-text-muted);
+}
+
+.al-panel-secure svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* ==========================================================================
+   Breakpoints
+   ========================================================================== */
+
+/* sm (>=576px) */
+@media (min-width: 576px) {
+	.al-panel {
+		padding: 48px;
+	}
+}
+
+/* lg (>=992px) : the split screen. Matches Bootstrap's `lg` breakpoint. */
+@media (min-width: 992px) {
+	.al-login {
+		flex-direction: row;
+		min-height: 100dvh;
+	}
+
+	.al-hero {
+		display: flex;
+		width: 50%;
+		min-height: 100dvh;
+		padding: 32px 28px;
+		border-inline-end: 1px solid rgba(217, 226, 236, 0.7);
+	}
+
+	.al-hero-headline {
+		font-size: 24px;
+	}
+
+	.al-mobile-brand {
+		display: none;
+	}
+
+	.al-panel {
+		width: 50%;
+		min-height: 100dvh;
+		padding: 48px 64px;
+	}
+
+	.al-panel-footer {
+		flex-direction: row;
+		justify-content: space-between;
+		text-align: start;
+	}
+}
+
+/* xl (>=1200px) : roomier brand padding / headline, per the design */
+@media (min-width: 1200px) {
+	.al-hero {
+		padding: 48px 36px;
+	}
+
+	.al-hero-headline {
+		font-size: 26px;
+	}
+}
+
+/* ==========================================================================
+   Motion preferences
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+	.al-route-line,
+	.al-pin,
+	.al-hero-chip-ping,
+	.al-hero-pill-dot,
+	.al-mobile-live-dot {
+		animation: none !important;
+	}
+
+	.al-login *,
+	.al-login *::before,
+	.al-login *::after {
+		transition-duration: 0.01ms !important;
+	}
+}
+
+/* ==========================================================================
+   High-contrast / forced-colors safety
+   ========================================================================== */
+
+@media (forced-colors: active) {
+	.al-login .btn-login,
+	.al-login .btn-login-option,
+	.al-login .btn-forgot,
+	.al-login .btn-signup {
+		border: 1px solid ButtonText;
+	}
+}
+
+/* Route-agnostic final overrides. The public root can render this login page
+   without `body[data-path="login"]`, so keep critical visual adjustments scoped
+   to the login shell itself. */
+.al-login .al-hero-media {
+	width: calc(100% + 48px);
+	margin-inline: -24px;
+}
+
+.al-login .al-hero-img {
+	max-width: none;
+}
+
+.al-login .al-hero-kpi {
+	inset-inline-end: 5%;
+	top: -8%;
+}
+
+.al-login .al-form-wrap .page-card-actions .al-or-divider,
+.al-login .al-form-wrap .page-card-actions .btn-login-with-email-link {
+	display: none !important;
+}

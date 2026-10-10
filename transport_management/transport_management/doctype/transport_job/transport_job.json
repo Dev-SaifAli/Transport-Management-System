@@ -16,6 +16,7 @@
   "status",
   "column_break_job_details",
   "loading_site",
+  "loading_stops",
   "unloading_site",
   "instructions_section",
   "special_instructions",
@@ -78,6 +79,13 @@
    "label": "Loading Site",
    "options": "Transport Location",
    "reqd": 1
+  },
+  {
+   "description": "Ordered loading locations for this Transport Job. The first stop is used as the primary Loading Site.",
+   "fieldname": "loading_stops",
+   "fieldtype": "Table",
+   "label": "Loading Stops",
+   "options": "Transport Loading Stop"
   },
   {
    "fieldname": "unloading_site",

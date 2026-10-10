@@ -1,7 +1,12 @@
 {
  "app": "transport_management",
- "charts": [],
- "content": "[{\"id\":\"tms_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Transport Management</span>\",\"col\":12}},{\"id\":\"tms_spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tms_operations\",\"type\":\"card\",\"data\":{\"card_name\":\"Operations / Commercial\",\"col\":4}},{\"id\":\"tms_fleet\",\"type\":\"card\",\"data\":{\"card_name\":\"Fleet\",\"col\":4}},{\"id\":\"tms_masters\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"tms_tools\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":4}}]",
+ "charts": [
+  {
+   "chart_name": "Monthly Fleet Utilization",
+   "label": "Monthly Fleet Utilization"
+  }
+ ],
+ "content": "[{\"id\":\"tms_active_jobs_card\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Active Jobs\",\"col\":3}},{\"id\":\"tms_trips_en_route_card\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Trips En Route\",\"col\":3}},{\"id\":\"tms_available_fleet_card\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Available Fleet\",\"col\":3}},{\"id\":\"tms_pending_sales_orders_card\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Pending Sales Orders\",\"col\":3}},{\"id\":\"tms_actions_spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tms_new_transport_trip_shortcut\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Transport Trip\",\"col\":4}},{\"id\":\"tms_assign_driver_shortcut\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Assign Driver\",\"col\":4}},{\"id\":\"tms_update_rates_shortcut\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Update Rates\",\"col\":4}},{\"id\":\"tms_chart_spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tms_monthly_fleet_utilization_chart\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Monthly Fleet Utilization\",\"col\":12}},{\"id\":\"tms_links_spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tms_operations\",\"type\":\"card\",\"data\":{\"card_name\":\"Operations & Commercial\",\"col\":4}},{\"id\":\"tms_fleet\",\"type\":\"card\",\"data\":{\"card_name\":\"Fleet Management\",\"col\":4}},{\"id\":\"tms_masters\",\"type\":\"card\",\"data\":{\"card_name\":\"Master Data Tables\",\"col\":4}}]",
  "creation": "2026-09-13 19:21:22.479854",
  "custom_blocks": [],
  "docstatus": 0,
@@ -17,21 +22,11 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Operations / Commercial",
-   "link_count": 4,
+   "label": "Operations & Commercial",
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Operations Dashboard",
-   "link_count": 0,
-   "link_to": "tms-trip-operations",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
   },
   {
    "hidden": 0,
@@ -66,7 +61,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Fleet",
+   "label": "Fleet Management",
    "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
@@ -105,7 +100,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Masters",
+   "label": "Master Data Tables",
    "link_count": 7,
    "link_type": "DocType",
    "onboard": 0,
@@ -180,57 +175,45 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Tools",
-   "link_count": 1,
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Data Import",
-   "link_count": 0,
-   "link_to": "tms-data-import",
-   "link_type": "Page",
-   "onboard": 0,
-   "type": "Link"
   }
  ],
- "modified": "2026-10-06 18:22:35.024245",
+ "modified": "2026-10-10 00:35:24.589842",
  "modified_by": "Administrator",
  "module": "Transport Management",
  "name": "Transport Management",
  "number_cards": [
   {
-   "label": "Total Transport Jobs",
-   "number_card_name": "Total Transport Jobs"
+   "label": "Active Jobs",
+   "number_card_name": "Active Jobs"
   },
   {
-   "label": "Active Transport Trips",
-   "number_card_name": "Active Transport Trips"
+   "label": "Trips En Route",
+   "number_card_name": "Trips En Route"
   },
   {
-   "label": "Trips In Transit",
-   "number_card_name": "Trips In Transit"
+   "label": "Available Fleet",
+   "number_card_name": "Available Fleet"
   },
   {
-   "label": "Trips Awaiting POD",
-   "number_card_name": "Trips Awaiting POD"
-  },
-  {
-   "label": "Active Hired Vehicles",
-   "number_card_name": "Active Hired Vehicles"
+   "label": "Pending Sales Orders",
+   "number_card_name": "Pending Sales Orders"
   }
  ],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
- "quick_lists": [],
+ "quick_lists": [
+  {
+   "document_type": "Transport Trip",
+   "label": "Trips En Route",
+   "quick_list_filter": "[\n [\n  \"Transport Trip\",\n  \"status\",\n  \"=\",\n  \"IN_TRANSIT\"\n ]\n]"
+  },
+  {
+   "document_type": "Transport Job",
+   "label": "Active Jobs",
+   "quick_list_filter": "[\n [\n  \"Transport Job\",\n  \"status\",\n  \"in\",\n  [\n   \"Ready\",\n   \"In Progress\"\n  ]\n ]\n]"
+  }
+ ],
  "restrict_to_domain": "",
  "roles": [
   {
@@ -244,7 +227,29 @@
   }
  ],
  "sequence_id": 1.0,
- "shortcuts": [],
+ "shortcuts": [
+  {
+   "doc_view": "New",
+   "label": "New Transport Trip",
+   "link_to": "Transport Trip",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Assign Driver",
+   "link_to": "Transport Trip",
+   "stats_filter": "[\n [\n  \"Transport Trip\",\n  \"status\",\n  \"in\",\n  [\n   \"PLANNED\",\n   \"ASSIGNED\"\n  ]\n ]\n]",
+   "type": "DocType"
+  },
+  {
+   "doc_view": "List",
+   "label": "Update Rates",
+   "link_to": "Transport Rate",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
  "title": "Transport Management",
  "type": "Workspace"
 }

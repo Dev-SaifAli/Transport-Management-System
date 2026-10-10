@@ -8,6 +8,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, get_datetime, now_datetime
 
+from transport_management.loading_stops import serialize_loading_stops
 from transport_management.services.driver_portal_auth import require_current_driver_identity
 from transport_management.services.driver_portal_documents import get_trip_document_summary
 from transport_management.transport_management.doctype.transport_charge_rule.transport_charge_rule import (
@@ -252,7 +253,10 @@ def serialize_trip(trip: frappe._dict) -> dict:
 
 def serialize_trip_detail(trip: frappe._dict) -> dict:
 	job = get_job_details(trip.transport_job)
-	locations = get_location_details([trip.loading_site, trip.unloading_site])
+	loading_stops = get_trip_loading_stops(trip.name)
+	location_names = [trip.loading_site, trip.unloading_site]
+	location_names.extend(stop.loading_location for stop in loading_stops)
+	locations = get_location_details(location_names)
 	customer = get_customer_display(job.get("customer"))
 	material = get_material_display(trip.material)
 	truck = get_truck_display(trip.vehicle)
@@ -268,6 +272,7 @@ def serialize_trip_detail(trip: frappe._dict) -> dict:
 		"uom": trip.uom,
 		"loading_location": get_location_display(trip.loading_site, locations),
 		"loading_area_zone": get_location_area_zone(trip.loading_site, locations),
+		"loading_stops": serialize_loading_stops(loading_stops, locations),
 		"unloading_location": get_location_display(trip.unloading_site, locations),
 		"unloading_area_zone": get_location_area_zone(trip.unloading_site, locations),
 		"truck": truck,
@@ -277,6 +282,19 @@ def serialize_trip_detail(trip: frappe._dict) -> dict:
 		"driver_started_at": format_value(trip.get("driver_started_at")),
 		"driver_delivered_at": format_value(trip.get("driver_delivered_at")),
 	}
+
+
+def get_trip_loading_stops(trip_name: str) -> list[frappe._dict]:
+	return frappe.get_all(
+		"Transport Loading Stop",
+		filters={
+			"parenttype": "Transport Trip",
+			"parentfield": "loading_stops",
+			"parent": trip_name,
+		},
+		fields=["idx", "loading_location", "planned_quantity", "notes"],
+		order_by="idx asc",
+	)
 
 
 def get_job_details(job_name: str | None) -> frappe._dict:

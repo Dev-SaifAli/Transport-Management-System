@@ -13,6 +13,42 @@ if [ ! -f "${SITES_DIR}/apps.txt" ] && [ -d "${SITES_TEMPLATE_DIR}" ]; then
 	cp -a "${SITES_TEMPLATE_DIR}/." "${SITES_DIR}/"
 fi
 
+# Synchronize Bench apps from the Docker image with the persistent volume.
+TEMPLATE_APPS="${SITES_TEMPLATE_DIR}/apps.txt"
+PERSISTENT_APPS="${SITES_DIR}/apps.txt"
+
+if [[ -f "${TEMPLATE_APPS}" && -f "${PERSISTENT_APPS}" ]]; then
+        (
+                flock -x 9
+
+                TEMP_APPS="$(mktemp "${SITES_DIR}/.apps-sync.XXXXXX")"
+                trap 'rm -f "${TEMP_APPS}"' EXIT
+
+                cp "${PERSISTENT_APPS}" "${TEMP_APPS}"
+
+                while IFS= read -r app || [[ -n "${app}" ]]; do
+                        [[ -z "${app}" ]] && continue
+
+                        if ! grep -Fxq -- "${app}" "${TEMP_APPS}"; then
+                                # Add a newline if the last existing line has none.
+                                if [[ -s "${TEMP_APPS}" ]] &&
+                                   [[ "$(tail -c 1 "${TEMP_APPS}" | wc -l)" -eq 0 ]]; then
+                                        printf '\n' >> "${TEMP_APPS}"
+                                fi
+
+                                printf '%s\n' "${app}" >> "${TEMP_APPS}"
+                                echo "Registered Bench app: ${app}"
+                        fi
+                done < "${TEMPLATE_APPS}"
+
+                if ! cmp -s "${PERSISTENT_APPS}" "${TEMP_APPS}"; then
+        chmod --reference="${PERSISTENT_APPS}" "${TEMP_APPS}"
+        chown --reference="${PERSISTENT_APPS}" "${TEMP_APPS}"
+        mv -f "${TEMP_APPS}" "${PERSISTENT_APPS}"
+fi
+        ) 9>"${SITES_DIR}/.apps-sync.lock"
+fi
+
 if [ -d "${SITES_TEMPLATE_DIR}/assets" ]; then
 	rm -rf "${SITES_DIR}/assets"
 	cp -a "${SITES_TEMPLATE_DIR}/assets" "${SITES_DIR}/assets"
@@ -73,16 +109,60 @@ if [[ " $* " == *"gunicorn"* ]]; then
 			"${BENCH_DIR}/env/bin/python" "${BENCH_DIR}/railway-clear-asset-cache.py"
 	fi
 fi
-# Optional HRMS installation for an explicitly authorized deployment.
-if [[ "${RAILWAY_INSTALL_HRMS:-0}" == "1" ]]; then
-        if [[ " $* " == *"gunicorn"* ]]; then
-                echo "HRMS installation enabled for ${SITE_NAME}."
 
-                FRAPPE_SITE="${SITE_NAME}" \
-                FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
-                SITES_DIR="${SITES_DIR}" \
-                bash "${BENCH_DIR}/railway-install-hrms.sh"
-        fi
+# Run application processes as frappe, never root.
+if [[ "$(id -u)" == "0" ]]; then
+    echo "Preparing Frappe runtime permissions..."
+
+    # Fix only root-owned files in the Bench logs directory.
+    if [[ -d "${BENCH_DIR}/logs" ]]; then
+        find "${BENCH_DIR}/logs" \
+            -maxdepth 1 -type f -user root \
+            -exec chown frappe:frappe {} +
+    fi
+
+    # Fix only root-owned files in site logs directories.
+    if [[ -d "${SITES_DIR}" ]]; then
+        while IFS= read -r -d '' log_dir; do
+            find "$log_dir" -maxdepth 1 -type f -user root \
+                -exec chown frappe:frappe {} +
+        done < <(
+            find "${SITES_DIR}" \
+                -mindepth 2 -maxdepth 2 -type d -name "logs" \
+                -print0
+        )
+    fi
+
+    # Entrypoint may have written this configuration as root.
+    if [[ -f "${SITES_DIR}/common_site_config.json" ]]; then
+        chown frappe:frappe "${SITES_DIR}/common_site_config.json"
+    fi
+
+    # Perform installation as the frappe user.
+    if [[ "${RAILWAY_INSTALL_HRMS:-0}" == "1" ]] &&
+       [[ " $* " == *"gunicorn"* ]]; then
+        echo "Starting guarded HRMS installation as frappe..."
+
+        runuser -u frappe -- env \
+            HOME=/home/frappe \
+            PATH="/home/frappe/.local/bin:${PATH}" \
+            FRAPPE_SITE="${SITE_NAME}" \
+            FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
+            SITES_DIR="${SITES_DIR}" \
+            bash "${BENCH_DIR}/railway-install-hrms.sh"
+    fi
+
+    echo "Starting application as frappe..."
+    exec runuser -u frappe -- "$@"
+fi
+
+# Also support Docker environments already running as frappe.
+if [[ "${RAILWAY_INSTALL_HRMS:-0}" == "1" ]] &&
+   [[ " $* " == *"gunicorn"* ]]; then
+    FRAPPE_SITE="${SITE_NAME}" \
+    FRAPPE_BENCH_ROOT="${BENCH_DIR}" \
+    SITES_DIR="${SITES_DIR}" \
+    bash "${BENCH_DIR}/railway-install-hrms.sh"
 fi
 
 exec "$@"

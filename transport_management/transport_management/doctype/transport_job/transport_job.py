@@ -9,6 +9,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate, money_in_words, today
 
+from transport_management.loading_stops import sync_primary_loading_from_stops, validate_loading_stop_rows
 from transport_management.location_master import validate_transport_location_usage
 from transport_management.tms_billing_setup import TOLL_SERVICE_ITEM, TRANSPORT_SERVICE_ITEM, ensure_tms_billing_setup
 from transport_management.transport_management.doctype.transport_charge_rule.transport_charge_rule import (
@@ -37,6 +38,7 @@ class TransportJob(Document):
 	def before_validate(self):
 		if not self.uom:
 			self.uom = TON_UOM
+		sync_primary_loading_from_stops(self, "loading_site")
 		self.calculate_quantity_progress()
 		self.billing_status = evaluate_billing_readiness(self)
 		self.toll_billing_status = evaluate_toll_billing_readiness(self)
@@ -54,6 +56,7 @@ class TransportJob(Document):
 
 		validate_transport_location_usage(self.loading_site, {"Loading", "Both"}, _("Loading Site"))
 		validate_transport_location_usage(self.unloading_site, {"Unloading", "Both"}, _("Unloading Site"))
+		validate_loading_stop_rows(self.get("loading_stops"), self.requested_quantity, _("Transport Job"))
 
 	def calculate_quantity_progress(self):
 		if not self.name:

@@ -13,6 +13,12 @@ from transport_management.cargo_type_master import (
 	validate_material_allows_hired_vehicle,
 	validate_material_allows_owned_truck,
 )
+from transport_management.loading_stops import (
+	copy_loading_stops,
+	get_scaled_stop_quantities,
+	sync_primary_loading_from_stops,
+	validate_loading_stop_rows,
+)
 from transport_management.location_master import validate_transport_location_usage
 from transport_management.transport_management.doctype.transport_charge_rule.transport_charge_rule import (
 	apply_transport_trip_charges,
@@ -45,6 +51,10 @@ class TransportTrip(Document):
 		if not self.uom:
 			self.uom = TON_UOM
 
+		self.set_loading_stops_from_job_if_missing()
+		self.scale_job_loading_stops_to_trip_quantity()
+		sync_primary_loading_from_stops(self, "loading_site")
+
 		if self.status == "POD_RECEIVED" and self.pod_attachment and not self.pod_received_at:
 			self.pod_received_at = now_datetime()
 
@@ -57,11 +67,11 @@ class TransportTrip(Document):
 	def validate(self):
 		self.validate_transport_job_exists()
 		self.validate_transport_job_has_remaining_quantity()
+		self.validate_status_transition()
 		self.validate_execution_source()
 		self.validate_quantities()
 		self.validate_material_matches_transport_job()
 		self.validate_locations()
-		self.validate_status_transition()
 		self.validate_pod()
 		self.validate_reserved_quantity()
 		sync_legacy_charge_totals(self)
@@ -276,6 +286,39 @@ class TransportTrip(Document):
 
 		validate_transport_location_usage(self.loading_site, {"Loading", "Both"}, _("Loading Location"))
 		validate_transport_location_usage(self.unloading_site, {"Unloading", "Both"}, _("Unloading Location"))
+		validate_loading_stop_rows(self.get("loading_stops"), self.planned_quantity, _("Transport Trip"))
+
+	def set_loading_stops_from_job_if_missing(self):
+		if not self.transport_job or self.get("loading_stops"):
+			return
+		job = frappe.get_doc("Transport Job", self.transport_job)
+		if job.get("loading_stops"):
+			copy_loading_stops(
+				job,
+				self,
+				target_quantity=self.planned_quantity,
+				source_quantity=job.requested_quantity,
+			)
+
+	def scale_job_loading_stops_to_trip_quantity(self):
+		if not self.transport_job or not self.get("loading_stops") or not self.planned_quantity:
+			return
+
+		job_requested_quantity = flt(
+			frappe.db.get_value("Transport Job", self.transport_job, "requested_quantity"),
+			6,
+		)
+		stop_total = flt(sum(flt(stop.planned_quantity, 6) for stop in self.loading_stops), 6)
+		if stop_total == flt(self.planned_quantity, 6) or stop_total != job_requested_quantity:
+			return
+
+		scaled_quantities = get_scaled_stop_quantities(
+			self.loading_stops,
+			target_quantity=self.planned_quantity,
+			source_quantity=job_requested_quantity,
+		)
+		for index, stop in enumerate(self.loading_stops):
+			stop.planned_quantity = scaled_quantities[index]
 
 	def validate_status_transition(self):
 		if self.status not in ALLOWED_STATUSES:
@@ -359,6 +402,14 @@ def get_defaults_from_transport_job(transport_job):
 		"unloading_site": job.unloading_site,
 		"material": job.material,
 		"uom": TON_UOM,
+		"loading_stops": [
+			{
+				"loading_location": stop.loading_location,
+				"planned_quantity": stop.planned_quantity,
+				"notes": stop.get("notes"),
+			}
+			for stop in job.get("loading_stops") or []
+		],
 	}
 
 
