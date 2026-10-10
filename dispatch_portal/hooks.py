@@ -8,18 +8,22 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+# AL RANA Dispatch is a thin console on top of the TMS: it never re-implements a
+# transportation entity, every DocType it renders is owned by transport_management.
+required_apps = ["transport_management"]
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "dispatch_portal",
-# 		"logo": "/assets/dispatch_portal/logo.png",
-# 		"title": "AL RANA Dispatch",
-# 		"route": "/dispatch_portal",
-# 		"has_permission": "dispatch_portal.api.permission.has_app_permission"
-# 	}
-# ]
+# This is the Frappe v16 mechanism that puts "AL RANA Dispatch" on the Desk app
+# launcher as a dedicated, role-aware app icon that opens the dispatcher console.
+add_to_apps_screen = [
+	{
+		"name": app_name,
+		"logo": "/assets/dispatch_portal/icons/desktop_icons/solid/al_rana_dispatch.svg",
+		"title": app_title,
+		"route": "/app/dispatch-console",
+		"has_permission": "dispatch_portal.api.permissions.has_console_access"
+	}
+]
 
 # Includes in <head>
 # ------------------
@@ -40,7 +44,19 @@ app_license = "mit"
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 
 # include js in page
-# page_js = {"page" : "public/js/file.js"}
+# The dispatcher console is a single Page (dispatch-console) whose sections are
+# rendered by these modules; the page bootstrap lives in
+# al_rana_dispatch/page/dispatch_console/dispatch_console.js
+page_js = {
+	"dispatch-console": [
+		"public/js/dispatch_portal/console_common.js",
+		"public/js/dispatch_portal/console_dashboard.js",
+		"public/js/dispatch_portal/console_trips.js",
+		"public/js/dispatch_portal/console_trip_map.js",
+		"public/js/dispatch_portal/console_verification.js",
+		"public/js/dispatch_portal/console_reports.js",
+	]
+}
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
@@ -85,8 +101,8 @@ app_license = "mit"
 # Installation
 # ------------
 
-# before_install = "dispatch_portal.install.before_install"
-# after_install = "dispatch_portal.install.after_install"
+before_install = "dispatch_portal.install.before_install"
+after_install = "dispatch_portal.setup.after_install"
 
 # Uninstallation
 # ------------
@@ -261,4 +277,9 @@ app_license = "mit"
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
+
+# AL RANA Dispatch keeps owning its own registration: the app launcher icon, the
+# dispatcher roles and the source-controlled Desktop Icon fixture must survive any
+# transport_management migration and reinstall.
+after_migrate = "dispatch_portal.setup.after_migrate"
 

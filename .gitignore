@@ -53,3 +53,24 @@ jspm_packages/
 
 # Aider AI Chat
 .aider*
+
+**/__pycache__/
+build/
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.log
+sites/
+logs/
+backups/
+private/
+site_config.json
+common_site_config.json
+*.sql
+*.sql.gz
+*.tar
+*.tar.gz
