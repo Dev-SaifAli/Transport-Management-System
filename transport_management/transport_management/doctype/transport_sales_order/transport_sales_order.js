@@ -18,6 +18,13 @@ frappe.ui.form.on("Transport Sales Order", {
 
 	posting_date(frm) {
 		refresh_item_rates(frm);
+	},
+
+	loading_stops_add(frm, cdt, cdn) {
+		if ((frm.doc.items || []).length === 1) {
+			locals[cdt][cdn].item_idx = 1;
+			frm.refresh_field("loading_stops");
+		}
 	}
 });
 
@@ -84,12 +91,44 @@ function set_location_queries(frm) {
 			location_usage: ["in", ["Loading", "Both"]]
 		}
 	}));
+	frm.set_query("loading_location", "loading_stops", () => ({
+		filters: {
+			active: 1,
+			location_usage: ["in", ["Loading", "Both"]]
+		}
+	}));
 	frm.set_query("unloading_location", "items", () => ({
 		filters: {
 			active: 1,
 			location_usage: ["in", ["Unloading", "Both"]]
 		}
 	}));
+}
+
+frappe.ui.form.on("Transport Sales Order Loading Stop", {
+	item_idx(frm) {
+		sync_item_loading_from_stops(frm);
+	},
+
+	loading_location(frm) {
+		sync_item_loading_from_stops(frm);
+	}
+});
+
+function sync_item_loading_from_stops(frm) {
+	const first_stop_by_item = {};
+	(frm.doc.loading_stops || []).forEach((stop) => {
+		if (stop.item_idx && stop.loading_location && !first_stop_by_item[stop.item_idx]) {
+			first_stop_by_item[stop.item_idx] = stop.loading_location;
+		}
+	});
+	(frm.doc.items || []).forEach((row) => {
+		if (first_stop_by_item[row.idx] && row.loading_location !== first_stop_by_item[row.idx]) {
+			row.loading_location = first_stop_by_item[row.idx];
+			refresh_row_rate(frm, row);
+		}
+	});
+	frm.refresh_field("items");
 }
 
 function has_unconverted_rows(frm) {

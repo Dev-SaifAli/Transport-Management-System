@@ -17,6 +17,8 @@ from transport_management.services import driver_portal_trips as trips
 class TestDriverPortalTrips(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
+		frappe.reload_doc("transport_management", "doctype", "transport_loading_stop", force=True)
+		frappe.reload_doc("transport_management", "doctype", "transport_job", force=True)
 		frappe.reload_doc("transport_management", "doctype", "transport_trip", force=True)
 		frappe.reload_doc("transport_management", "doctype", "transport_trip_document", force=True)
 
@@ -426,6 +428,49 @@ class TestDriverPortalTrips(unittest.TestCase):
 		self.assertIn("required_documents", result)
 		self.assertIn("delivery_requirements", result)
 		self.assertIn("allowed_actions", result)
+
+	def test_get_trip_returns_ordered_loading_stops(self):
+		second_loading = frappe.get_doc({
+			"doctype": "Transport Location",
+			"location": "Portal Trips Loading Stop " + frappe.generate_hash(length=8),
+			"country": "United Arab Emirates",
+			"location_usage": "Loading",
+			"location_type": "Plant",
+			"active": 1,
+		}).insert(ignore_permissions=True)
+		job = self.make_job()
+		job.requested_quantity = 10
+		job.append("loading_stops", {
+			"loading_location": self.fixture.loading_site,
+			"planned_quantity": 4,
+		})
+		job.append("loading_stops", {
+			"loading_location": second_loading.name,
+			"planned_quantity": 6,
+		})
+		job.save(ignore_permissions=True)
+		truck = self.make_truck()
+		trip = frappe.get_doc({
+			"doctype": "Transport Trip",
+			"transport_job": job.name,
+			"execution_source": "OWN",
+			"trip_date": job.requested_date,
+			"vehicle": truck.name,
+			"driver": self.fixture.driver,
+			"unloading_site": self.fixture.unloading_site,
+			"material": self.fixture.material,
+			"planned_quantity": 10,
+			"uom": "TON",
+		}).insert(ignore_permissions=True)
+		self.set_trip_status(trip.name, "ASSIGNED")
+
+		result = self.call_get_trip(trip.name)
+		stops = result["trip"]["loading_stops"]
+		self.assertEqual(len(stops), 2)
+		self.assertEqual(stops[0]["loading_location"], self.fixture.loading_site)
+		self.assertEqual(stops[0]["planned_quantity"], 4)
+		self.assertEqual(stops[1]["loading_location"], second_loading.name)
+		self.assertEqual(stops[1]["planned_quantity"], 6)
 
 	def test_get_trip_commercial_and_accounting_fields_not_leaked(self):
 		trip = self.make_trip(status="ASSIGNED")

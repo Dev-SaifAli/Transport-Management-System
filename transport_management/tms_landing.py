@@ -9,7 +9,9 @@ AL_RANA_EXPENSES_HOME = "desk/al-rana-expenses"
 AL_RANA_FINANCE_HOME = "desk/al-rana-finance"
 AL_RANA_HR_HOME = "desk/al-rana-hr"
 AL_RANA_ADMIN_HOME = "desk/al-rana-admin"
-TRIP_OPERATIONS_HOME = "desk/tms-trip-operations"
+TRANSPORT_MANAGEMENT_HOME = "desk/transport-management"
+NATIVE_DESK_HOME = "desk"
+TRIP_OPERATIONS_HOME = TRANSPORT_MANAGEMENT_HOME
 ROLE_TMS_TRIP_DATA_ENTRY = "TMS Trip Data Entry"
 AL_RANA_HOME_ROLES = {
 	"TMS Trip Data Entry",
@@ -29,10 +31,12 @@ NON_BUSINESS_ROLES = {"All", "Guest", "Desk User"}
 def get_tms_home_page(user=None):
 	"""Return a role-aware AL RANA Desk landing route for office users."""
 	user = user or frappe.session.user
+	if is_transport_admin_user(user):
+		return NATIVE_DESK_HOME
 	if is_al_rana_office_user(user):
-		return get_al_rana_workspace_home(user)
+		return TRANSPORT_MANAGEMENT_HOME
 	if is_pure_trip_data_entry_user(user):
-		return TRIP_OPERATIONS_HOME
+		return TRANSPORT_MANAGEMENT_HOME
 	return None
 
 
@@ -54,6 +58,12 @@ def is_al_rana_office_user(user):
 		return False
 	roles = set(frappe.get_roles(user))
 	return bool(roles.intersection(AL_RANA_HOME_ROLES))
+
+
+def is_transport_admin_user(user):
+	if not user or user == "Administrator":
+		return False
+	return "Transport Admin" in set(frappe.get_roles(user))
 
 
 def is_pure_trip_data_entry_user(user):

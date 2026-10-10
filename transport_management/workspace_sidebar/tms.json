@@ -13,8 +13,8 @@
    "indent": 0,
    "keep_closed": 0,
    "label": "Home",
-   "link_to": "tms-trip-operations",
-   "link_type": "Page",
+   "link_to": "Transport Management",
+   "link_type": "Workspace",
    "show_arrow": 0,
    "type": "Link"
   },
@@ -234,8 +234,8 @@
  "modified": "2026-09-16 14:24:02.602802",
  "modified_by": "Administrator",
  "module": "Transport Management",
- "name": "Transport Management",
+ "name": "TMS",
  "owner": "Administrator",
  "standard": 1,
- "title": "Transport Management"
+ "title": "TMS"
 }

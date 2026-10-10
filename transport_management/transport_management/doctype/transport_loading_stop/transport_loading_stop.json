@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "creation": "2026-10-09 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "loading_location",
+  "planned_quantity",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "loading_location",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Loading Location",
+   "options": "Transport Location",
+   "reqd": 1
+  },
+  {
+   "fieldname": "planned_quantity",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Planned Quantity",
+   "precision": "3",
+   "reqd": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Transport Loading Stop",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

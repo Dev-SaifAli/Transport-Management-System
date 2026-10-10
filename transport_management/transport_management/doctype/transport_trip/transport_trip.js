@@ -380,6 +380,14 @@ frappe.ui.form.on("Transport Trip", {
 						frm.set_value(fieldname, defaults[fieldname]);
 					}
 				});
+				frm.clear_table("loading_stops");
+				(defaults.loading_stops || []).forEach((stop) => {
+					const row = frm.add_child("loading_stops");
+					row.loading_location = stop.loading_location;
+					row.planned_quantity = stop.planned_quantity;
+					row.notes = stop.notes;
+				});
+				frm.refresh_field("loading_stops");
 			},
 		});
 	},

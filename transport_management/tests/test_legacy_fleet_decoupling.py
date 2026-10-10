@@ -39,7 +39,7 @@ class TestLegacyFleetDecoupling(unittest.TestCase):
 
 	def test_transport_management_workspace_excludes_legacy_fleet_workflow(self):
 		workspace = json.loads((APP_ROOT / "transport_management" / "transport_management" / "workspace" / "transport_management" / "transport_management.json").read_text())
-		sidebar = json.loads((APP_ROOT / "transport_management" / "workspace_sidebar" / "transport_management.json").read_text())
+		sidebar = json.loads((APP_ROOT / "transport_management" / "workspace_sidebar" / "tms.json").read_text())
 		legacy = {"Transportation Order", "Transport Shipment", "Trips", "Manifest", "Trip Routes", "Trip Locations", "Fuel Requests", "Requested Payment", "Trailers"}
 		workspace_targets = {row.get("label") for row in workspace["links"]} | {row.get("link_to") for row in workspace["links"]}
 		sidebar_targets = {row.get("label") for row in sidebar["items"]} | {row.get("link_to") for row in sidebar["items"]}

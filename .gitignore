@@ -76,3 +76,6 @@ common_site_config.json
 *.sql.gz
 *.tar
 *.tar.gz
+
+# Generated documentation artifacts
+docs/user-guides/

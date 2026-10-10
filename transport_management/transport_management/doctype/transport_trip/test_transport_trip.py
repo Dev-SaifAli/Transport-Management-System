@@ -3,6 +3,7 @@
 import unittest
 
 import frappe
+from frappe.modules import reload_doc
 
 from transport_management.cargo_type_master import (
 	get_compatible_hired_vehicles,
@@ -17,6 +18,12 @@ from transport_management.transport_management.doctype.transport_trip.transport_
 
 
 class TestTransportTrip(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		reload_doc("transport_management", "doctype", "transport_loading_stop", force=True)
+		reload_doc("transport_management", "doctype", "transport_job", force=True)
+		reload_doc("transport_management", "doctype", "transport_trip", force=True)
+
 	def setUp(self):
 		frappe.db.savepoint("transport_trip_test")
 		ensure_supplier_transport_fields()
@@ -314,8 +321,41 @@ class TestTransportTrip(unittest.TestCase):
 		self.assertEqual(defaults["unloading_site"], self.job.unloading_site)
 		self.assertEqual(defaults["material"], self.job.material)
 		self.assertEqual(defaults["uom"], self.job.uom)
+		self.assertEqual(defaults["loading_stops"], [])
 		self.assertNotIn("customer", defaults)
 		self.assertNotIn("do_number", defaults)
+
+	def test_transport_trip_copies_loading_stops_from_job(self):
+		second_loading = frappe.get_doc({
+			"doctype": "Transport Location",
+			"location": "TMS Trip Loading Stop " + frappe.generate_hash(length=8),
+			"country": "United Arab Emirates",
+			"location_usage": "Loading",
+			"active": 1,
+		}).insert().name
+		self.job.requested_quantity = 30
+		self.job.set("loading_stops", [])
+		self.job.append("loading_stops", {
+			"loading_location": second_loading,
+			"planned_quantity": 10,
+		})
+		self.job.append("loading_stops", {
+			"loading_location": self.demo["loading_site"],
+			"planned_quantity": 20,
+		})
+		self.job.save()
+
+		defaults = get_defaults_from_transport_job(self.job.name)
+		self.assertEqual(defaults["loading_site"], second_loading)
+		self.assertEqual(len(defaults["loading_stops"]), 2)
+
+		trip = self.make_trip(loading_site="", planned_quantity=15)
+		trip.insert()
+		self.assertEqual(trip.loading_site, second_loading)
+		self.assertEqual(len(trip.loading_stops), 2)
+		self.assertEqual(trip.loading_stops[0].loading_location, second_loading)
+		self.assertEqual(trip.loading_stops[0].planned_quantity, 5)
+		self.assertEqual(trip.loading_stops[1].planned_quantity, 10)
 
 	def test_charges_and_reference_fields_exist_without_auto_toll_rules(self):
 		expected = {
@@ -545,6 +585,7 @@ class TestTransportTrip(unittest.TestCase):
 		trip = self.make_trip()
 		trip.insert()
 		transition_trip_status(trip.name, "ASSIGNED")
+		trip.reload()
 		trip.loaded_quantity = 30
 		trip.save()
 		result = transition_trip_status(trip.name, "LOADED")

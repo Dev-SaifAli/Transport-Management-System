@@ -17,6 +17,8 @@ from transport_management.transport_management.doctype.transport_sales_order.tra
 class TestTransportSalesOrder(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
+		reload_doc("transport_management", "doctype", "transport_loading_stop", force=True)
+		reload_doc("transport_management", "doctype", "transport_sales_order_loading_stop", force=True)
 		reload_doc("transport_management", "doctype", "transport_sales_order_item", force=True)
 		reload_doc("transport_management", "doctype", "transport_sales_order", force=True)
 		reload_doc("transport_management", "doctype", "transport_rate", force=True)
@@ -104,6 +106,17 @@ class TestTransportSalesOrder(unittest.TestCase):
 		})
 		doc.insert()
 		return doc
+
+	def make_loading_location(self):
+		location = frappe.new_doc("Transport Location")
+		location.update({
+			"location": "TMS SO Loading Stop " + frappe.generate_hash(length=8),
+			"country": "United Arab Emirates",
+			"location_usage": "Loading",
+			"active": 1,
+		})
+		location.insert()
+		return location.name
 
 	def test_naming_series_and_customer_link_use_erpnext_customer(self):
 		self.make_rate()
@@ -302,6 +315,47 @@ class TestTransportSalesOrder(unittest.TestCase):
 		self.assertFalse(job.get("driver"))
 		self.assertEqual(row.transport_job, job.name)
 		self.assertEqual(row.converted, 1)
+
+	def test_multi_loading_stops_create_one_job_with_primary_loading_site(self):
+		self.make_rate(rate=20)
+		second_loading = self.make_loading_location()
+		doc = self.make_sales_order(row={"manual_rate_override": 1, "rate": 30})
+		doc.append("loading_stops", {
+			"item_idx": 1,
+			"loading_location": self.demo["loading_site"],
+			"planned_quantity": 600,
+			"notes": "First loading point",
+		})
+		doc.append("loading_stops", {
+			"item_idx": 1,
+			"loading_location": second_loading,
+			"planned_quantity": 400,
+			"notes": "Second loading point",
+		})
+		doc.save()
+		doc.submit()
+
+		jobs = create_transport_jobs(doc.name)
+		self.assertEqual(len(jobs), 1)
+		job = frappe.get_doc("Transport Job", jobs[0])
+		self.assertEqual(job.loading_site, self.demo["loading_site"])
+		self.assertEqual(job.requested_quantity, 1000)
+		self.assertEqual(job.agreed_rate, 30)
+		self.assertEqual(len(job.loading_stops), 2)
+		self.assertEqual(job.loading_stops[0].loading_location, self.demo["loading_site"])
+		self.assertEqual(job.loading_stops[0].planned_quantity, 600)
+		self.assertEqual(job.loading_stops[1].loading_location, second_loading)
+		self.assertEqual(job.loading_stops[1].planned_quantity, 400)
+
+	def test_loading_stop_quantities_must_equal_item_quantity(self):
+		doc = self.make_sales_order(row={"manual_rate_override": 1, "rate": 30})
+		doc.append("loading_stops", {
+			"item_idx": 1,
+			"loading_location": self.demo["loading_site"],
+			"planned_quantity": 999,
+		})
+		with self.assertRaisesRegex(frappe.ValidationError, "loading stop quantities must equal"):
+			doc.save()
 
 	def test_transport_job_receives_manual_agreed_rate_and_ordered_amount(self):
 		doc = self.make_sales_order(submit=True, row={"manual_rate_override": 1, "rate": 45})

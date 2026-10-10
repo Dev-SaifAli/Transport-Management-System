@@ -11,6 +11,7 @@ NORMAL_SUPPLIER = "DEMO TMS GENERAL SUPPLIER"
 TRANSPORTER_SUPPLIER = "DEMO TMS TRANSPORTER SUPPLIER"
 HIRED_VEHICLE_PLATE = "HIRED-TRUCK-001"
 DEMO_TRUCKS = ("29413-FUJ", "29414-FUJ", "29415-FUJ")
+DEMO_TRUCK_TYPE = "TIPPER"
 ORDER_MARKER = "DEMO TMS ORYX 80.8 | ATBT AL TAWEEN - SAJJA ORXY - 78"
 TRIP_MARKER_PREFIX = "DEMO TMS ORYX TRANSPORT TRIP"
 TRUCK_NOTE = (
@@ -42,10 +43,32 @@ def _set_values_if_changed(doc, values):
 		doc.save()
 
 
+def _ensure_demo_truck_type():
+	truck_type, _ = _reuse_or_create(
+		"Truck Type",
+		{"truck_type": DEMO_TRUCK_TYPE},
+		{"truck_type": DEMO_TRUCK_TYPE},
+	)
+	return truck_type.name
+
+
+def _ensure_material_allows_demo_truck_type(material):
+	if not material.active:
+		material.active = 1
+
+	allowed_truck_types = {row.truck_type for row in material.get("allowed_truck_types", []) if row.truck_type}
+	if DEMO_TRUCK_TYPE not in allowed_truck_types:
+		material.append("allowed_truck_types", {"truck_type": DEMO_TRUCK_TYPE})
+
+	if material.has_value_changed("active") or DEMO_TRUCK_TYPE not in allowed_truck_types:
+		material.save()
+
+
 def _ensure_demo_truck(truck_number, driver, fuel_uom):
 	truck, created = _reuse_or_create("Truck", {"truck_number": truck_number}, {
 		"truck_number": truck_number,
 		"license_plate": truck_number,
+		"vehicle_type": DEMO_TRUCK_TYPE,
 		"model": "DEMO - UNKNOWN",
 		"make": "DEMO - UNKNOWN",
 		"manufacturing_year": "DEMO - UNKNOWN",
@@ -68,6 +91,9 @@ def _ensure_demo_truck(truck_number, driver, fuel_uom):
 		frappe.throw(f"Existing demo Truck {truck.name} is not marked as owned; review it before demo setup.")
 	if truck.disabled or truck.status != "Idle":
 		frappe.throw(f"Existing demo Truck {truck.name} is not Idle/enabled; review it before demo setup.")
+	if truck.vehicle_type != DEMO_TRUCK_TYPE:
+		truck.vehicle_type = DEMO_TRUCK_TYPE
+		truck.save()
 	return truck
 
 
@@ -171,6 +197,7 @@ def setup_demo_data(country="United Arab Emirates"):
 		if not hired_vehicle.active:
 			hired_vehicle.active = 1
 			hired_vehicle.save()
+		_ensure_demo_truck_type()
 		locations = []
 		location_values = (
 			("ATBT AL TAWEEN", {"location_type": "Plant", "location_usage": "Loading", "active": 1}),
@@ -194,7 +221,9 @@ def setup_demo_data(country="United Arab Emirates"):
 			locations.append(doc.name)
 		material, _ = _reuse_or_create("Cargo Types", {"cargo_name": "3/4 Aggregate"}, {
 			"cargo_name": "3/4 Aggregate",
+			"active": 1,
 		})
+		_ensure_material_allows_demo_truck_type(material)
 		uom, _ = _reuse_or_create("UOM", {"uom_name": "TON"}, {"uom_name": "TON", "enabled": 1})
 		if not uom.enabled:
 			frappe.throw("Existing UOM TON is disabled; enable it explicitly before demo setup.")

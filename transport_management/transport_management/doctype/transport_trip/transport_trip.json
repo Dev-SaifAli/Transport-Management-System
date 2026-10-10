@@ -14,6 +14,7 @@
   "column_break_trip_details_1",
   "material",
   "loading_site",
+  "loading_stops",
   "unloading_site",
   "column_break_trip_details_2",
   "planned_quantity",
@@ -108,6 +109,14 @@
    "options": "Transport Location",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "description": "Copied from the Transport Job. The first stop is used as the primary Loading Location.",
+   "fieldname": "loading_stops",
+   "fieldtype": "Table",
+   "label": "Loading Stops",
+   "options": "Transport Loading Stop",
+   "read_only": 1
   },
   {
    "fieldname": "unloading_site",

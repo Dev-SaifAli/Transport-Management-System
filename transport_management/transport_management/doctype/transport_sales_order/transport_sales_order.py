@@ -8,6 +8,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate, today
 
+from transport_management.loading_stops import validate_loading_stop_rows
+
 TON_UOM = "TON"
 MANUAL_RATE_OVERRIDE_ROLES = {"Transport Manager", "Transport Admin", "System Manager"}
 BILLING_STATUS_NOT_READY = "Not Ready"
@@ -26,6 +28,7 @@ class TransportSalesOrder(Document):
 		if not self.currency:
 			self.currency = "AED"
 
+		self.sync_loading_stops()
 		self.calculate_totals()
 		self.set_conversion_status()
 		self.set_billing_progress()
@@ -33,6 +36,7 @@ class TransportSalesOrder(Document):
 	def validate(self):
 		self.validate_customer()
 		self.validate_items(require_complete=self.is_submit_action())
+		self.validate_loading_stops()
 		self.calculate_totals(require_rates=self.is_submit_action())
 		self.set_conversion_status()
 		self.set_billing_progress()
@@ -99,6 +103,43 @@ class TransportSalesOrder(Document):
 			frappe.throw(_("Transport Job {0} linked on row {1} does not exist.").format(row.transport_job, row.idx))
 		if row.manual_rate_override:
 			validate_manual_rate_override_permission()
+
+	def sync_loading_stops(self):
+		if not self.loading_stops:
+			return
+
+		items_by_idx = {row.idx: row for row in self.items}
+		for stop in self.loading_stops:
+			if not stop.item_idx and len(self.items) == 1:
+				stop.item_idx = 1
+
+			item = items_by_idx.get(stop.item_idx)
+			if item:
+				stop.sales_order_item = item.name
+
+		for item_idx, stops in self.get_loading_stops_by_item_idx().items():
+			item = items_by_idx.get(item_idx)
+			if item and stops:
+				item.loading_location = stops[0].loading_location
+
+	def validate_loading_stops(self):
+		if not self.loading_stops:
+			return
+
+		items_by_idx = {row.idx: row for row in self.items}
+		for item_idx, stops in self.get_loading_stops_by_item_idx().items():
+			item = items_by_idx.get(item_idx)
+			if not item:
+				frappe.throw(_("Loading stop row references missing Sales Order item row {0}.").format(item_idx))
+			validate_loading_stop_rows(stops, item.quantity, _("Sales Order item row {0}").format(item_idx))
+
+	def get_loading_stops_by_item_idx(self):
+		grouped = {}
+		for stop in self.loading_stops or []:
+			if not stop.item_idx:
+				frappe.throw(_("Item Row is required on loading stop row {0}.").format(stop.idx))
+			grouped.setdefault(stop.item_idx, []).append(stop)
+		return grouped
 
 	def calculate_totals(self, require_rates=False):
 		net_amount = 0
@@ -315,6 +356,7 @@ def create_transport_job_from_row(doc, row):
 		"ordered_amount": row.amount,
 		"special_instructions": doc.remarks,
 	})
+	copy_sales_order_loading_stops_to_job(doc, row, job)
 	job.insert()
 
 	frappe.db.set_value(
@@ -324,6 +366,20 @@ def create_transport_job_from_row(doc, row):
 		update_modified=False,
 	)
 	return job.name
+
+
+def copy_sales_order_loading_stops_to_job(doc, row, job):
+	stops = [
+		stop
+		for stop in doc.get("loading_stops") or []
+		if stop.item_idx == row.idx or stop.sales_order_item == row.name
+	]
+	for stop in stops:
+		job.append("loading_stops", {
+			"loading_location": stop.loading_location,
+			"planned_quantity": stop.planned_quantity,
+			"notes": stop.get("notes"),
+		})
 
 
 def lock_sales_order_item(row_name):

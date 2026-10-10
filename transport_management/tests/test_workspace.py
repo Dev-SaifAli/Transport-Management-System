@@ -11,8 +11,8 @@ APP_ROOT = Path(frappe.get_app_path("transport_management")).parent
 WORKSPACE_PATH = APP_ROOT / "transport_management" / "transport_management" / "workspace" / "transport_management" / "transport_management.json"
 HIRED_VEHICLE_PATH = APP_ROOT / "transport_management" / "transport_management" / "doctype" / "hired_vehicle" / "hired_vehicle.json"
 PAGE_ROOT = APP_ROOT / "transport_management" / "transport_management" / "page"
-SIDEBAR_PATH = APP_ROOT / "transport_management" / "workspace_sidebar" / "transport_management.json"
-DESKTOP_ICON_PATH = APP_ROOT / "transport_management" / "desktop_icon" / "transport_management.json"
+SIDEBAR_PATH = APP_ROOT / "transport_management" / "workspace_sidebar" / "tms.json"
+DESKTOP_ICON_PATH = APP_ROOT / "transport_management" / "desktop_icon" / "tms.json"
 
 OBSOLETE_WRAPPER_PAGE_FOLDERS = (
 	"tms_customers",
@@ -49,7 +49,7 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		workspace = self.load_workspace()
 		links = workspace["links"]
 		sections = [row["label"] for row in links if row["type"] == "Card Break"]
-		self.assertEqual(sections, ["Operations / Commercial", "Fleet", "Masters", "Tools"])
+		self.assertEqual(sections, ["Operations & Commercial", "Fleet Management", "Master Data Tables"])
 
 		linked_doctypes = {
 			row.get("link_to"): row.get("label")
@@ -75,7 +75,7 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 			for row in links
 			if row["type"] == "Link" and row.get("link_type") == "Page"
 		}
-		self.assertEqual(linked_pages["tms-data-import"], "Data Import")
+		self.assertNotIn("tms-data-import", linked_pages)
 
 		all_links = {row.get("link_to") for row in links if row["type"] == "Link"}
 		for wrapper_page in self.obsolete_wrapper_page_routes():
@@ -87,11 +87,10 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 		workspace = self.load_workspace()
 		cards = {row["number_card_name"] for row in workspace["number_cards"]}
 		self.assertEqual(cards, {
-			"Total Transport Jobs",
-			"Active Transport Trips",
-			"Trips In Transit",
-			"Trips Awaiting POD",
-			"Active Hired Vehicles",
+			"Active Jobs",
+			"Trips En Route",
+			"Available Fleet",
+			"Pending Sales Orders",
 		})
 		self.assertFalse(any(row.get("link_type") == "Report" for row in workspace["links"]))
 
@@ -150,8 +149,8 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 	def test_transport_management_workspace_sidebar_metadata(self):
 		sidebar = self.load_sidebar()
 		self.assertEqual(sidebar["doctype"], "Workspace Sidebar")
-		self.assertEqual(sidebar["name"], "Transport Management")
-		self.assertEqual(sidebar["title"], "Transport Management")
+		self.assertEqual(sidebar["name"], "TMS")
+		self.assertEqual(sidebar["title"], "TMS")
 		self.assertEqual(sidebar["module"], "Transport Management")
 		self.assertEqual(sidebar["app"], "transport_management")
 		self.assertEqual(sidebar["standard"], 1)
@@ -210,16 +209,16 @@ class TestTransportManagementWorkspace(unittest.TestCase):
 	def test_transport_management_desktop_icon_points_to_sidebar(self):
 		metadata = json.loads(DESKTOP_ICON_PATH.read_text())
 		self.assertEqual(metadata["doctype"], "Desktop Icon")
-		self.assertEqual(metadata["name"], "Transport Management")
-		self.assertEqual(metadata["label"], "Transport Management")
+		self.assertEqual(metadata["name"], "TMS")
+		self.assertEqual(metadata["label"], "TMS")
 		self.assertEqual(metadata["app"], "transport_management")
 		self.assertEqual(metadata["link_type"], "Workspace Sidebar")
-		self.assertEqual(metadata["link_to"], "Transport Management")
+		self.assertEqual(metadata["link_to"], "TMS")
 		self.assertEqual(metadata["hidden"], 0)
 
 	def test_fleet_ms_sidebar_is_not_redefined_by_transport_management(self):
 		sidebar = self.load_sidebar()
-		self.assertEqual(sidebar["name"], "Transport Management")
+		self.assertEqual(sidebar["name"], "TMS")
 		self.assertNotEqual(sidebar["name"], "Fleet MS")
 		self.assertFalse(frappe.db.exists("Workspace Sidebar", "Fleet MS"))
 

@@ -27,9 +27,14 @@ app_license = "mit"
 # include js, css files in header of desk.html
 # app_include_css = "/assets/transport_management/css/transport_management.css"
 
-# include js, css files in header of web template
-web_include_css = ["/assets/transport_management/css/tms_login.css"]
-web_include_js = ["/assets/transport_management/js/tms_login.js"]
+# The login re-skin assets are intentionally NOT registered here: loading them
+# through `web_include_css` / `web_include_js` would (a) put them on every web
+# page and (b) place the stylesheet *before* Frappe's own `login.bundle.css`,
+# which would win equal-specificity ties. transport_management/www/login.html
+# includes them from `head_include` / `script`, i.e. after login.bundle.css and
+# only on the login page.
+# web_include_css = []
+# web_include_js = []
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "transport_management/public/scss/website"
