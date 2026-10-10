@@ -1,71 +1,39 @@
-# Transport Management
+# AL RANA ERP + TMS Monorepo
 
-Standalone ERP + Transportation Management System built as a custom Frappe / ERPNext app.
+This repository contains the AL RANA custom Frappe applications used with
+Frappe v16 and ERPNext v16.
 
-This repository contains only the `transport_management` custom app. It is intended to be installed inside a Frappe bench alongside Frappe and ERPNext, without modifying upstream framework or core app source code.
+## Applications
 
-## Current Scope
+- `apps/transport_management` - AL RANA Transport Management System.
+- `apps/dispatch_portal` - AL RANA Dispatch Console. This app depends on
+  `transport_management` and does not duplicate TMS DocTypes or business logic.
 
-The app supports the foundation for own-fleet and hired/subcontracted transport operations.
+Both applications remain independent Frappe apps and can be installed by Bench
+from their own folders.
 
-Current major modules:
+## Docker Deployment
 
-- Transport Job
-- Transport Trip
-- Customer / Supplier / Transporter foundation
-- Transport Locations
-- Owned Truck master
-- Hired Vehicle
-- Transport Management workspace
+The root `Dockerfile` builds a Bench image with pinned Frappe, ERPNext, HRMS
+source availability, and both custom apps from this repository:
 
-Transporters are modeled as ERPNext Suppliers with transport-specific attributes. Owned fleet uses the TMS-owned Truck master. Hired/subcontracted fleet uses the lightweight Hired Vehicle master.
+1. `frappe`
+2. `erpnext`
+3. `hrms` available in the image only
+4. `transport_management`
+5. `dispatch_portal`
 
-## Installation
+HRMS is intentionally not auto-installed by Railway startup scripts. Existing
+production sites should be restored first, then migrated or extended with
+additional apps only through explicit controlled commands.
 
-Install from a Frappe bench:
+## Railway Scripts
 
-```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench --site $SITE_NAME install-app transport_management
-bench --site $SITE_NAME migrate
-```
+- `scripts/railway-entrypoint.sh` prepares runtime config and synchronizes image
+  apps/assets into the persistent Bench volume.
+- `scripts/railway-bootstrap.sh` is for explicit first-site creation only.
+- `scripts/railway-migrate.sh` is an explicit migration helper; migrations do
+  not run automatically on normal application startup.
 
-Replace `$URL_OF_THIS_REPO` and `$SITE_NAME` for your environment.
-
-## Development
-
-Run tests with:
-
-```bash
-bench --site tms.localhost run-tests --app transport_management
-```
-
-Useful development commands:
-
-```bash
-bench --site tms.localhost migrate
-bench --site tms.localhost clear-cache
-```
-
-This app uses `pre-commit` for local code checks. To enable it:
-
-```bash
-cd apps/transport_management
-pre-commit install
-```
-
-Configured tools include:
-
-- ruff
-- eslint
-- prettier
-- pyupgrade
-
-## Deferred Areas
-
-The current implementation does not include rate management, settlement automation, Purchase Invoice automation, accounting automation, compliance alerts, GPS/geofencing, or route pricing.
-
-## License
-
-MIT
+Do not commit backups, site files, secrets, database dumps, uploaded documents,
+or Railway volume contents.
