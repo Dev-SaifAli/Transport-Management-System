@@ -4,7 +4,7 @@ authors = [
     { name = "Digital Data Enterprises", email = "saif.ali@dgtdata.com"}
 ]
 description = "Transportation Management System for managing transport orders, shipments, vehicles, drivers, routes, and delivery operations"
-requires-python = ">=3.14"
+requires-python = ">=3.10,<3.15"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
@@ -25,7 +25,7 @@ packages = []
 
 [tool.ruff]
 line-length = 110
-target-version = "py314"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [

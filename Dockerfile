@@ -15,6 +15,7 @@ ARG ERPNEXT_REF=4048fb70e14d1843956fcdabb7c3cca75a1cbcdd
 ARG HRMS_REPO=https://github.com/frappe/hrms.git
 ARG HRMS_BRANCH=version-16
 ARG HRMS_REF=6f5ac249283f6fa1013fd5616f3d95f686ba7bb2
+
 USER frappe
 WORKDIR /home/frappe
 
@@ -43,12 +44,12 @@ RUN bench get-app \
     && git fetch --depth 1 "${HRMS_REPO}" "${HRMS_REF}" \
     && git checkout --detach FETCH_HEAD
 
-ARG TMS_REPO=https://github.com/Dev-SaifAli/Transport-Management-System.git
-ARG TMS_BRANCH=develop
+COPY --chown=frappe:frappe apps/transport_management apps/transport_management
+COPY --chown=frappe:frappe apps/dispatch_portal apps/dispatch_portal
 
-RUN bench get-app \
-        --branch "${TMS_BRANCH}" \
-        "${TMS_REPO}" \
+RUN ./env/bin/python -m pip install --quiet --upgrade -e apps/transport_management \
+    && ./env/bin/python -m pip install --quiet --upgrade -e apps/dispatch_portal \
+    && ./env/bin/python -c 'from pathlib import Path; p=Path("sites/apps.txt"); apps=[line.strip() for line in p.read_text().splitlines() if line.strip()]; [apps.append(app) for app in ("transport_management", "dispatch_portal") if app not in apps]; p.write_text("\n".join(apps) + "\n")' \
     && bench build --production
 
 FROM ${BENCH_IMAGE} AS runtime
