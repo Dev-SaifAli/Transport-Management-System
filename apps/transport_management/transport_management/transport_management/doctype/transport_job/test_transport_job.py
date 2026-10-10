@@ -30,10 +30,10 @@ class TestTransportJob(unittest.TestCase):
 		reload_doc("transport_management", "doctype", "transport_job", force=True)
 
 	def setUp(self):
-		frappe.db.savepoint("transport_job_test")
 		self.demo = setup_demo_data()
 		ensure_tms_rbac()
 		frappe.db.set_value("Hired Vehicle", self.demo["hired_vehicle"], "vehicle_type", "TIPPER")
+		frappe.db.savepoint("transport_job_test")
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
@@ -71,21 +71,21 @@ class TestTransportJob(unittest.TestCase):
 		return doc
 
 	def advance_trip(self, trip, status, quantity=None):
-		if status in {"ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"}:
+		if status in {"ASSIGNED", "LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"} and trip.status == "PLANNED":
 			trip.status = "ASSIGNED"
 			trip.save()
-		if status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"}:
+		if status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"} and trip.status == "ASSIGNED":
 			trip.status = "LOADED"
 			trip.loaded_quantity = quantity or trip.planned_quantity
 			trip.save()
-		if status in {"IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"}:
+		if status in {"IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"} and trip.status == "LOADED":
 			trip.status = "IN_TRANSIT"
 			trip.save()
-		if status in {"DELIVERED", "POD_RECEIVED", "CLOSED"}:
+		if status in {"DELIVERED", "POD_RECEIVED", "CLOSED"} and trip.status == "IN_TRANSIT":
 			trip.status = "DELIVERED"
 			trip.delivered_quantity = quantity or trip.planned_quantity
 			trip.save()
-		if status in {"POD_RECEIVED", "CLOSED"}:
+		if status in {"POD_RECEIVED", "CLOSED"} and trip.status == "DELIVERED":
 			trip.status = "POD_RECEIVED"
 			trip.pod_attachment = "/files/test-pod.pdf"
 			trip.save()

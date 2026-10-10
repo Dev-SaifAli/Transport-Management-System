@@ -11,12 +11,17 @@ class TestDispatchReportsApi(DispatchTestCase):
 		super().setUp()
 		self.manager = make_user(["Transport Manager"], "Reports Manager")
 		self.outsider = make_user(["Website Manager"], "Reports Outsider")
+		self.report_date = add_days(today(), 3650)
+		frappe.db.set_value("Transport Trip", self.trip, "trip_date", self.report_date, update_modified=False)
+
+	def get_report_range(self):
+		return {"from_date": self.report_date, "to_date": self.report_date}
 
 	def test_reports_overview_shape(self):
 		frappe.set_user(self.manager)
 		from dispatch_portal.api.reports import get_reports
 
-		data = get_reports()
+		data = get_reports(**self.get_report_range())
 		for key in (
 			"range",
 			"trips_by_status",
@@ -38,7 +43,7 @@ class TestDispatchReportsApi(DispatchTestCase):
 		frappe.set_user(self.manager)
 		from dispatch_portal.api.reports import get_reports
 
-		data = get_reports()
+		data = get_reports(**self.get_report_range())
 		customers = {row["key"]: row["count"] for row in data["trips_by_customer"]}
 		self.assertIn(self.customer, customers)
 
@@ -46,7 +51,7 @@ class TestDispatchReportsApi(DispatchTestCase):
 		frappe.set_user(self.manager)
 		from dispatch_portal.api.reports import get_driver_report
 
-		data = get_driver_report()
+		data = get_driver_report(**self.get_report_range())
 		drivers = {row["driver"]: row for row in data["rows"]}
 		self.assertIn(self.driver, drivers)
 		self.assertGreaterEqual(drivers[self.driver]["trips"], 1)
@@ -55,7 +60,7 @@ class TestDispatchReportsApi(DispatchTestCase):
 		frappe.set_user(self.manager)
 		from dispatch_portal.api.reports import get_trip_report
 
-		data = get_trip_report()
+		data = get_trip_report(**self.get_report_range())
 		self.assertIn(self.trip, [row["trip"] for row in data["rows"]])
 
 	def test_pod_backlog(self):
@@ -72,7 +77,8 @@ class TestDispatchReportsApi(DispatchTestCase):
 		from dispatch_portal.api.reports import get_reports
 
 		data = get_reports(
-			from_date=add_days(today(), -10), to_date=add_days(today(), -8)
+			from_date=add_days(self.report_date, -10),
+			to_date=add_days(self.report_date, -8),
 		)
 		self.assertEqual(data["trips_by_status"], [])
 		self.assertEqual(data["quantity_delivered"]["planned"], 0)
