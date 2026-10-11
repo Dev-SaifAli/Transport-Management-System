@@ -95,7 +95,7 @@ sites_dir.mkdir(parents=True, exist_ok=True)
 config_path.write_text(json.dumps(config, indent=1, sort_keys=True) + "\n")
 PY
 
-if [[ " $* " == *"gunicorn"* ]]; then
+if [[ " $* " == *"gunicorn"* || " $* " == *"railway-start-all.sh"* ]]; then
 	if [ "$(id -u)" = "0" ] && id frappe >/dev/null 2>&1 && command -v runuser >/dev/null 2>&1; then
 		runuser -u frappe -- env \
 			FRAPPE_SITE="${SITE_NAME}" \
