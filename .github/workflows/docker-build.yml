@@ -27,6 +27,52 @@ jobs:
           bash -n scripts/railway-migrate.sh
           bash -n scripts/railway-start-all.sh
 
+      - name: Check Railway asset cache helper
+        run: |
+          python - <<'PY'
+          import importlib.util
+          import os
+          import sys
+          import tempfile
+          import types
+          from pathlib import Path
+
+          script = Path("scripts/railway-clear-asset-cache.py")
+          spec = importlib.util.spec_from_file_location("railway_clear_asset_cache", script)
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+
+          with tempfile.TemporaryDirectory() as tmp:
+              tmp_path = Path(tmp)
+              sites = tmp_path / "sites"
+              bench = tmp_path / "bench"
+              sites.mkdir()
+              bench.mkdir()
+
+              os.environ["FRAPPE_SITE"] = "tms-staging"
+              os.environ["SITES_PATH"] = str(sites)
+              os.environ["FRAPPE_BENCH_ROOT"] = str(bench)
+              assert module.main() == 0
+
+              site_dir = sites / "tms-staging"
+              site_dir.mkdir()
+              (site_dir / "site_config.json").write_text("{}\n")
+
+              calls = []
+              fake_frappe = types.SimpleNamespace()
+              fake_frappe.client_cache = types.SimpleNamespace(
+                  delete_value=lambda key, shared=False: calls.append(("delete", key, shared))
+              )
+              fake_frappe.init = lambda site=None, sites_path=None: calls.append(("init", site, sites_path))
+              fake_frappe.destroy = lambda: calls.append(("destroy",))
+              sys.modules["frappe"] = fake_frappe
+
+              assert module.main() == 0
+              assert ("init", "tms-staging", str(sites)) in calls
+              assert ("delete", "assets_json", True) in calls
+              assert ("destroy",) in calls
+          PY
+
       - name: Build image
         uses: docker/build-push-action@v6
         with:
@@ -112,48 +158,4 @@ jobs:
               export FRAPPE_SITE=tms-staging
               /home/frappe/frappe-bench/railway-entrypoint.sh \
                 bash -lc "test ! -d /home/frappe/frappe-bench/sites/tms-staging && echo gunicorn pre-restore startup ok"
-            '
-
-      - name: Verify Railway restored-site cache clear path
-        run: |
-          docker run --rm \
-            --tmpfs /home/frappe/frappe-bench/sites \
-            --tmpfs /railway-test \
-            --entrypoint bash \
-            al-rana-tms:${{ github.sha }} \
-            -lc '
-              set -euo pipefail
-
-              sites=/home/frappe/frappe-bench/sites
-              mkdir -p "$sites/tms-staging" /railway-test/fake /railway-test/cache
-              printf "{}\n" > "$sites/tms-staging/site_config.json"
-              chown -R frappe:frappe "$sites" /railway-test
-
-              {
-                printf "%s\n" "from pathlib import Path"
-                printf "%s\n" ""
-                printf "%s\n" "class ClientCache:"
-                printf "%s\n" "    def delete_value(self, key, shared=False):"
-                printf "%s\n" "        Path('/railway-test/cache/deleted').write_text(f'{key}:{shared}\\\\n')"
-                printf "%s\n" ""
-                printf "%s\n" "client_cache = ClientCache()"
-                printf "%s\n" ""
-                printf "%s\n" "def init(site=None, sites_path=None):"
-                printf "%s\n" "    Path('/railway-test/cache/init').write_text(f'{site}:{sites_path}\\\\n')"
-                printf "%s\n" ""
-                printf "%s\n" "def destroy():"
-                printf "%s\n" "    Path('/railway-test/cache/destroy').write_text('destroyed\\\\n')"
-              } > /railway-test/fake/frappe.py
-
-              runuser -u frappe -- env \
-                PYTHONPATH=/railway-test/fake \
-                FRAPPE_SITE=tms-staging \
-                SITES_PATH="$sites" \
-                FRAPPE_BENCH_ROOT=/home/frappe/frappe-bench \
-                /home/frappe/frappe-bench/env/bin/python \
-                /home/frappe/frappe-bench/railway-clear-asset-cache.py
-
-              grep -q "tms-staging:$sites" /railway-test/cache/init
-              grep -q "assets_json:True" /railway-test/cache/deleted
-              grep -q "destroyed" /railway-test/cache/destroy
             '
