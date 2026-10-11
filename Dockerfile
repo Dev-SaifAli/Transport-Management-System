@@ -87,6 +87,10 @@ COPY --chown=frappe:frappe \
     /home/frappe/frappe-bench/railway-migrate.sh
 
 COPY --chown=frappe:frappe \
+    scripts/railway-start-all.sh \
+    /home/frappe/frappe-bench/railway-start-all.sh
+
+COPY --chown=frappe:frappe \
     scripts/railway-clear-asset-cache.py \
     /home/frappe/frappe-bench/railway-clear-asset-cache.py
 
@@ -94,6 +98,7 @@ RUN chmod +x \
     /home/frappe/frappe-bench/railway-entrypoint.sh \
     /home/frappe/frappe-bench/railway-bootstrap.sh \
     /home/frappe/frappe-bench/railway-migrate.sh \
+    /home/frappe/frappe-bench/railway-start-all.sh \
     /home/frappe/frappe-bench/railway-clear-asset-cache.py \
     /home/frappe/frappe-bench/railway-install-hrms.sh
 
@@ -105,4 +110,4 @@ ENV FRAPPE_BENCH_ROOT=/home/frappe/frappe-bench \
 
 ENTRYPOINT ["/home/frappe/frappe-bench/railway-entrypoint.sh"]
 
-CMD ["bash", "-lc", "cd /home/frappe/frappe-bench/sites && exec /home/frappe/frappe-bench/env/bin/gunicorn --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-4} --timeout ${GUNICORN_TIMEOUT:-120} transport_management.railway_wsgi:application --preload"]
+CMD ["bash", "-lc", "/home/frappe/frappe-bench/railway-start-all.sh"]

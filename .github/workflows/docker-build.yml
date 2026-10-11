@@ -19,6 +19,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check Railway shell scripts
+        run: |
+          bash -n scripts/railway-entrypoint.sh
+          bash -n scripts/railway-bootstrap.sh
+          bash -n scripts/railway-install-hrms.sh
+          bash -n scripts/railway-migrate.sh
+          bash -n scripts/railway-start-all.sh
+
       - name: Build image
         uses: docker/build-push-action@v6
         with:
@@ -41,6 +49,8 @@ jobs:
             test -d apps/dispatch_portal
             test -f apps/transport_management/transport_management/hooks.py
             test -f apps/dispatch_portal/dispatch_portal/hooks.py
+            test -x railway-start-all.sh
+            bash -n railway-start-all.sh
 
             grep -qx "frappe" sites/apps.txt
             grep -qx "erpnext" sites/apps.txt
