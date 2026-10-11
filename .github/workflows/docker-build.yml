@@ -99,3 +99,61 @@ jobs:
               /home/frappe/frappe-bench/railway-entrypoint.sh bash -c "$verify"
               /home/frappe/frappe-bench/railway-entrypoint.sh bash -c "$verify"
             '
+
+      - name: Verify Railway pre-restore startup skips site cache
+        run: |
+          docker run --rm \
+            --tmpfs /home/frappe/frappe-bench/sites \
+            --entrypoint bash \
+            al-rana-tms:${{ github.sha }} \
+            -lc '
+              set -euo pipefail
+
+              export FRAPPE_SITE=tms-staging
+              /home/frappe/frappe-bench/railway-entrypoint.sh \
+                bash -lc "test ! -d /home/frappe/frappe-bench/sites/tms-staging && echo gunicorn pre-restore startup ok"
+            '
+
+      - name: Verify Railway restored-site startup clears cache
+        run: |
+          docker run --rm \
+            --tmpfs /home/frappe/frappe-bench/sites \
+            --tmpfs /railway-test \
+            --entrypoint bash \
+            al-rana-tms:${{ github.sha }} \
+            -lc '
+              set -euo pipefail
+
+              sites=/home/frappe/frappe-bench/sites
+              mkdir -p "$sites/tms-staging" /railway-test/fake /railway-test/cache
+              printf "{}\n" > "$sites/tms-staging/site_config.json"
+              chown -R frappe:frappe "$sites" /railway-test
+
+              cat > /railway-test/fake/frappe.py <<PY
+from pathlib import Path
+
+class ClientCache:
+    def delete_value(self, key, shared=False):
+        Path("/railway-test/cache/deleted").write_text(f"{key}:{shared}\\n")
+
+client_cache = ClientCache()
+
+def init(site=None, sites_path=None):
+    Path("/railway-test/cache/init").write_text(f"{site}:{sites_path}\\n")
+
+def destroy():
+    Path("/railway-test/cache/destroy").write_text("destroyed\\n")
+PY
+
+              runuser -u frappe -- env \
+                PYTHONPATH=/railway-test/fake \
+                FRAPPE_SITE=tms-staging \
+                SITES_PATH="$sites" \
+                FRAPPE_BENCH_ROOT=/home/frappe/frappe-bench \
+                /home/frappe/frappe-bench/railway-entrypoint.sh \
+                  bash -lc "echo gunicorn restored-site startup ok"
+
+              grep -q "tms-staging:$sites" /railway-test/cache/init
+              grep -q "assets_json:True" /railway-test/cache/deleted
+              grep -q "destroyed" /railway-test/cache/destroy
+            '
