@@ -95,7 +95,7 @@ if [ -d "${SITES_TEMPLATE_DIR}/assets" ]; then
 	if [[ "$(id -u)" == "0" ]]; then
 		chown "${FRAPPE_UID}:${FRAPPE_GID}" "${SITES_DIR}/assets"
 	fi
-	cp -a -n "${SITES_TEMPLATE_DIR}/assets/." "${SITES_DIR}/assets/"
+	cp -a "${SITES_TEMPLATE_DIR}/assets/." "${SITES_DIR}/assets/"
 fi
 
 "${BENCH_DIR}/env/bin/python" - <<'PY'

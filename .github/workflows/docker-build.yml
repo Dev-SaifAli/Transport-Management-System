@@ -97,6 +97,9 @@ jobs:
             test -f apps/dispatch_portal/dispatch_portal/hooks.py
             test -x railway-start-all.sh
             bash -n railway-start-all.sh
+            test -s sites/assets/assets.json
+            test -L sites/assets/transport_management
+            test -d sites/assets/transport_management
 
             grep -qx "frappe" sites/apps.txt
             grep -qx "erpnext" sites/apps.txt
@@ -126,10 +129,12 @@ jobs:
               mkdir -p "$sites/assets" "$sites/tms.localhost"
               printf "existing site data\n" > "$sites/tms.localhost/preserved.txt"
               printf "existing asset\n" > "$sites/assets/volume-only.txt"
+              printf "{\"stale\": true}\n" > "$sites/assets/assets.json"
               printf "{\"volume_preserved\": true}\n" > "$sites/common_site_config.json"
 
               test "$(stat -c %u "$sites")" = 0
               echo "Frappe runtime UID:GID: $(id -u frappe):$(id -g frappe)"
+              test -s /opt/frappe/sites-template/assets/assets.json
 
               verify="set -euo pipefail
               test \$(id -u) = \$(id -u frappe)
@@ -138,11 +143,13 @@ jobs:
               test \$(stat -c %u /home/frappe/frappe-bench/sites/assets) = \$(id -u frappe)
               test -f /home/frappe/frappe-bench/sites/apps.txt
               test \$(grep -xc frappe /home/frappe/frappe-bench/sites/apps.txt) = 1
+              cmp /opt/frappe/sites-template/assets/assets.json /home/frappe/frappe-bench/sites/assets/assets.json
               test -f /home/frappe/frappe-bench/sites/tms.localhost/preserved.txt
               test -f /home/frappe/frappe-bench/sites/assets/volume-only.txt
               grep -q volume_preserved /home/frappe/frappe-bench/sites/common_site_config.json"
 
               /home/frappe/frappe-bench/railway-entrypoint.sh bash -c "$verify"
+              printf "{\"stale_after_restart\": true}\n" > "$sites/assets/assets.json"
               /home/frappe/frappe-bench/railway-entrypoint.sh bash -c "$verify"
             '
 
