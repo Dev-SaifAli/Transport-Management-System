@@ -9,8 +9,49 @@ SITES_TEMPLATE_DIR="${SITES_TEMPLATE_DIR:-/opt/frappe/sites-template}"
 
 mkdir -p "${SITES_DIR}"
 
+if [[ -L "${SITES_DIR}" ]]; then
+	echo "Refusing to prepare symlinked sites directory: ${SITES_DIR}" >&2
+	exit 1
+fi
+
+BENCH_DIR_REAL="$(realpath -e -- "${BENCH_DIR}")"
+SITES_DIR_REAL="$(realpath -e -- "${SITES_DIR}")"
+if [[ "${SITES_DIR_REAL}" != "${BENCH_DIR_REAL}/sites" ]]; then
+	echo "Refusing to prepare unexpected sites directory: ${SITES_DIR_REAL}" >&2
+	exit 1
+fi
+
+if [[ "$(id -u)" == "0" ]]; then
+	if ! id frappe >/dev/null 2>&1 || ! command -v runuser >/dev/null 2>&1; then
+		echo "Root startup requires the frappe user and runuser to prepare the volume safely." >&2
+		exit 1
+	fi
+
+	FRAPPE_UID="$(id -u frappe)"
+	FRAPPE_GID="$(id -g frappe)"
+	OWNERSHIP_MARKER="${SITES_DIR_REAL}/.railway-volume-owner-v1"
+
+	if [[ ! -f "${OWNERSHIP_MARKER}" || -L "${OWNERSHIP_MARKER}" ]] ||
+		[[ "$(stat -c '%u:%g' "${OWNERSHIP_MARKER}" 2>/dev/null || true)" != "${FRAPPE_UID}:${FRAPPE_GID}" ]]; then
+		echo "Preparing sites volume ownership for frappe (${FRAPPE_UID}:${FRAPPE_GID})..."
+		# Limit repair to this mount, without following symlinks or crossing filesystems.
+		find "${SITES_DIR_REAL}" -xdev \( -type d -o -type f \) \
+			\( ! -uid "${FRAPPE_UID}" -o ! -gid "${FRAPPE_GID}" \) \
+			-exec chown -h "${FRAPPE_UID}:${FRAPPE_GID}" {} +
+		find "${SITES_DIR_REAL}" -xdev \( -type d -o -type f \) \
+			-exec chmod u+rwX {} +
+		install -o "${FRAPPE_UID}" -g "${FRAPPE_GID}" -m 600 /dev/null "${OWNERSHIP_MARKER}"
+	fi
+elif [[ "$(id -u)" != "$(id -u frappe)" ]]; then
+	echo "Runtime must start as root for volume preparation or as the frappe user." >&2
+	exit 1
+elif [[ ! -w "${SITES_DIR}" ]]; then
+	echo "Sites directory is not writable by frappe: ${SITES_DIR}" >&2
+	exit 1
+fi
+
 if [ ! -f "${SITES_DIR}/apps.txt" ] && [ -d "${SITES_TEMPLATE_DIR}" ]; then
-	cp -a "${SITES_TEMPLATE_DIR}/." "${SITES_DIR}/"
+	cp -a -n "${SITES_TEMPLATE_DIR}/." "${SITES_DIR}/"
 fi
 
 # Synchronize Bench apps from the Docker image with the persistent volume.
@@ -50,9 +91,11 @@ fi
 fi
 
 if [ -d "${SITES_TEMPLATE_DIR}/assets" ]; then
-	rm -rf "${SITES_DIR}/assets"
-	cp -a "${SITES_TEMPLATE_DIR}/assets" "${SITES_DIR}/assets"
-	chown -hR frappe:frappe "${SITES_DIR}/assets" 2>/dev/null || true
+	mkdir -p "${SITES_DIR}/assets"
+	if [[ "$(id -u)" == "0" ]]; then
+		chown "${FRAPPE_UID}:${FRAPPE_GID}" "${SITES_DIR}/assets"
+	fi
+	cp -a -n "${SITES_TEMPLATE_DIR}/assets/." "${SITES_DIR}/assets/"
 fi
 
 python - <<'PY'

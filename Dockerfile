@@ -102,7 +102,7 @@ RUN chmod +x \
     /home/frappe/frappe-bench/railway-clear-asset-cache.py \
     /home/frappe/frappe-bench/railway-install-hrms.sh
 
-USER frappe
+USER root
 WORKDIR /home/frappe/frappe-bench
 
 ENV FRAPPE_BENCH_ROOT=/home/frappe/frappe-bench \
