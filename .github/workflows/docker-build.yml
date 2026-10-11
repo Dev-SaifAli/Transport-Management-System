@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - develop
-  push:
-    branches:
-      - migration/al-rana-monorepo-2026-10-10
   workflow_dispatch:
 
 jobs:
