@@ -66,3 +66,36 @@ jobs:
               print(f"{app}: importable")
           PY
           '
+
+      - name: Verify Railway sites-volume initialization
+        run: |
+          docker run --rm \
+            --tmpfs /home/frappe/frappe-bench/sites \
+            --entrypoint bash \
+            al-rana-tms:${{ github.sha }} \
+            -lc '
+              set -euo pipefail
+
+              sites=/home/frappe/frappe-bench/sites
+              mkdir -p "$sites/assets" "$sites/tms.localhost"
+              printf "existing site data\n" > "$sites/tms.localhost/preserved.txt"
+              printf "existing asset\n" > "$sites/assets/volume-only.txt"
+              printf "{\"volume_preserved\": true}\n" > "$sites/common_site_config.json"
+
+              test "$(stat -c %u "$sites")" = 0
+              echo "Frappe runtime UID:GID: $(id -u frappe):$(id -g frappe)"
+
+              verify="set -euo pipefail
+              test \$(id -u) = \$(id -u frappe)
+              test \$(id -g) = \$(id -g frappe)
+              test \$(stat -c %u /home/frappe/frappe-bench/sites) = \$(id -u frappe)
+              test \$(stat -c %u /home/frappe/frappe-bench/sites/assets) = \$(id -u frappe)
+              test -f /home/frappe/frappe-bench/sites/apps.txt
+              test \$(grep -xc frappe /home/frappe/frappe-bench/sites/apps.txt) = 1
+              test -f /home/frappe/frappe-bench/sites/tms.localhost/preserved.txt
+              test -f /home/frappe/frappe-bench/sites/assets/volume-only.txt
+              grep -q volume_preserved /home/frappe/frappe-bench/sites/common_site_config.json"
+
+              /home/frappe/frappe-bench/railway-entrypoint.sh bash -c "$verify"
+              /home/frappe/frappe-bench/railway-entrypoint.sh bash -c "$verify"
+            '
