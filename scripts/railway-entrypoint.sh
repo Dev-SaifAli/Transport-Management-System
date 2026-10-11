@@ -98,7 +98,7 @@ if [ -d "${SITES_TEMPLATE_DIR}/assets" ]; then
 	cp -a -n "${SITES_TEMPLATE_DIR}/assets/." "${SITES_DIR}/assets/"
 fi
 
-python - <<'PY'
+"${BENCH_DIR}/env/bin/python" - <<'PY'
 import json
 import os
 from pathlib import Path
