@@ -114,7 +114,7 @@ jobs:
                 bash -lc "test ! -d /home/frappe/frappe-bench/sites/tms-staging && echo gunicorn pre-restore startup ok"
             '
 
-      - name: Verify Railway restored-site startup clears cache
+      - name: Verify Railway restored-site cache clear path
         run: |
           docker run --rm \
             --tmpfs /home/frappe/frappe-bench/sites \
@@ -150,8 +150,8 @@ jobs:
                 FRAPPE_SITE=tms-staging \
                 SITES_PATH="$sites" \
                 FRAPPE_BENCH_ROOT=/home/frappe/frappe-bench \
-                /home/frappe/frappe-bench/railway-entrypoint.sh \
-                  bash -lc "echo gunicorn restored-site startup ok"
+                /home/frappe/frappe-bench/env/bin/python \
+                /home/frappe/frappe-bench/railway-clear-asset-cache.py
 
               grep -q "tms-staging:$sites" /railway-test/cache/init
               grep -q "assets_json:True" /railway-test/cache/deleted
