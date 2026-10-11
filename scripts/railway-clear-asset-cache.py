@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import traceback
+from pathlib import Path
 
 
 def main() -> int:
@@ -19,6 +20,14 @@ def main() -> int:
 	if not site:
 		print("[railway] FRAPPE_SITE is required before invalidating assets_json cache", file=sys.stderr)
 		return 1
+
+	site_config = Path(sites_path) / site / "site_config.json"
+	if not site_config.is_file():
+		print(
+			f"[railway] Frappe site {site!r} is not restored yet; skipping assets_json cache invalidation",
+			flush=True,
+		)
+		return 0
 
 	os.chdir(bench_root)
 
