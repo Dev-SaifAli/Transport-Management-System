@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "module": "AL RANA Dispatch",
+ "name": "dispatch-console",
+ "page_name": "dispatch-console",
+ "roles": [
+  {"role": "AL RANA Dispatcher"},
+  {"role": "AL RANA Dispatch Verifier"},
+  {"role": "System Manager"},
+  {"role": "Transport Admin"},
+  {"role": "Transport Manager"},
+  {"role": "TMS + Expense Data Entry"},
+  {"role": "TMS Trip Data Entry"}
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "AL RANA Dispatch"
+}

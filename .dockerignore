@@ -11,8 +11,14 @@ node_modules
 dist
 build
 *.sql
+*.sql.gz
 *.tar
+*.tar.gz
 *.tgz
 *.zip
 sites
 logs
+backups
+private
+site_config.json
+common_site_config.json

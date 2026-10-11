@@ -1,0 +1,58 @@
+name: Docker Build
+
+on:
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  docker-build:
+    name: Build Frappe v16 image
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          push: false
+          tags: al-rana-tms:${{ github.sha }}
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify bundled Frappe apps
+        run: |
+          docker run --rm --entrypoint bash al-rana-tms:${{ github.sha }} -lc '
+            set -euo pipefail
+            cd /home/frappe/frappe-bench
+
+            test -d apps/transport_management
+            test -d apps/dispatch_portal
+            test -f apps/transport_management/transport_management/hooks.py
+            test -f apps/dispatch_portal/dispatch_portal/hooks.py
+
+            grep -qx "frappe" sites/apps.txt
+            grep -qx "erpnext" sites/apps.txt
+            grep -qx "transport_management" sites/apps.txt
+            grep -qx "dispatch_portal" sites/apps.txt
+
+            ./env/bin/python - <<PY
+          import importlib.util
+
+          for app in ("transport_management", "dispatch_portal"):
+              if importlib.util.find_spec(app) is None:
+                  raise SystemExit(f"{app} is not importable")
+              print(f"{app}: importable")
+          PY
+          '

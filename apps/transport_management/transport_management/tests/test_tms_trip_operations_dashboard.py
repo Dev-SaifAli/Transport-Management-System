@@ -172,7 +172,13 @@ class TestTMSTripOperationsDashboard(unittest.TestCase):
 		self.assertEqual(metadata["standard"], "Yes")
 		self.assertEqual(
 			{row["role"] for row in metadata["roles"]},
-			{"TMS Trip Data Entry", "Transport Manager", "Transport Admin", "System Manager"},
+			{
+				"TMS Trip Data Entry",
+				"TMS + Expense Data Entry",
+				"Transport Manager",
+				"Transport Admin",
+				"System Manager",
+			},
 		)
 
 	def test_endpoint_rejects_user_without_transport_trip_read(self):

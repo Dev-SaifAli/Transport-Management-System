@@ -1,0 +1,41 @@
+{
+ "app": "dispatch_portal",
+ "bg_color": "blue",
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon_type": "App",
+ "idx": 5,
+ "label": "AL RANA Dispatch",
+ "link": "/app/dispatch-console",
+ "link_to": "",
+ "link_type": "External",
+ "logo_url": "/assets/dispatch_portal/icons/desktop_icons/solid/al_rana_dispatch.svg",
+ "name": "AL RANA Dispatch",
+ "owner": "Administrator",
+ "parent_icon": "",
+ "restrict_removal": 0,
+ "roles": [
+  {
+   "role": "AL RANA Dispatch Verifier"
+  },
+  {
+   "role": "AL RANA Dispatcher"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "TMS + Expense Data Entry"
+  },
+  {
+   "role": "TMS Trip Data Entry"
+  },
+  {
+   "role": "Transport Admin"
+  },
+  {
+   "role": "Transport Manager"
+  }
+ ],
+ "standard": 1
+}

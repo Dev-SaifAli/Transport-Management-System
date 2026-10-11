@@ -81,9 +81,9 @@ else
 		--db-port "${DB_PORT}"
 		--admin-password "${ADMIN_PASSWORD}"
 		--install-app erpnext
---install-app hrms
---install-app transport_management
---set-default
+		--install-app transport_management
+		--install-app dispatch_portal
+		--set-default
 	)
 
 	if [ -n "${DB_NAME:-}" ]; then
@@ -108,13 +108,6 @@ else
 	bench new-site "${new_site_args[@]}"
 fi
 
-if ! bench --site "${SITE_NAME}" list-apps | awk '{print $1}' | grep -qx "hrms"; then
-        echo "HRMS is not installed on ${SITE_NAME}. Installing..."
-        bench --site "${SITE_NAME}" install-app hrms
-else
-        echo "HRMS is already installed on ${SITE_NAME}."
-fi
-
 bench --site "${SITE_NAME}" set-config db_host "${DB_HOST}"
 bench --site "${SITE_NAME}" set-config db_port "${DB_PORT}"
 bench --site "${SITE_NAME}" set-config redis_cache "${REDIS_CACHE_URL}"
@@ -122,6 +115,9 @@ bench --site "${SITE_NAME}" set-config redis_queue "${REDIS_QUEUE_URL}"
 bench --site "${SITE_NAME}" set-config redis_socketio "${REDIS_SOCKETIO_URL:-${REDIS_QUEUE_URL}}"
 
 bench --site "${SITE_NAME}" execute transport_management.setup.after_migrate
+if bench --site "${SITE_NAME}" list-apps | awk '{print $1}' | grep -qx "dispatch_portal"; then
+	bench --site "${SITE_NAME}" execute dispatch_portal.setup.after_migrate
+fi
 bench --site "${SITE_NAME}" clear-cache
 
 echo "Bootstrap completed for ${SITE_NAME}."

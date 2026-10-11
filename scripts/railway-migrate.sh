@@ -24,6 +24,9 @@ MSG
 fi
 
 bench --site "${SITE_NAME}" execute transport_management.setup.after_migrate
+if bench --site "${SITE_NAME}" list-apps | awk '{print $1}' | grep -qx "dispatch_portal"; then
+	bench --site "${SITE_NAME}" execute dispatch_portal.setup.after_migrate
+fi
 bench --site "${SITE_NAME}" clear-cache
 
 echo "Migration completed for ${SITE_NAME}."
