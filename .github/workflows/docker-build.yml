@@ -129,21 +129,21 @@ jobs:
               printf "{}\n" > "$sites/tms-staging/site_config.json"
               chown -R frappe:frappe "$sites" /railway-test
 
-              cat > /railway-test/fake/frappe.py <<PY
-from pathlib import Path
-
-class ClientCache:
-    def delete_value(self, key, shared=False):
-        Path("/railway-test/cache/deleted").write_text(f"{key}:{shared}\\n")
-
-client_cache = ClientCache()
-
-def init(site=None, sites_path=None):
-    Path("/railway-test/cache/init").write_text(f"{site}:{sites_path}\\n")
-
-def destroy():
-    Path("/railway-test/cache/destroy").write_text("destroyed\\n")
-PY
+              {
+                printf "%s\n" "from pathlib import Path"
+                printf "%s\n" ""
+                printf "%s\n" "class ClientCache:"
+                printf "%s\n" "    def delete_value(self, key, shared=False):"
+                printf "%s\n" "        Path('/railway-test/cache/deleted').write_text(f'{key}:{shared}\\\\n')"
+                printf "%s\n" ""
+                printf "%s\n" "client_cache = ClientCache()"
+                printf "%s\n" ""
+                printf "%s\n" "def init(site=None, sites_path=None):"
+                printf "%s\n" "    Path('/railway-test/cache/init').write_text(f'{site}:{sites_path}\\\\n')"
+                printf "%s\n" ""
+                printf "%s\n" "def destroy():"
+                printf "%s\n" "    Path('/railway-test/cache/destroy').write_text('destroyed\\\\n')"
+              } > /railway-test/fake/frappe.py
 
               runuser -u frappe -- env \
                 PYTHONPATH=/railway-test/fake \
