@@ -30,10 +30,13 @@ additional apps only through explicit controlled commands.
 ## Railway Scripts
 
 - `scripts/railway-entrypoint.sh` prepares runtime config and synchronizes image
-  apps/assets into the persistent Bench volume.
+  apps/assets into the persistent Bench volume. Built assets replace matching
+  stale files on startup; unrelated files in the volume are retained.
 - `scripts/railway-bootstrap.sh` is for explicit first-site creation only.
 - `scripts/railway-migrate.sh` is an explicit migration helper; migrations do
   not run automatically on normal application startup.
+- See [docs/railway-production-sync.md](docs/railway-production-sync.md) before
+  synchronizing Desk/workspace changes to an existing production site.
 
 Do not commit backups, site files, secrets, database dumps, uploaded documents,
 or Railway volume contents.
