@@ -121,6 +121,12 @@ def evaluate_billing_readiness(transport_job, progress=None):
 	if not job_name:
 		return BILLING_STATUS_NOT_READY
 
+	if frappe.db.exists(
+		"Transport Trip",
+		{"transport_job": job_name, "transport_billing_status": "Draft Invoice"},
+	):
+		return BILLING_STATUS_IN_PROGRESS
+
 	lifecycle_status = get_job_invoice_lifecycle_billing_status(job_name)
 	if lifecycle_status:
 		return lifecycle_status
@@ -279,7 +285,16 @@ def prepare_billing(transport_job):
 	refresh_quantity_progress(transport_job)
 	sales_order = frappe.db.get_value("Transport Job", transport_job, "sales_order")
 	if not sales_order:
-		frappe.throw(_("Transport Job {0} is not linked to a Transport Sales Order.").format(transport_job))
+		billing_status = frappe.db.get_value("Transport Job", transport_job, "billing_status")
+		if billing_status != BILLING_STATUS_READY:
+			frappe.throw(_("Transport Job {0} is not ready for billing.").format(transport_job))
+		return {
+			"transport_job": transport_job,
+			"transport_sales_order": None,
+			"billing_status": billing_status,
+			"route": "tms-billing-review",
+			"message": _("Opening legacy billing review for Transport Job {0}.").format(transport_job),
+		}
 
 	from transport_management.transport_management.doctype.transport_sales_order.transport_sales_order import (
 		prepare_billing as prepare_sales_order_billing,
@@ -324,11 +339,40 @@ def _user_can_prepare_billing(user=None):
 
 @frappe.whitelist()
 def get_billing_review(transport_sales_order=None, transport_job=None, from_date=None, to_date=None):
-	sales_order = get_sales_order_for_transport_billing(transport_sales_order, transport_job)
-	from_date, to_date = validate_billing_date_range(from_date, to_date, require_dates=False)
-
 	if not _user_can_prepare_billing():
 		frappe.throw(_("You are not permitted to review Transport Sales Order billing."), frappe.PermissionError)
+
+	if (
+		transport_sales_order
+		and not transport_job
+		and frappe.db.exists("Transport Job", transport_sales_order)
+		and not frappe.db.exists("Transport Sales Order", transport_sales_order)
+	):
+		transport_job = transport_sales_order
+		transport_sales_order = None
+
+	if transport_job and not frappe.db.get_value("Transport Job", transport_job, "sales_order"):
+		refresh_quantity_progress(transport_job)
+		job = frappe.get_doc("Transport Job", transport_job)
+		if job.billing_status not in {
+			BILLING_STATUS_READY,
+			BILLING_STATUS_IN_PROGRESS,
+			BILLING_STATUS_INVOICED,
+		}:
+			frappe.throw(_("Transport Job {0} is not ready for billing.").format(transport_job))
+		trips = get_billable_trips(job)
+		rows = [build_billing_trip_row(job, trip) for trip in trips]
+		groups = group_invoice_trips(job, trips) if trips else []
+		return {
+			"summary": build_billing_summary(job),
+			"trips": rows,
+			"groups": [build_billing_group_row(group) for group in groups],
+			"totals": calculate_billing_totals(rows),
+			"vat_rate": VAT_RATE,
+		}
+
+	sales_order = get_sales_order_for_transport_billing(transport_sales_order, transport_job)
+	from_date, to_date = validate_billing_date_range(from_date, to_date, require_dates=False)
 
 	from transport_management.transport_management.doctype.transport_sales_order.transport_sales_order import (
 		refresh_sales_order_billing_progress,
@@ -705,7 +749,7 @@ def get_transport_billing_invoice_summary(transport_job):
 		},
 		fields=["name", "docstatus"],
 	)
-	return [
+	summary = [
 		{
 			"invoice": row.name,
 			"status": get_invoice_status_label(row.docstatus),
@@ -713,6 +757,28 @@ def get_transport_billing_invoice_summary(transport_job):
 		}
 		for row in rows
 	]
+	seen = {row["invoice"] for row in summary}
+	for row in frappe.db.sql(
+		"""
+		select transport_sales_invoice, transport_billing_status, count(name) as trips
+		from `tabTransport Trip`
+		where transport_job = %(transport_job)s
+			and coalesce(transport_sales_invoice, '') != ''
+			and transport_billing_status in ('Draft Invoice', 'Invoiced')
+		group by transport_sales_invoice, transport_billing_status
+		""",
+		{"transport_job": transport_job},
+		as_dict=True,
+	):
+		if row.transport_sales_invoice in seen:
+			continue
+		summary.append({
+			"invoice": row.transport_sales_invoice,
+			"status": "Draft" if row.transport_billing_status == "Draft Invoice" else "Submitted",
+			"trips": int(row.trips or 0),
+		})
+		seen.add(row.transport_sales_invoice)
+	return summary
 
 
 def get_invoice_status_label(docstatus):
@@ -734,11 +800,17 @@ def get_billable_trips(job):
 			rak_toll, sharjah_toll, fnrc_extra_charge, transport_billing_status,
 			transport_sales_invoice
 		from `tabTransport Trip`
-		where transport_job = %s
-			and status = %s
+		where transport_job = %(transport_job)s
+			and status = %(status)s
+			and coalesce(transport_sales_invoice, '') = ''
+			and coalesce(transport_billing_status, 'Not Billed') not in %(blocked_statuses)s
 		order by trip_date asc, name asc
 		""",
-		(job.name, BILLING_READY_TRIP_STATUS),
+		{
+			"transport_job": job.name,
+			"status": BILLING_READY_TRIP_STATUS,
+			"blocked_statuses": tuple(sorted(BILLING_BLOCKED_STATUSES)),
+		},
 		as_dict=True,
 	)
 
