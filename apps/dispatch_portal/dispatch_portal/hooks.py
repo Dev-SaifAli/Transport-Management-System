@@ -104,6 +104,18 @@ page_js = {
 before_install = "dispatch_portal.install.before_install"
 after_install = "dispatch_portal.setup.after_install"
 
+# Fixtures
+# --------
+# The dispatch notification email body is a localhost-only customization that
+# must survive reinstalls. Exported from localhost with
+# `bench --site <site> export-fixtures` and imported on every migrate.
+fixtures = [
+	{
+		"dt": "Email Template",
+		"filters": [["name", "=", "Dispatch Notification"]],
+	}
+]
+
 # Uninstallation
 # ------------
 

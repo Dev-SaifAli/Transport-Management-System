@@ -7,3 +7,4 @@
 transport_management.patches.align_al_rana_workspace_permissions
 transport_management.patches.setup_al_rana_native_ux
 transport_management.patches.setup_al_rana_workspace_daily_home
+transport_management.patches.setup_al_rana_desk_metadata_parity
