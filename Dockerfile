@@ -109,6 +109,17 @@ RUN chmod +x \
     /home/frappe/frappe-bench/railway-clear-asset-cache.py \
     /home/frappe/frappe-bench/railway-install-hrms.sh
 
+# The base image's bench shim runs under a Python that has neither the `bench`
+# package nor its dependencies (`click`), so `bench`, `bench schedule` and
+# `bench worker` all fail. The bench virtualenv has both, so point the shim at
+# it and put the bench package on the path.
+ENV PYTHONPATH=/home/frappe/.bench
+
+RUN printf '#!/usr/bin/env bash\nexec /home/frappe/frappe-bench/env/bin/python -c "from bench.cli import cli; cli()" "$@"\n' \
+        > /home/frappe/.local/bin/bench \
+    && chmod +x /home/frappe/.local/bin/bench \
+    && chown frappe:frappe /home/frappe/.local/bin/bench
+
 USER root
 WORKDIR /home/frappe/frappe-bench
 

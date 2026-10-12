@@ -130,12 +130,49 @@ config["socketio_port"] = int(os.environ.get("FRAPPE_SOCKETIO_PORT", os.environ.
 config["serve_default_site"] = True
 config["default_site"] = site_name
 config["frappe_user"] = os.environ.get("FRAPPE_USER", "frappe")
+# `bench init` seeds gunicorn_workers from the builder's CPU count (e.g. 65).
+# The Frappe app never reads it - only bench's systemd generator does, which is
+# unused here - so drop it to keep the config honest. Gunicorn's worker count
+# comes from the GUNICORN_WORKERS env in railway-start-all.sh.
+config.pop("gunicorn_workers", None)
 config.pop("developer_mode", None)
 config.pop("live_reload", None)
 config.pop("file_watcher_port", None)
 
 sites_dir.mkdir(parents=True, exist_ok=True)
 config_path.write_text(json.dumps(config, indent=1, sort_keys=True) + "\n")
+PY
+
+# Normalise the per-site configuration that survives on the volume. Only keys
+# with an explicit opt-in or a Railway-provided value are touched, so this never
+# overwrites operator settings.
+"${BENCH_DIR}/env/bin/python" - <<'PY'
+import json
+import os
+from pathlib import Path
+
+bench_dir = Path(os.environ.get("FRAPPE_BENCH_ROOT", "/home/frappe/frappe-bench"))
+sites_dir = Path(os.environ.get("SITES_DIR", str(bench_dir / "sites")))
+site_name = os.environ.get("FRAPPE_SITE", "tms.localhost")
+
+site_config_path = sites_dir / site_name / "site_config.json"
+if site_config_path.is_file():
+    site_config = json.loads(site_config_path.read_text() or "{}")
+
+    # Generate absolute URLs against the real public domain. Without this,
+    # email links, print formats and redirects point at a stale hostname.
+    public_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+    if public_domain:
+        site_config["host_name"] = f"https://{public_domain}"
+
+    # Email is gated behind an explicit variable so the scheduler can be turned
+    # on before an outbound gateway is approved.
+    if os.environ.get("RAILWAY_DISABLE_EMAIL") == "1":
+        site_config["disable_email"] = 1
+    elif os.environ.get("RAILWAY_DISABLE_EMAIL") == "0":
+        site_config.pop("disable_email", None)
+
+    site_config_path.write_text(json.dumps(site_config, indent=1, sort_keys=True) + "\n")
 PY
 
 if [[ " $* " == *"gunicorn"* || " $* " == *"railway-start-all.sh"* ]]; then
