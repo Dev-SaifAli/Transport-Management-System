@@ -152,15 +152,14 @@ DASHBOARD_CHARTS = [
 	{
 		"name": "Monthly Fleet Utilization",
 		"chart_name": "Monthly Fleet Utilization",
-		"chart_type": "Sum",
+		"chart_type": "Count",
 		"document_type": "Transport Trip",
-		"based_on": "departure_date",
-		"value_based_on": "distance",
+		"based_on": "trip_date",
 		"timespan": "Last Year",
 		"time_interval": "Monthly",
 		"timeseries": 1,
 		"type": "Line",
-		"filters_json": [["Transport Trip", "docstatus", "=", 1]],
+		"filters_json": [],
 	},
 ]
 

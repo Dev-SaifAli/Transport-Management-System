@@ -89,11 +89,31 @@ def get_or_create_document(data):
 	doctype = data["doctype"]
 	name = data["name"]
 	if frappe.db.exists(doctype, name):
-		return frappe.get_doc(doctype, name)
+		doc = frappe.get_doc(doctype, name)
+		if _has_set_only_once_conflict(doc, data):
+			# The JSON is the source of truth. Set-only-once fields cannot be
+			# updated in place, so recreate the document instead of silently
+			# skipping the conflicting value.
+			frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)
+			frappe.db.commit()
+			doc = frappe.new_doc(doctype)
+			doc.name = name
+		return doc
 
 	doc = frappe.new_doc(doctype)
 	doc.name = name
 	return doc
+
+
+def _has_set_only_once_conflict(doc, data):
+	"""Return True when a set-only-once field differs from the source JSON."""
+	for df in frappe.get_meta(doc.doctype).get_set_only_once_fields():
+		fieldname = df.fieldname
+		if is_standard_field(fieldname):
+			continue
+		if (data.get(fieldname) or None) != (doc.get(fieldname) or None):
+			return True
+	return False
 
 
 def is_standard_field(fieldname):
