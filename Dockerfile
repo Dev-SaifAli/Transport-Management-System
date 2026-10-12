@@ -44,6 +44,13 @@ RUN bench get-app \
     && git fetch --depth 1 "${HRMS_REPO}" "${HRMS_REF}" \
     && git checkout --detach FETCH_HEAD
 
+# The pinned upstream HRMS commit contains a patch that references the legacy
+# `Repost Accounting Ledger Settings` DocType, removed in Frappe/ERPNext v16.
+# Overlay the reviewed compatibility fix so the pin stays reproducible.
+COPY --chown=frappe:frappe \
+    patches/hrms/v14_0/add_expense_claim_to_repost_settings.py \
+    apps/hrms/hrms/patches/v14_0/add_expense_claim_to_repost_settings.py
+
 COPY --chown=frappe:frappe apps/transport_management apps/transport_management
 COPY --chown=frappe:frappe apps/dispatch_portal apps/dispatch_portal
 
