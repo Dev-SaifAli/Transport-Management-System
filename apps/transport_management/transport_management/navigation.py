@@ -19,6 +19,11 @@ OBSOLETE_WRAPPER_PAGES = (
 OBSOLETE_DESKTOP_ICONS = ("Transport Management", "AL RANA TMS")
 OBSOLETE_WORKSPACE_SIDEBARS = ("Transport Management", "AL RANA TMS")
 
+# Derived-configuration documents that may be recreated from the JSON source
+# when a set-only-once field cannot be reconciled in place. Scoped to this one
+# chart so the sync can never delete any other existing document.
+RECONCILABLE_ON_SET_ONCE_CONFLICT = {("Dashboard Chart", "Monthly Fleet Utilization")}
+
 
 def sync_tms_navigation():
 	"""Remove obsolete wrapper pages and sync source-controlled TMS navigation."""
@@ -90,12 +95,15 @@ def get_or_create_document(data):
 	name = data["name"]
 	if frappe.db.exists(doctype, name):
 		doc = frappe.get_doc(doctype, name)
-		if _has_set_only_once_conflict(doc, data):
-			# The JSON is the source of truth. Set-only-once fields cannot be
-			# updated in place, so recreate the document instead of silently
-			# skipping the conflicting value.
+		if (
+			(doctype, name) in RECONCILABLE_ON_SET_ONCE_CONFLICT
+			and _has_set_only_once_conflict(doc, data)
+		):
+			# The JSON is the source of truth and a set-only-once field cannot be
+			# updated in place, so this known derived-configuration document is
+			# recreated from source. The allow-list keeps the blast radius to this
+			# single chart; no other synced document is ever deleted.
 			frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)
-			frappe.db.commit()
 			doc = frappe.new_doc(doctype)
 			doc.name = name
 		return doc
