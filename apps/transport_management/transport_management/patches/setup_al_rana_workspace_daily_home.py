@@ -91,6 +91,30 @@ NUMBER_CARDS = [
 		"document_type": "Employee",
 		"filters_json": [["Employee", "status", "=", "Active"]],
 	},
+	{
+		"name": "Active Jobs",
+		"label": "Active Jobs",
+		"document_type": "Transport Job",
+		"filters_json": [["Transport Job", "status", "in", ["Ready", "In Progress"]]],
+	},
+	{
+		"name": "Trips En Route",
+		"label": "Trips En Route",
+		"document_type": "Transport Trip",
+		"filters_json": [["Transport Trip", "status", "=", "IN_TRANSIT"]],
+	},
+	{
+		"name": "Available Fleet",
+		"label": "Available Fleet",
+		"document_type": "Truck",
+		"filters_json": [["Truck", "status", "=", "Available"]],
+	},
+	{
+		"name": "Pending Sales Orders",
+		"label": "Pending Sales Orders",
+		"document_type": "Sales Order",
+		"filters_json": [["Sales Order", "status", "=", "Pending"]],
+	},
 ]
 
 DASHBOARD_CHARTS = [
@@ -124,6 +148,19 @@ DASHBOARD_CHARTS = [
 		"timeseries": 1,
 		"type": "Bar",
 		"filters_json": [["Sales Invoice", "docstatus", "=", 1]],
+	},
+	{
+		"name": "Monthly Fleet Utilization",
+		"chart_name": "Monthly Fleet Utilization",
+		"chart_type": "Sum",
+		"document_type": "Transport Trip",
+		"based_on": "departure_date",
+		"value_based_on": "distance",
+		"timespan": "Last Year",
+		"time_interval": "Monthly",
+		"timeseries": 1,
+		"type": "Line",
+		"filters_json": [["Transport Trip", "docstatus", "=", 1]],
 	},
 ]
 
@@ -236,6 +273,25 @@ WORKSPACE_DAILY_HOME = {
 			{"type": "DocType", "link_to": "Cargo Types", "label": "Cargo Types", "doc_view": "List"},
 			{"type": "Page", "link_to": "tms-data-import", "label": "TMS Data Import"},
 			{"type": "DocType", "link_to": "TMS Billing Settings", "label": "TMS Settings", "doc_view": "List"},
+		],
+	},
+	"Transport Management": {
+		"number_cards": [
+			"Active Jobs",
+			"Trips En Route",
+			"Available Fleet",
+			"Pending Sales Orders",
+		],
+		"charts": ["Monthly Fleet Utilization"],
+		"quick_lists": [
+			{"document_type": "Transport Job", "label": "Open Jobs", "quick_list_filter": [["Transport Job", "status", "in", ["Ready", "In Progress"]]]},
+			{"document_type": "Transport Trip", "label": "Active Trips", "quick_list_filter": [["Transport Trip", "status", "not in", ["CLOSED", "CANCELLED"]]]},
+		],
+		"shortcuts": [
+			{"type": "Page", "link_to": "tms-trip-operations", "label": "Trip Operations"},
+			{"type": "DocType", "link_to": "Transport Trip", "label": "New Trip", "doc_view": "New"},
+			{"type": "DocType", "link_to": "Transport Job", "label": "Transport Jobs", "doc_view": "List"},
+			{"type": "DocType", "link_to": "Transport Sales Order", "label": "Transport Sales Orders", "doc_view": "List"},
 		],
 	},
 }
