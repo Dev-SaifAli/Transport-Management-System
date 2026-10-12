@@ -1,0 +1,23 @@
+{
+ "app": "transport_management",
+ "doctype": "Workspace Sidebar",
+ "header_icon": "users",
+ "idx": 0,
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 1,
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Home",
+   "link_to": "AL RANA HR",
+   "link_type": "Workspace",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "module": "Transport Management",
+ "name": "AL RANA HR",
+ "standard": 1,
+ "title": "AL RANA HR"
+}

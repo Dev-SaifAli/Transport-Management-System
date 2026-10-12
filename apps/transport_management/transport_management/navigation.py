@@ -19,6 +19,18 @@ OBSOLETE_WRAPPER_PAGES = (
 OBSOLETE_DESKTOP_ICONS = ("Transport Management", "AL RANA TMS")
 OBSOLETE_WORKSPACE_SIDEBARS = ("Transport Management", "AL RANA TMS")
 
+# Source-controlled sidebars for the AL RANA workspaces. Frappe only auto-generates
+# a sidebar when a workspace is saved interactively, so these are synced from the
+# JSON fixtures alongside the TMS sidebar.
+AL_RANA_SIDEBAR_WORKSPACES = (
+	"al_rana_operations",
+	"al_rana_dispatcher",
+	"al_rana_expenses",
+	"al_rana_finance",
+	"al_rana_hr",
+	"al_rana_admin",
+)
+
 # Derived-configuration documents that may be recreated from the JSON source
 # when a set-only-once field cannot be reconciled in place. Scoped to this one
 # chart so the sync can never delete any other existing document.
@@ -29,6 +41,8 @@ def sync_tms_navigation():
 	"""Remove obsolete wrapper pages and sync source-controlled TMS navigation."""
 	remove_obsolete_wrapper_pages()
 	sync_json_document("workspace_sidebar/tms.json")
+	for workspace in AL_RANA_SIDEBAR_WORKSPACES:
+		sync_json_document(f"workspace_sidebar/{workspace}.json")
 	sync_json_document("desktop_icon/tms.json")
 	remove_obsolete_desktop_icons()
 	remove_obsolete_workspace_sidebars()
