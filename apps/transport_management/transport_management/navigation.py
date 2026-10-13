@@ -16,8 +16,11 @@ OBSOLETE_WRAPPER_PAGES = (
 	"tms-locations",
 )
 
-OBSOLETE_DESKTOP_ICONS = ("Transport Management", "AL RANA TMS")
-OBSOLETE_WORKSPACE_SIDEBARS = ("Transport Management", "AL RANA TMS")
+OBSOLETE_DESKTOP_ICONS = ("AL RANA TMS",)
+
+# The Transport Management sidebar is our detailed custom sidebar (matches module name
+# to prevent Frappe auto-generation). Do NOT delete it.
+OBSOLETE_WORKSPACE_SIDEBARS = ("AL RANA TMS",)
 
 # Source-controlled sidebars for the AL RANA workspaces. Frappe only auto-generates
 # a sidebar when a workspace is saved interactively, so these are synced from the
@@ -116,7 +119,7 @@ def get_or_create_document(data):
 			# The JSON is the source of truth and a set-only-once field cannot be
 			# updated in place, so this known derived-configuration document is
 			# recreated from source. The allow-list keeps the blast radius to this
-			# single chart; no other synced document is ever deleted.
+			# single chart; no other existing document is ever deleted.
 			frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)
 			doc = frappe.new_doc(doctype)
 			doc.name = name
