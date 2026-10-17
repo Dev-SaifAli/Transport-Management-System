@@ -17,6 +17,9 @@ from transport_management.transport_management.doctype.transport_charge_rule.tra
 )
 
 TON_UOM = "TON"
+FIXED_QUANTITY_MODE = "Fixed Quantity"
+OPEN_QUANTITY_MODE = "Open"
+QUOTATION_ORDER_MODE = "Quotation-backed Open"
 VAT_RATE = 5
 BILLING_STATUS_NOT_READY = "Not Ready"
 BILLING_STATUS_READY = "Ready for Billing"
@@ -36,17 +39,26 @@ BILLING_BLOCKED_STATUSES = {"Draft Invoice", "Invoiced"}
 
 class TransportJob(Document):
 	def before_validate(self):
+		if not self.quantity_mode:
+			self.quantity_mode = FIXED_QUANTITY_MODE
 		if not self.uom:
 			self.uom = TON_UOM
 		sync_primary_loading_from_stops(self, "loading_site")
+		if self.quantity_mode == OPEN_QUANTITY_MODE and self.permitted_loading_points:
+			self.loading_site = self.permitted_loading_points[0].loading_location
 		self.calculate_quantity_progress()
 		self.billing_status = evaluate_billing_readiness(self)
 		self.toll_billing_status = evaluate_toll_billing_readiness(self)
 
 	def validate(self):
+		if self.quantity_mode not in {FIXED_QUANTITY_MODE, OPEN_QUANTITY_MODE}:
+			frappe.throw(_("Invalid Transport Job quantity mode {0}.").format(self.quantity_mode))
 		quantity = flt(self.requested_quantity)
-		if not isfinite(quantity) or quantity <= 0:
-			frappe.throw(_("Requested Quantity must be greater than zero."))
+		if self.quantity_mode == FIXED_QUANTITY_MODE and (not isfinite(quantity) or quantity <= 0):
+			frappe.throw(_("Requested Quantity must be greater than zero for fixed-quantity Jobs."))
+		if self.quantity_mode == OPEN_QUANTITY_MODE and quantity not in (0,):
+			frappe.throw(_("Open Transport Jobs cannot have an enforceable Requested Quantity."))
+		self.validate_estimated_quantity()
 
 		if self.loading_site and self.loading_site == self.unloading_site:
 			frappe.throw(_("Loading Site and Unloading Site must be different."))
@@ -56,29 +68,111 @@ class TransportJob(Document):
 
 		validate_transport_location_usage(self.loading_site, {"Loading", "Both"}, _("Loading Site"))
 		validate_transport_location_usage(self.unloading_site, {"Unloading", "Both"}, _("Unloading Site"))
-		validate_loading_stop_rows(self.get("loading_stops"), self.requested_quantity, _("Transport Job"))
+		if self.quantity_mode == OPEN_QUANTITY_MODE:
+			self.validate_open_order_source()
+			self.validate_permitted_loading_points()
+			if self.loading_stops:
+				frappe.throw(_("Open Transport Jobs use permitted loading points, not quantity-allocated loading stops."))
+		else:
+			validate_loading_stop_rows(self.get("loading_stops"), self.requested_quantity, _("Transport Job"))
+
+	def validate_estimated_quantity(self):
+		if self.estimated_quantity in (None, ""):
+			return
+		quantity = flt(self.estimated_quantity, 6)
+		if not isfinite(quantity) or quantity < 0:
+			frappe.throw(_("Estimated Quantity must be a non-negative finite number."))
+
+	def validate_open_order_source(self):
+		if not self.sales_order or not frappe.db.exists("Transport Sales Order", self.sales_order):
+			frappe.throw(_("Open Transport Jobs must reference a quotation-backed Transport Sales Order."))
+		order = frappe.get_doc("Transport Sales Order", self.sales_order)
+		if order.docstatus != 1 or order.order_mode != "Quotation-backed Open":
+			frappe.throw(_("Open Transport Jobs require a submitted quotation-backed Transport Sales Order."))
+		if order.customer != self.customer:
+			frappe.throw(_("Transport Job customer must match its Transport Sales Order."))
+		if not order.transport_quotation or order.transport_quotation != self.transport_quotation:
+			frappe.throw(_("Transport Job must retain its source Transport Quotation."))
+		quotation = frappe.get_doc("Transport Quotation", order.transport_quotation)
+		if quotation.docstatus != 1 or quotation.status != "Approved":
+			frappe.throw(_("Open Transport Jobs require an approved source Transport Quotation."))
+
+	def validate_permitted_loading_points(self):
+		snapshots = {
+			row.name: row
+			for row in frappe.get_all(
+				"Transport Sales Order Rate Snapshot",
+				filters={"parent": self.sales_order, "parenttype": "Transport Sales Order", "parentfield": "rate_snapshots"},
+				fields=["name", "material", "loading_location", "unloading_location"],
+				limit_page_length=0,
+			)
+		}
+		if not self.sales_order_rate_snapshots:
+			frappe.throw(_("Open Transport Jobs must reference their Sales Order rate snapshots."))
+		if not self.permitted_loading_points:
+			frappe.throw(_("Open Transport Jobs must have at least one permitted loading point."))
+
+		snapshot_ids = set()
+		allowed_loading_points = set()
+		for reference in self.sales_order_rate_snapshots:
+			snapshot = snapshots.get(reference.sales_order_rate_snapshot)
+			if not snapshot:
+				frappe.throw(_("Rate snapshot reference on Transport Job row {0} is not on its Sales Order.").format(
+					reference.idx
+				))
+			if snapshot.material != self.material or snapshot.unloading_location != self.unloading_site:
+				frappe.throw(_("Transport Job material and destination must match its rate snapshots."))
+			if snapshot.name in snapshot_ids:
+				frappe.throw(_("A Sales Order rate snapshot can only be linked to a Job once."))
+			snapshot_ids.add(snapshot.name)
+			allowed_loading_points.add(snapshot.loading_location)
+
+		permitted = [row.loading_location for row in self.permitted_loading_points]
+		if len(permitted) != len(set(permitted)):
+			frappe.throw(_("A permitted loading point can only be listed once on a Transport Job."))
+		if set(permitted) != allowed_loading_points:
+			frappe.throw(_("Permitted loading points must match the Job's linked Sales Order rate snapshots."))
+		for row in self.permitted_loading_points:
+			validate_transport_location_usage(row.loading_location, {"Loading", "Both"}, _("Permitted Loading Point"))
+		if self.loading_site not in allowed_loading_points:
+			frappe.throw(_("Primary Loading Site must be one of the permitted loading points."))
 
 	def calculate_quantity_progress(self):
 		if not self.name:
 			self.assigned_quantity = 0
 			self.loaded_quantity = 0
 			self.delivered_quantity = 0
-			self.remaining_quantity = flt(self.requested_quantity, 6)
+			self.remaining_quantity = (
+				flt(self.requested_quantity, 6)
+				if self.quantity_mode != OPEN_QUANTITY_MODE
+				else 0
+			)
 			return
 
 		progress = get_quantity_progress(self.name)
 		self.assigned_quantity = progress["assigned_quantity"]
 		self.loaded_quantity = progress["loaded_quantity"]
 		self.delivered_quantity = progress["delivered_quantity"]
-		self.remaining_quantity = flt(flt(self.requested_quantity, 6) - progress["delivered_quantity"], 6)
+		self.remaining_quantity = (
+			flt(flt(self.requested_quantity, 6) - progress["delivered_quantity"], 6)
+			if self.quantity_mode != OPEN_QUANTITY_MODE
+			else 0
+		)
 
 
 def get_quantity_progress(transport_job):
 	"""Return progress supported by the current Transport Trip schema."""
+	quantity_mode = frappe.db.get_value("Transport Job", transport_job, "quantity_mode")
 	rows = frappe.get_all(
 		"Transport Trip",
 		filters={"transport_job": transport_job, "status": ["!=", "CANCELLED"]},
-		fields=["planned_quantity", "loaded_quantity", "delivered_quantity", "status"],
+		fields=[
+			"planned_quantity",
+			"loaded_quantity",
+			"delivered_quantity",
+			"verified_delivered_quantity",
+			"status",
+		],
 	)
 	assigned_quantity = sum(flt(row.planned_quantity, 6) for row in rows)
 	loaded_quantity = sum(
@@ -87,9 +181,17 @@ def get_quantity_progress(transport_job):
 		if row.loaded_quantity and row.status in {"LOADED", "IN_TRANSIT", "DELIVERED", "POD_RECEIVED", "CLOSED"}
 	)
 	delivered_quantity = sum(
-		flt(row.delivered_quantity, 6)
+		flt(
+			row.verified_delivered_quantity
+			if quantity_mode == OPEN_QUANTITY_MODE
+			else row.delivered_quantity,
+			6,
+		)
 		for row in rows
-		if row.delivered_quantity and row.status in {"DELIVERED", "POD_RECEIVED", "CLOSED"}
+		if (
+			row.verified_delivered_quantity if quantity_mode == OPEN_QUANTITY_MODE else row.delivered_quantity
+		)
+		and row.status in {"DELIVERED", "POD_RECEIVED", "CLOSED"}
 	)
 	return {
 		"assigned_quantity": flt(assigned_quantity, 6),
@@ -101,10 +203,19 @@ def get_quantity_progress(transport_job):
 def refresh_quantity_progress(transport_job):
 	if not transport_job or not frappe.db.exists("Transport Job", transport_job):
 		return
-	job_ref = frappe.db.get_value("Transport Job", transport_job, ["requested_quantity", "sales_order"], as_dict=True)
+	job_ref = frappe.db.get_value(
+		"Transport Job",
+		transport_job,
+		["requested_quantity", "quantity_mode", "sales_order"],
+		as_dict=True,
+	)
 	requested_quantity = flt(job_ref.requested_quantity, 6)
 	progress = get_quantity_progress(transport_job)
-	progress["remaining_quantity"] = flt(requested_quantity - progress["delivered_quantity"], 6)
+	progress["remaining_quantity"] = (
+		flt(requested_quantity - progress["delivered_quantity"], 6)
+		if job_ref.quantity_mode != OPEN_QUANTITY_MODE
+		else 0
+	)
 	progress["billing_status"] = evaluate_billing_readiness(transport_job, progress=progress)
 	progress["toll_billing_status"] = evaluate_toll_billing_readiness(transport_job)
 	frappe.db.set_value("Transport Job", transport_job, progress, update_modified=False)
@@ -126,6 +237,25 @@ def evaluate_billing_readiness(transport_job, progress=None):
 		{"transport_job": job_name, "transport_billing_status": "Draft Invoice"},
 	):
 		return BILLING_STATUS_IN_PROGRESS
+
+	quantity_mode = (
+		transport_job.quantity_mode
+		if not isinstance(transport_job, str)
+		else frappe.db.get_value("Transport Job", job_name, "quantity_mode")
+	)
+	if quantity_mode == OPEN_QUANTITY_MODE:
+		if get_open_order_billable_trips(transport_job=job_name):
+			return BILLING_STATUS_READY
+		trips = frappe.get_all(
+			"Transport Trip",
+			filters={"transport_job": job_name, "status": ["!=", "CANCELLED"]},
+			fields=["status", "transport_billing_status"],
+		)
+		if any(trip.transport_billing_status != "Invoiced" for trip in trips):
+			return BILLING_STATUS_NOT_READY
+		if any(trip.transport_billing_status == "Invoiced" for trip in trips):
+			return BILLING_STATUS_INVOICED
+		return BILLING_STATUS_NOT_READY
 
 	lifecycle_status = get_job_invoice_lifecycle_billing_status(job_name)
 	if lifecycle_status:
@@ -577,6 +707,7 @@ def get_sales_order_billing_jobs(sales_order):
 			"requested_quantity",
 			"delivered_quantity",
 			"remaining_quantity",
+			"quantity_mode",
 			"status",
 			"agreed_rate",
 			"ordered_amount",
@@ -792,6 +923,9 @@ def get_invoice_status_label(docstatus):
 
 
 def get_billable_trips(job):
+	if job.quantity_mode == OPEN_QUANTITY_MODE:
+		return []
+
 	return frappe.db.sql(
 		"""
 		select
@@ -853,7 +987,7 @@ def get_sales_order_billable_trips(sales_order, from_date=None, to_date=None):
 	else:
 		date_condition = "and trip.status = %(closed_status)s"
 
-	return frappe.db.sql(
+	rows = frappe.db.sql(
 		f"""
 		select
 			trip.name, trip.trip_date, trip.execution_source, trip.vehicle, trip.hired_vehicle,
@@ -862,17 +996,97 @@ def get_sales_order_billable_trips(sales_order, from_date=None, to_date=None):
 			trip.loaded_quantity, trip.delivered_quantity,
 			trip.rak_toll, trip.sharjah_toll, trip.fnrc_extra_charge,
 			trip.transport_billing_status, trip.transport_sales_invoice,
-			job.name as transport_job, job.sales_order_item, job.agreed_rate
+			job.name as transport_job, job.sales_order_item, job.agreed_rate, job.quantity_mode
 		from `tabTransport Trip` trip
 		inner join `tabTransport Job` job on job.name = trip.transport_job
 		where job.sales_order = %(sales_order)s
 			and job.status != 'Cancelled'
+			and coalesce(job.quantity_mode, 'Fixed Quantity') != 'Open'
 			and coalesce(trip.transport_sales_invoice, '') = ''
 			and coalesce(trip.transport_billing_status, 'Not Billed') not in %(blocked_statuses)s
 			{date_condition}
 		order by trip.trip_date asc, trip.name asc
 		""",
 		{**params, "blocked_statuses": tuple(sorted(BILLING_BLOCKED_STATUSES))},
+		as_dict=True,
+	)
+	open_trips = get_open_order_billable_trips(sales_order, from_date, to_date)
+	return sorted(
+		[*rows, *open_trips],
+		key=lambda trip: (str(trip.trip_date or ""), trip.name),
+	)
+
+
+def get_open_order_billable_trips(
+	sales_order=None,
+	from_date=None,
+	to_date=None,
+	customer=None,
+	transport_job=None,
+):
+	filters = []
+	params = {
+		"closed_status": BILLING_READY_TRIP_STATUS,
+		"blocked_statuses": tuple(sorted(BILLING_BLOCKED_STATUSES)),
+	}
+	if sales_order:
+		filters.append("job.sales_order = %(sales_order)s")
+		params["sales_order"] = sales_order
+	if customer:
+		filters.append("job.customer = %(customer)s")
+		params["customer"] = customer
+	if transport_job:
+		filters.append("job.name = %(transport_job)s")
+		params["transport_job"] = transport_job
+	if from_date and to_date:
+		filters.append("date(document.verified_delivery_date) between %(from_date)s and %(to_date)s")
+		params.update({"from_date": getdate(from_date), "to_date": getdate(to_date)})
+	where_scope = " and ".join(filters)
+	if where_scope:
+		where_scope = f"and {where_scope}"
+
+	return frappe.db.sql(
+		f"""
+		select
+			trip.name, trip.trip_date, trip.execution_source, trip.vehicle, trip.hired_vehicle,
+			trip.driver, trip.hired_driver, trip.status,
+			coalesce(trip.actual_material, trip.material) as material,
+			coalesce(trip.actual_loading_location, trip.loading_site) as loading_site,
+			trip.unloading_site, trip.gdn, trip.loading_no, trip.loading_datetime,
+			trip.delivery_datetime, trip.loaded_quantity,
+			trip.verified_delivered_quantity as delivered_quantity,
+			trip.verified_delivered_quantity, document.verified_delivery_date,
+			trip.applied_rate_per_ton as agreed_rate, trip.commercial_rate_status,
+			trip.applied_rate_snapshot, trip.applied_rate_currency, trip.rate_locked_at,
+			trip.rak_toll, trip.sharjah_toll, trip.fnrc_extra_charge,
+			trip.transport_billing_status, trip.transport_sales_invoice,
+			job.name as transport_job, job.sales_order, job.sales_order_item,
+			job.quantity_mode, document.name as verified_delivery_document
+		from `tabTransport Trip` trip
+		inner join `tabTransport Job` job on job.name = trip.transport_job
+		inner join `tabTransport Trip Document` document
+			on document.name = trip.verified_delivery_document
+			and document.transport_trip = trip.name
+			and document.document_type = 'OFFLOADING_PAPER'
+			and document.verification_status = 'APPROVED'
+		where job.quantity_mode = %(open_mode)s
+			and job.status != 'Cancelled'
+			and trip.status = %(closed_status)s
+			and coalesce(trip.transport_sales_invoice, '') = ''
+			and coalesce(trip.transport_billing_status, 'Not Billed') not in %(blocked_statuses)s
+			and trip.commercial_rate_status = 'CONFIRMED'
+			and trip.applied_rate_snapshot is not null
+			and trip.rate_locked_at is not null
+			and trip.applied_rate_currency = 'AED'
+			and coalesce(trip.verified_delivered_quantity, 0) > 0
+			and trip.delivery_verified_at is not null
+			{where_scope}
+		order by document.verified_delivery_date asc, trip.trip_date asc, trip.name asc
+		""",
+		{
+			**params,
+			"open_mode": OPEN_QUANTITY_MODE,
+		},
 		as_dict=True,
 	)
 
@@ -893,7 +1107,7 @@ def get_customer_transport_invoice_trips(customer, from_date, to_date):
 
 def get_customer_billable_trips(customer, from_date=None, to_date=None):
 	from_date, to_date = validate_billing_date_range(from_date, to_date)
-	return frappe.db.sql(
+	rows = frappe.db.sql(
 		"""
 		select
 			trip.name, trip.trip_date, trip.execution_source, trip.vehicle, trip.hired_vehicle,
@@ -902,11 +1116,12 @@ def get_customer_billable_trips(customer, from_date=None, to_date=None):
 			trip.loaded_quantity, trip.delivered_quantity,
 			trip.rak_toll, trip.sharjah_toll, trip.fnrc_extra_charge,
 			trip.transport_billing_status, trip.transport_sales_invoice,
-			job.name as transport_job, job.sales_order, job.sales_order_item, job.agreed_rate
+			job.name as transport_job, job.sales_order, job.sales_order_item, job.agreed_rate, job.quantity_mode
 		from `tabTransport Trip` trip
 		inner join `tabTransport Job` job on job.name = trip.transport_job
 		where job.customer = %(customer)s
 			and job.status != 'Cancelled'
+			and coalesce(job.quantity_mode, 'Fixed Quantity') != 'Open'
 			and coalesce(trip.transport_sales_invoice, '') = ''
 			and coalesce(trip.transport_billing_status, 'Not Billed') not in %(blocked_statuses)s
 			and (
@@ -930,6 +1145,11 @@ def get_customer_billable_trips(customer, from_date=None, to_date=None):
 			"blocked_statuses": tuple(sorted(BILLING_BLOCKED_STATUSES)),
 		},
 		as_dict=True,
+	)
+	open_trips = get_open_order_billable_trips(from_date=from_date, to_date=to_date, customer=customer)
+	return sorted(
+		[*rows, *open_trips],
+		key=lambda trip: (str(trip.trip_date or ""), trip.name),
 	)
 
 
@@ -975,7 +1195,7 @@ def get_transport_sales_invoice_payload(customer, from_date, to_date, trip_names
 			"tms_invoice_type": "Transport",
 			"tms_transport_trips": json.dumps(trip_names),
 		},
-		"source_jobs": [build_invoice_source_job_row(job) for job in jobs],
+		"source_jobs": [build_invoice_source_job_row(job, trip_names) for job in jobs],
 		"items": build_transport_invoice_item_rows(groups, service_item, income_account, cost_center),
 		"taxes": get_sales_tax_rows(tax_template),
 		"trip_names": trip_names,
@@ -986,7 +1206,7 @@ def get_invoice_source_jobs_for_trips(trip_names):
 	return frappe.db.sql(
 		"""
 		select distinct
-			job.name, job.sales_order, job.sales_order_item, job.material,
+			job.name, job.sales_order, job.sales_order_item, job.material, job.quantity_mode,
 			job.loading_site, job.unloading_site, job.delivered_quantity, job.agreed_rate
 		from `tabTransport Job` job
 		inner join `tabTransport Trip` trip on trip.transport_job = job.name
@@ -998,15 +1218,36 @@ def get_invoice_source_jobs_for_trips(trip_names):
 	)
 
 
-def build_invoice_source_job_row(job):
+def build_invoice_source_job_row(job, trip_names=None):
+	delivered_quantity = flt(job.delivered_quantity, 6)
+	amount = flt(delivered_quantity * flt(job.agreed_rate, 2), 2)
+	if job.quantity_mode == OPEN_QUANTITY_MODE and trip_names:
+		rows = frappe.db.sql(
+			"""
+			select trip.verified_delivered_quantity, trip.applied_rate_per_ton
+			from `tabTransport Trip` trip
+			where trip.name in %(trip_names)s
+				and trip.transport_job = %(transport_job)s
+			""",
+			{"trip_names": tuple(trip_names), "transport_job": job.name},
+			as_dict=True,
+		)
+		delivered_quantity = flt(sum(flt(row.verified_delivered_quantity, 6) for row in rows), 6)
+		amount = flt(
+			sum(
+				flt(row.verified_delivered_quantity, 6) * flt(row.applied_rate_per_ton, 2)
+				for row in rows
+			),
+			2,
+		)
 	return {
 		"transport_job": job.name,
 		"sales_order_item": job.sales_order_item,
 		"material": job.material,
 		"loading_location": job.loading_site,
 		"unloading_location": job.unloading_site,
-		"delivered_quantity": flt(job.delivered_quantity, 6),
-		"amount": flt(flt(job.delivered_quantity, 6) * flt(job.agreed_rate, 2), 2),
+		"delivered_quantity": delivered_quantity,
+		"amount": amount,
 	}
 
 
@@ -1081,7 +1322,8 @@ def build_billing_trip_row(job, trip):
 
 def build_sales_order_billing_trip_row(trip):
 	delivered_quantity = get_trip_billing_quantity(trip)
-	unit_rate = flt(trip.agreed_rate, 2)
+	unit_rate = get_trip_billing_rate(trip)
+	material, loading_site = get_trip_billing_route(trip)
 	amounts = calculate_trip_transport_amount(delivered_quantity, unit_rate)
 	charge_totals = get_transport_trip_charge_totals(trip.name)
 	return {
@@ -1093,16 +1335,19 @@ def build_sales_order_billing_trip_row(trip):
 		"loading_datetime": trip.loading_datetime,
 		"gdn_date": trip.delivery_datetime or trip.trip_date,
 		"delivery_datetime": trip.delivery_datetime,
+		"verified_delivery_date": trip.get("verified_delivery_date"),
+		"verified_delivery_document": trip.get("verified_delivery_document"),
 		"status": trip.status,
 		"loading_no": trip.loading_no,
 		"execution_source": trip.execution_source,
 		"vehicle": trip.hired_vehicle if trip.execution_source == "HIRED" else trip.vehicle,
 		"driver": trip.hired_driver if trip.execution_source == "HIRED" else trip.driver,
-		"material": trip.material,
-		"route": format_route(trip.loading_site, trip.unloading_site),
+		"material": material,
+		"route": format_route(loading_site, trip.unloading_site),
 		"gdn": trip.gdn,
 		"delivered_quantity": delivered_quantity,
 		"unit_rate": unit_rate,
+		"applied_rate_snapshot": trip.get("applied_rate_snapshot"),
 		"taxable_amount": amounts["taxable_amount"],
 		"vat_percent": VAT_RATE,
 		"vat_amount": amounts["vat_amount"],
@@ -1135,15 +1380,16 @@ def build_billing_group_row(group):
 def group_sales_order_invoice_trips(trips):
 	groups = {}
 	for trip in trips:
-		rate = flt(trip.agreed_rate, 2)
+		rate = get_trip_billing_rate(trip)
 		if rate <= 0:
 			frappe.throw(_("Transport Job {0} is missing Agreed Rate.").format(trip.transport_job))
-		key = (trip.material, trip.loading_site, trip.unloading_site, rate)
+		material, loading_site = get_trip_billing_route(trip)
+		key = (material, loading_site, trip.unloading_site, rate)
 		group = groups.setdefault(
 			key,
 			{
-				"material": trip.material,
-				"loading_site": trip.loading_site,
+				"material": material,
+				"loading_site": loading_site,
 				"unloading_site": trip.unloading_site,
 				"rate": rate,
 				"qty": 0,
@@ -1160,7 +1406,24 @@ def group_sales_order_invoice_trips(trips):
 
 
 def get_trip_billing_quantity(trip):
+	if trip.get("quantity_mode") == OPEN_QUANTITY_MODE:
+		return flt(trip.get("verified_delivered_quantity"), 6)
 	return flt(trip.delivered_quantity, 6) or flt(trip.get("loaded_quantity"), 6)
+
+
+def get_trip_billing_rate(trip):
+	if trip.get("quantity_mode") == OPEN_QUANTITY_MODE:
+		return flt(trip.get("applied_rate_per_ton") or trip.get("agreed_rate"), 2)
+	return flt(trip.agreed_rate, 2)
+
+
+def get_trip_billing_route(trip):
+	if trip.get("quantity_mode") == OPEN_QUANTITY_MODE:
+		return (
+			trip.get("actual_material") or trip.material,
+			trip.get("actual_loading_location") or trip.loading_site,
+		)
+	return trip.material, trip.loading_site
 
 
 def calculate_trip_transport_amount(delivered_quantity, unit_rate):
@@ -1255,10 +1518,11 @@ def create_transport_invoice(transport_sales_order=None, transport_job=None, tri
 		income_account=income_account,
 		cost_center=cost_center,
 		groups=groups,
+		trip_names=[trip.name for trip in trips],
 	)
 	invoice.insert(ignore_permissions=True)
 	validate_invoice_totals(invoice, groups)
-	validate_invoice_trips_not_already_billed([trip.name for trip in trips])
+	validate_invoice_trips_not_already_billed([trip.name for trip in trips], invoice_name=invoice.name)
 	mark_trips_draft_invoiced([trip.name for trip in trips], invoice.name)
 	frappe.db.set_value(
 		"Transport Sales Order",
@@ -1620,8 +1884,8 @@ def get_selected_invoice_trips(job, trip_names):
 	return trips
 
 
-def validate_invoice_trips_not_already_billed(trip_names):
-	validate_invoice_trips_available_for_invoice(trip_names)
+def validate_invoice_trips_not_already_billed(trip_names, invoice_name=None):
+	validate_invoice_trips_available_for_invoice(trip_names, invoice_name=invoice_name)
 
 
 def validate_invoice_trips_available_for_invoice(trip_names, invoice_name=None):
@@ -1674,6 +1938,79 @@ def validate_transport_sales_invoice(doc, method=None):
 		)
 		if wrong_customer:
 			frappe.throw(_("Selected Trips do not belong to Customer {0}.").format(customer))
+	validate_invoice_trip_item_snapshot(doc, trip_names)
+
+
+def validate_invoice_trip_item_snapshot(doc, trip_names):
+	rows = frappe.db.sql(
+		"""
+		select
+			trip.name, trip.status, trip.transport_job, trip.material, trip.loading_site,
+			trip.actual_material, trip.actual_loading_location, trip.unloading_site,
+			trip.loaded_quantity, trip.delivered_quantity, trip.verified_delivered_quantity,
+			trip.applied_rate_per_ton, trip.applied_rate_snapshot, trip.applied_rate_currency,
+			trip.rate_locked_at, trip.commercial_rate_status, trip.delivery_verified_at,
+			document.name as verified_delivery_document,
+			job.quantity_mode, job.agreed_rate
+		from `tabTransport Trip` trip
+		inner join `tabTransport Job` job on job.name = trip.transport_job
+		left join `tabTransport Trip Document` document
+			on document.name = trip.verified_delivery_document
+			and document.transport_trip = trip.name
+			and document.document_type = 'OFFLOADING_PAPER'
+			and document.verification_status = 'APPROVED'
+		where trip.name in %(trip_names)s
+		""",
+		{"trip_names": tuple(trip_names)},
+		as_dict=True,
+	)
+	if len(rows) != len(trip_names):
+		frappe.throw(_("Some selected Transport Trips no longer exist."))
+	if not any(row.quantity_mode == OPEN_QUANTITY_MODE for row in rows):
+		return
+
+	for row in rows:
+		if row.quantity_mode != OPEN_QUANTITY_MODE:
+			continue
+		if row.status != BILLING_READY_TRIP_STATUS:
+			frappe.throw(_("Open Transport Trip {0} must be CLOSED before billing.").format(row.name))
+		if (
+			not row.verified_delivery_document
+			or not row.delivery_verified_at
+			or flt(row.verified_delivered_quantity, 6) <= 0
+		):
+			frappe.throw(_("Open Transport Trip {0} requires an approved, verified Offloading Paper.").format(row.name))
+		if (
+			row.commercial_rate_status != "CONFIRMED"
+			or not row.applied_rate_snapshot
+			or not row.rate_locked_at
+			or row.applied_rate_currency != "AED"
+			or flt(row.applied_rate_per_ton, 2) <= 0
+		):
+			frappe.throw(_("Open Transport Trip {0} does not have a locked approved quotation rate.").format(row.name))
+	if getattr(doc, "currency", None) != "AED":
+		frappe.throw(_("Quotation-backed Open Transport invoices must use AED."))
+
+	expected = {
+		(
+			group["material"],
+			group["loading_site"],
+			group["unloading_site"],
+			flt(group["rate"], 2),
+		): flt(group["qty"], 6)
+		for group in group_sales_order_invoice_trips(rows)
+	}
+	actual = {}
+	for item in doc.get("items") or []:
+		key = (
+			item.get("tms_material"),
+			item.get("tms_loading_location"),
+			item.get("tms_unloading_location"),
+			flt(item.rate, 2),
+		)
+		actual[key] = flt(actual.get(key, 0) + flt(item.qty, 6), 6)
+	if expected != actual:
+		frappe.throw(_("Sales Invoice items must match the selected Trips' verified quantities and locked rates."))
 
 
 def get_invoice_transport_trip_names_from_doc(doc):
@@ -1714,7 +2051,17 @@ def group_invoice_trips(job, trips):
 	return list(groups.values())
 
 
-def build_transport_sales_order_invoice(order, jobs, company, service_item, tax_template, income_account, cost_center, groups):
+def build_transport_sales_order_invoice(
+	order,
+	jobs,
+	company,
+	service_item,
+	tax_template,
+	income_account,
+	cost_center,
+	groups,
+	trip_names=None,
+):
 	invoice = frappe.new_doc("Sales Invoice")
 	invoice.customer = order.customer
 	invoice.company = company
@@ -1724,10 +2071,16 @@ def build_transport_sales_order_invoice(order, jobs, company, service_item, tax_
 	invoice.transport_sales_order = order.name
 	invoice.customer_lpo_number = order.customer_lpo_number
 	invoice.tms_invoice_type = "Transport"
-	for job in jobs:
+	has_open_jobs = any(job.quantity_mode == OPEN_QUANTITY_MODE for job in jobs)
+	source_jobs = (
+		get_invoice_source_jobs_for_trips(trip_names or [])
+		if has_open_jobs and trip_names
+		else jobs
+	)
+	for job in source_jobs:
 		invoice.append(
 			"tms_source_jobs",
-			{
+			build_invoice_source_job_row(job, trip_names) if has_open_jobs else {
 				"transport_job": job.name,
 				"sales_order_item": job.sales_order_item,
 				"material": job.material,
@@ -1737,6 +2090,8 @@ def build_transport_sales_order_invoice(order, jobs, company, service_item, tax_
 				"amount": flt(flt(job.delivered_quantity, 6) * flt(job.agreed_rate, 2), 2),
 			},
 		)
+	if has_open_jobs and trip_names:
+		invoice.tms_transport_trips = json.dumps(trip_names)
 	for group in groups:
 		description = "{0} - {1} - {2}".format(group["loading_site"], group["unloading_site"], group["material"])
 		row = {
@@ -1937,8 +2292,26 @@ def sync_direct_transport_invoice_lifecycle(doc, method=None):
 		refresh_invoice_source_progress(trip_names)
 		return
 
+	previous_trip_names = set(
+		frappe.get_all(
+			"Transport Trip",
+			filters={"transport_sales_invoice": doc.name},
+			pluck="name",
+		)
+	)
+	current_trip_names = set(trip_names)
+	stale_trip_names = previous_trip_names - current_trip_names
+	for trip in stale_trip_names:
+		if frappe.db.get_value("Transport Trip", trip, "transport_sales_invoice") == doc.name:
+			frappe.db.set_value(
+				"Transport Trip",
+				trip,
+				{"transport_billing_status": "Not Billed", "transport_sales_invoice": None},
+				update_modified=False,
+			)
+
 	status = "Invoiced" if doc.docstatus == 1 else "Draft Invoice"
-	for trip in trip_names:
+	for trip in current_trip_names:
 		frappe.db.set_value(
 			"Transport Trip",
 			trip,
@@ -1948,7 +2321,9 @@ def sync_direct_transport_invoice_lifecycle(doc, method=None):
 			},
 			update_modified=False,
 		)
-	refresh_invoice_source_progress(trip_names, invoice=doc.name, submitted=doc.docstatus == 1)
+	if stale_trip_names:
+		refresh_invoice_source_progress(sorted(stale_trip_names))
+	refresh_invoice_source_progress(sorted(current_trip_names), invoice=doc.name, submitted=doc.docstatus == 1)
 
 
 def clear_direct_transport_invoice_reference(invoice, trip_names=None):

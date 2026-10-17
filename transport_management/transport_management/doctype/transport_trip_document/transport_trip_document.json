@@ -35,6 +35,14 @@
   "extracted_tare_weight",
   "extracted_net_weight",
   "extracted_amount",
+  "verified_loading_section",
+  "verified_material",
+  "verified_loading_location",
+  "verified_loading_date",
+  "verified_loaded_quantity",
+  "verified_delivery_section",
+  "verified_delivery_date",
+  "verified_delivered_quantity",
   "verification_section",
   "verification_status",
   "review_notes",
@@ -224,6 +232,56 @@
    "read_only": 1
   },
   {
+   "fieldname": "verified_loading_section",
+   "fieldtype": "Section Break",
+   "label": "Verified Loading Facts"
+  },
+  {
+   "fieldname": "verified_material",
+   "fieldtype": "Link",
+   "label": "Verified Material",
+   "options": "Cargo Types",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verified_loading_location",
+   "fieldtype": "Link",
+   "label": "Verified Loading Location",
+   "options": "Transport Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verified_loading_date",
+   "fieldtype": "Date",
+   "label": "Verified Loading Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verified_loaded_quantity",
+   "fieldtype": "Float",
+   "label": "Verified Loaded Quantity",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verified_delivery_section",
+   "fieldtype": "Section Break",
+   "label": "Verified Delivery Facts"
+  },
+  {
+   "fieldname": "verified_delivery_date",
+   "fieldtype": "Date",
+   "label": "Verified Delivery Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verified_delivered_quantity",
+   "fieldtype": "Float",
+   "label": "Verified Delivered Quantity",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
    "collapsible": 1,
    "fieldname": "verification_section",
    "fieldtype": "Section Break",
@@ -246,14 +304,14 @@
   {
    "fieldname": "verified_by",
    "fieldtype": "Link",
-   "label": "Verified By",
+   "label": "Reviewed By",
    "options": "User",
    "read_only": 1
   },
   {
    "fieldname": "verified_at",
    "fieldtype": "Datetime",
-   "label": "Verified At",
+   "label": "Reviewed At",
    "read_only": 1
   }
  ],

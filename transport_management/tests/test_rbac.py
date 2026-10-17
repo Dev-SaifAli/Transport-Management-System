@@ -1,8 +1,10 @@
 """Tests for TMS role profiles and DocType permissions."""
 
 import unittest
+from unittest.mock import patch
 
 import frappe
+from frappe.core.doctype.role_profile.role_profile import RoleProfile
 
 from transport_management.demo import setup_demo_data
 from transport_management.imports import base_importer
@@ -12,6 +14,7 @@ from transport_management.rbac import (
 	ROLE_TRANSPORT_ADMIN,
 	ROLE_TRANSPORT_MANAGER,
 	ensure_tms_rbac,
+	ensure_role_profiles,
 )
 
 
@@ -76,6 +79,12 @@ class TestTransportManagementRBAC(unittest.TestCase):
 		for profile, roles in expected_profiles.items():
 			doc = frappe.get_doc("Role Profile", profile)
 			self.assertEqual({row.role for row in doc.roles}, roles)
+
+	def test_unchanged_role_profiles_do_not_queue_update_jobs(self):
+		with patch.object(RoleProfile, "queue_action", autospec=True) as queue_action:
+			ensure_role_profiles()
+
+		queue_action.assert_not_called()
 
 	def test_trip_data_entry_can_read_customer_but_cannot_create_or_write(self):
 		self.assert_can(self.trip_user, "Customer", "read")

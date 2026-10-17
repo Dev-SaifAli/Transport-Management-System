@@ -1,0 +1,10 @@
+{
+ "app": "transport_management",
+ "doctype": "Workspace Sidebar",
+ "header_icon": "truck",
+ "items": [],
+ "module": "Transport Management",
+ "name": "Transport Management",
+ "standard": 1,
+ "title": "Transport Management"
+}

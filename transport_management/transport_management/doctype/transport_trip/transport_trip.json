@@ -37,6 +37,25 @@
   "delivery_datetime",
   "driver_delivered_at",
   "actual_quantity",
+  "delivery_verification_section",
+  "verified_delivery_document",
+  "verified_delivered_quantity",
+  "delivery_verified_by",
+  "delivery_verified_at",
+  "loading_confirmation_section",
+  "loading_document",
+  "actual_material",
+  "actual_loading_location",
+  "actual_loading_date",
+  "loading_verified_by",
+  "loading_verified_at",
+  "commercial_rate_status",
+  "applied_rate_snapshot",
+  "applied_rate_loading_date",
+  "applied_rate_per_ton",
+  "applied_rate_currency",
+  "rate_locked_at",
+  "rate_block_reason",
   "charges_tab",
   "toll_applicable",
   "rak_toll",
@@ -146,7 +165,7 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Planned Quantity",
-   "reqd": 1
+   "reqd": 0
   },
   {
    "default": "TON",
@@ -273,6 +292,147 @@
    "fieldtype": "Float",
    "hidden": 1,
    "label": "Actual Quantity"
+  },
+  {
+   "fieldname": "delivery_verification_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Verified Delivery"
+  },
+  {
+   "fieldname": "verified_delivery_document",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Verified Offloading Document",
+   "options": "Transport Trip Document",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verified_delivered_quantity",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Verified Delivered Quantity",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivery_verified_by",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Delivery Verified By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivery_verified_at",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Delivery Verified At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loading_confirmation_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Verified Loading Confirmation"
+  },
+  {
+   "fieldname": "loading_document",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Verified Loading Document",
+   "options": "Transport Trip Document",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_material",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Verified Actual Material",
+   "options": "Cargo Types",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_loading_location",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Verified Actual Loading Location",
+   "options": "Transport Location",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_loading_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Verified Actual Loading Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loading_verified_by",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Loading Verified By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loading_verified_at",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Loading Verified At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "commercial_rate_status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Commercial Rate Status",
+   "options": "NOT_APPLICABLE\nPENDING_CONFIRMATION\nRATE_BLOCKED\nCONFIRMED",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applied_rate_snapshot",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Applied Sales Order Rate Snapshot",
+   "options": "Transport Sales Order Rate Snapshot",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applied_rate_loading_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Applied Rate Loading Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applied_rate_per_ton",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Applied Rate per TON",
+   "precision": "6",
+   "read_only": 1
+  },
+  {
+   "fieldname": "applied_rate_currency",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Applied Rate Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate_locked_at",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Rate Locked At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rate_block_reason",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Rate Block Reason",
+   "read_only": 1
   },
   {
    "fieldname": "charges_tab",
