@@ -1,0 +1,2 @@
+﻿"Change ID","App Name","Module","Client Change","Acceptance Criteria","Priority","Status","Assigned Agent","BRD or Source Reference","Implementation and Test Evidence","Blocker or Question"
+"EXAMPLE-001","iTags","Asset Registration","EXAMPLE ONLY: Add an asset condition field","EXAMPLE ONLY: User can select New, Good, or Damaged; selection is saved and displayed after reopening the asset.","Medium","Draft","Unassigned","","",""
