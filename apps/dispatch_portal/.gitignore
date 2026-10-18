@@ -74,3 +74,6 @@ common_site_config.json
 *.sql.gz
 *.tar
 *.tar.gz
+
+# Generated Vue frontend bundle
+dispatch_portal/public/frontend/
