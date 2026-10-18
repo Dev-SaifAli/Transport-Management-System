@@ -9,14 +9,46 @@
  "icon_type": "Link",
  "idx": 0,
  "label": "TMS",
+ "link": "",
  "link_to": "TMS",
  "link_type": "Workspace Sidebar",
- "modified": "2026-10-10 00:35:12.859641",
+ "modified": "2026-10-16 12:11:27.659744",
  "modified_by": "Administrator",
  "name": "TMS",
  "owner": "Administrator",
  "parent_icon": "",
  "restrict_removal": 0,
- "roles": [],
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Transport Admin"
+  },
+  {
+   "role": "Transport Manager"
+  },
+  {
+   "role": "TMS Trip Data Entry"
+  },
+  {
+   "role": "TMS + Expense Data Entry"
+  },
+  {
+   "role": "Expense Approver"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "HR Manager"
+  }
+ ],
  "standard": 1
 }

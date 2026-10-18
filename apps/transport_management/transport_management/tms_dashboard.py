@@ -11,6 +11,9 @@ ACTIVE_TRIP_LIMIT = 10
 ATTENTION_TRIP_LIMIT = 10
 ACTIVE_TRIP_EXCLUDED_STATUSES = ("CLOSED", "CANCELLED")
 ATTENTION_STATUSES = ("EXCEPTION", "DELIVERED")
+BILLING_READY_STATUS = "Ready for Billing"
+TRIP_CLOSED_STATUS = "CLOSED"
+TRIP_NOT_BILLED_STATUS = "Not Billed"
 
 
 @frappe.whitelist()
@@ -63,6 +66,41 @@ def count_trips(filters):
 	if not rows:
 		return 0
 	return frappe.utils.cint(rows[0].get("count"))
+
+
+@frappe.whitelist()
+def get_trips_ready_for_billing(filters=None):
+	"""Return the permitted count of closed, unbilled trips on billing-ready jobs."""
+	if not frappe.has_permission("Transport Job", ptype="read") or not frappe.has_permission(
+		"Transport Trip", ptype="read"
+	):
+		frappe.throw(
+			_("You do not have permission to view trips ready for billing."),
+			frappe.PermissionError,
+		)
+
+	ready_jobs = frappe.get_list(
+		"Transport Job",
+		filters={"billing_status": BILLING_READY_STATUS},
+		pluck="name",
+		limit=0,
+	)
+	if not ready_jobs:
+		return {
+			"value": 0,
+			"route": ["List", "Transport Trip", "List"],
+		}
+
+	trip_filters = {
+		"transport_job": ["in", ready_jobs],
+		"status": TRIP_CLOSED_STATUS,
+		"transport_billing_status": TRIP_NOT_BILLED_STATUS,
+	}
+	return {
+		"value": count_trips(trip_filters),
+		"route": ["List", "Transport Trip", "List"],
+		"route_options": trip_filters,
+	}
 
 
 def get_active_trips():

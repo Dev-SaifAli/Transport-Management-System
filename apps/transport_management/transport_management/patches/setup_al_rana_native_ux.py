@@ -9,6 +9,13 @@ TRANSPORT_MANAGEMENT_WORKSPACE_ROLES = {
 	"Transport Manager",
 	"Transport Admin",
 	"System Manager",
+	"TMS Trip Data Entry",
+	"TMS + Expense Data Entry",
+	"Expense Approver",
+	"Accounts User",
+	"Accounts Manager",
+	"HR User",
+	"HR Manager",
 }
 
 PROFILE_MODULE_BLOCKS = {
@@ -94,7 +101,6 @@ PROFILE_MODULE_BLOCKS = {
 		"Subcontracting",
 		"Support",
 		"Telephony",
-		"Transport Management",
 		"VSD Fleet MS",
 		"Website",
 	},
@@ -121,7 +127,6 @@ PROFILE_MODULE_BLOCKS = {
 		"Subcontracting",
 		"Support",
 		"Telephony",
-		"Transport Management",
 		"Utilities",
 		"VSD Fleet MS",
 		"Website",
@@ -129,10 +134,10 @@ PROFILE_MODULE_BLOCKS = {
 }
 
 PROFILE_ASSIGNMENTS = [
-	({"TMS Trip Data Entry"}, "AL RANA Dispatcher Profile", "AL RANA Operations"),
-	({"TMS + Expense Data Entry", "Expense Approver"}, "AL RANA Expense Profile", "AL RANA Expenses"),
-	({"Accounts Manager", "Accounts User"}, "AL RANA Accounts Profile", "AL RANA Finance"),
-	({"HR Manager", "HR User"}, "AL RANA HR Profile", "AL RANA HR"),
+	({"TMS Trip Data Entry"}, "AL RANA Dispatcher Profile", "Transport Management"),
+	({"TMS + Expense Data Entry", "Expense Approver"}, "AL RANA Expense Profile", "Transport Management"),
+	({"Accounts Manager", "Accounts User"}, "AL RANA Accounts Profile", "Transport Management"),
+	({"HR Manager", "HR User"}, "AL RANA HR Profile", "Transport Management"),
 ]
 
 ADMIN_ROLES = {"System Manager", "Transport Admin"}
@@ -163,9 +168,14 @@ def ensure_transport_management_workspace_roles():
 def ensure_module_profiles():
 	available_modules = set(frappe.get_all("Module Def", pluck="name"))
 	for profile_name, blocked_modules in PROFILE_MODULE_BLOCKS.items():
+		modules = sorted(blocked_modules & available_modules)
 		doc = get_or_create_module_profile(profile_name)
+		if not doc.is_new():
+			existing_modules = [row.module for row in doc.block_modules]
+			if set(existing_modules) == set(modules) and len(existing_modules) == len(modules):
+				continue
 		doc.set("block_modules", [])
-		for module in sorted(blocked_modules & available_modules):
+		for module in modules:
 			doc.append("block_modules", {"module": module})
 		doc.flags.ignore_permissions = True
 		doc.save()
@@ -201,10 +211,13 @@ def apply_user_native_ux(user_name: str, profile_name: str, default_workspace: s
 	user = frappe.get_doc("User", user_name)
 	changed = False
 
-	if user.module_profile != profile_name:
+	profile = frappe.get_doc("Module Profile", profile_name)
+	profile_modules = {row.module for row in profile.block_modules}
+	user_modules = {row.module for row in user.block_modules}
+	if user.module_profile != profile_name or user_modules != profile_modules:
 		user.module_profile = profile_name
 		user.set("block_modules", [])
-		for row in frappe.get_doc("Module Profile", profile_name).block_modules:
+		for row in profile.block_modules:
 			user.append("block_modules", {"module": row.module})
 		changed = True
 
