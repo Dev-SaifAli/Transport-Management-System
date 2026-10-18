@@ -1,0 +1,31 @@
+{
+ "actions": [],
+ "creation": "2026-10-17 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "field_order": [
+  "sales_order_rate_snapshot"
+ ],
+ "fields": [
+  {
+   "fieldname": "sales_order_rate_snapshot",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Order Rate Snapshot",
+   "options": "Transport Sales Order Rate Snapshot",
+   "read_only": 1,
+   "reqd": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-17 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Transport Job Rate Snapshot",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": []
+}

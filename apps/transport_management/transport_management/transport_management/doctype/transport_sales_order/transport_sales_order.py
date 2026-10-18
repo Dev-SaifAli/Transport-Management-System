@@ -11,6 +11,8 @@ from frappe.utils import flt, getdate, today
 from transport_management.loading_stops import validate_loading_stop_rows
 
 TON_UOM = "TON"
+FIXED_ORDER_MODE = "Fixed Quantity"
+QUOTATION_ORDER_MODE = "Quotation-backed Open"
 MANUAL_RATE_OVERRIDE_ROLES = {"Transport Manager", "Transport Admin", "System Manager"}
 BILLING_STATUS_NOT_READY = "Not Ready"
 BILLING_STATUS_READY = "Ready for Billing"
@@ -23,27 +25,42 @@ BILLING_ACTIVE_TRIP_STATUSES = {"PLANNED", "ASSIGNED", "LOADED", "IN_TRANSIT"}
 
 class TransportSalesOrder(Document):
 	def before_validate(self):
+		if not self.order_mode:
+			self.order_mode = FIXED_ORDER_MODE
 		if not self.posting_date:
 			self.posting_date = today()
 		if not self.currency:
 			self.currency = "AED"
 
-		self.sync_loading_stops()
-		self.calculate_totals()
+		if self.order_mode == FIXED_ORDER_MODE:
+			self.sync_loading_stops()
+			self.calculate_totals()
+		else:
+			self.ordered_quantity = 0
+			self.net_amount = 0
 		self.set_conversion_status()
 		self.set_billing_progress()
 
 	def validate(self):
 		self.validate_customer()
-		self.validate_items(require_complete=self.is_submit_action())
-		self.validate_loading_stops()
-		self.calculate_totals(require_rates=self.is_submit_action())
+		self.validate_order_mode()
+		if self.order_mode == QUOTATION_ORDER_MODE:
+			self.validate_quotation_order()
+			self.ordered_quantity = 0
+			self.net_amount = 0
+		else:
+			self.validate_items(require_complete=self.is_submit_action())
+			self.validate_loading_stops()
+			self.calculate_totals(require_rates=self.is_submit_action())
 		self.set_conversion_status()
 		self.set_billing_progress()
 
 	def before_submit(self):
-		self.validate_items(require_complete=True)
-		self.calculate_totals(require_rates=True)
+		if self.order_mode == QUOTATION_ORDER_MODE:
+			self.validate_quotation_order()
+		else:
+			self.validate_items(require_complete=True)
+			self.calculate_totals(require_rates=True)
 		self.status = "Submitted"
 
 	def on_submit(self):
@@ -64,6 +81,97 @@ class TransportSalesOrder(Document):
 
 	def is_submit_action(self):
 		return getattr(self, "_action", None) == "submit" or self.docstatus == 1
+
+	def validate_order_mode(self):
+		if self.order_mode not in {FIXED_ORDER_MODE, QUOTATION_ORDER_MODE}:
+			frappe.throw(_("Invalid Transport Sales Order mode {0}.").format(self.order_mode))
+
+	def validate_quotation_order(self):
+		if not self.transport_quotation:
+			frappe.throw(_("Quotation-backed orders must reference an approved Transport Quotation."))
+		if self.items:
+			frappe.throw(_("Quotation-backed orders use rate snapshots, not fixed-quantity item rows."))
+		if self.loading_stops:
+			frappe.throw(_("Quotation-backed orders cannot use fixed-quantity loading stop rows."))
+		if self.currency != "AED":
+			frappe.throw(_("Quotation-backed Transport Sales Orders use AED."))
+
+		quotation = frappe.get_doc("Transport Quotation", self.transport_quotation)
+		if quotation.docstatus != 1 or quotation.status != "Approved":
+			frappe.throw(_("Transport Sales Order can only be created from an approved, submitted Transport Quotation."))
+		if quotation.customer != self.customer:
+			frappe.throw(_("Transport Sales Order customer must match the Transport Quotation customer."))
+
+		source_rates = {row.name: row for row in quotation.rates}
+		if not self.rate_snapshots:
+			frappe.throw(_("Add at least one selected quotation rate to the Transport Sales Order."))
+
+		materials = {row.material for row in quotation.materials}
+		locations = {
+			(row.material, row.location_role, row.location)
+			for row in quotation.locations
+		}
+		snapshot_names = set()
+		route_periods = {}
+		for snapshot in self.rate_snapshots:
+			source = source_rates.get(snapshot.source_quotation_rate)
+			if not source:
+				frappe.throw(
+					_("Rate snapshot row {0} does not reference a rate on the selected Transport Quotation.").format(
+						snapshot.idx
+					)
+				)
+			if snapshot.source_quotation_rate in snapshot_names:
+				frappe.throw(_("A quotation rate can only be snapshotted once."))
+			snapshot_names.add(snapshot.source_quotation_rate)
+
+			if snapshot.material not in materials:
+				frappe.throw(_("Rate snapshot material is not selected on the Transport Quotation."))
+			if (snapshot.material, "Loading", snapshot.loading_location) not in locations:
+				frappe.throw(_("Rate snapshot loading point is not permitted by the Transport Quotation."))
+			if (snapshot.material, "Destination", snapshot.unloading_location) not in locations:
+				frappe.throw(_("Rate snapshot destination is not permitted by the Transport Quotation."))
+			if (
+				snapshot.material != source.material
+				or snapshot.loading_location != source.loading_location
+				or snapshot.unloading_location != source.unloading_location
+				or getdate(snapshot.effective_from) != getdate(source.effective_from)
+				or getdate(snapshot.effective_to) != getdate(source.effective_to)
+				or snapshot.currency != quotation.currency
+				or flt(snapshot.rate, 6) != flt(source.rate, 6)
+			):
+				frappe.throw(_("Rate snapshot row {0} does not match its approved quotation rate.").format(snapshot.idx))
+
+			route = (snapshot.material, snapshot.loading_location, snapshot.unloading_location)
+			start = getdate(snapshot.effective_from)
+			end = getdate(snapshot.effective_to)
+			for previous_start, previous_end in route_periods.setdefault(route, []):
+				if start <= previous_end and end >= previous_start:
+					frappe.throw(
+						_("Rate snapshot periods overlap for Material {0}, Loading {1}, and Destination {2}.").format(
+							snapshot.material,
+							snapshot.loading_location,
+							snapshot.unloading_location,
+						)
+					)
+			route_periods[route].append((start, end))
+
+		self.validate_submitted_quotation_commercials_immutable()
+
+	def validate_submitted_quotation_commercials_immutable(self):
+		if self.is_new() or self.docstatus != 1:
+			return
+		previous = self.get_doc_before_save()
+		if not previous or previous.docstatus != 1:
+			return
+		if (
+			previous.order_mode != self.order_mode
+			or previous.transport_quotation != self.transport_quotation
+			or quotation_rate_snapshot_values(previous) != quotation_rate_snapshot_values(self)
+		):
+			frappe.throw(
+				_("Submitted quotation-backed Transport Sales Order rates are immutable.")
+			)
 
 	def validate_customer(self):
 		if self.customer and not frappe.db.exists("Customer", self.customer):
@@ -200,6 +308,24 @@ class TransportSalesOrder(Document):
 		if self.docstatus == 0:
 			self.status = "Draft"
 			return
+		if self.order_mode == QUOTATION_ORDER_MODE:
+			expected_groups = set(get_quotation_job_groups(self.rate_snapshots))
+			converted_groups = {
+				(job.material, job.unloading_site)
+				for job in frappe.get_all(
+					"Transport Job",
+					filters={"sales_order": self.name, "quantity_mode": "Open"},
+					fields=["material", "unloading_site"],
+					limit_page_length=0,
+				)
+			}
+			if not converted_groups:
+				self.status = "Submitted"
+			elif expected_groups and expected_groups.issubset(converted_groups):
+				self.status = "Converted"
+			else:
+				self.status = "Partially Converted"
+			return
 
 		converted = [row for row in self.items if row.converted or row.transport_job]
 		if not converted:
@@ -221,6 +347,136 @@ def get_transport_rate(customer, material, loading_location, unloading_location,
 		posting_date,
 		raise_if_missing=True,
 	)
+
+
+@frappe.whitelist()
+def create_quotation_transport_sales_order(quotation, quotation_rate_names=None):
+	if not frappe.has_permission("Transport Sales Order", "create"):
+		frappe.throw(_("You do not have permission to create Transport Sales Orders."), frappe.PermissionError)
+	if not quotation or not frappe.db.exists("Transport Quotation", quotation):
+		frappe.throw(_("Transport Quotation must exist."))
+
+	source = frappe.get_doc("Transport Quotation", quotation)
+	source.check_permission("read")
+	if source.docstatus != 1 or source.status != "Approved":
+		frappe.throw(_("Only an approved, submitted Transport Quotation can create a Transport Sales Order."))
+	if not source.rates:
+		frappe.throw(_("The approved Transport Quotation has no rates to snapshot."))
+
+	selected_names = parse_quotation_rate_names(quotation_rate_names)
+	source_rates = {row.name: row for row in source.rates}
+	if selected_names is None:
+		selected_rates = list(source.rates)
+	else:
+		if not selected_names:
+			frappe.throw(_("Select at least one quotation rate for the Transport Sales Order."))
+		missing_names = selected_names - set(source_rates)
+		if missing_names:
+			frappe.throw(
+				_("Selected rate {0} does not belong to Transport Quotation {1}.").format(
+					", ".join(sorted(missing_names)),
+					source.name,
+				)
+			)
+		selected_rates = [row for row in source.rates if row.name in selected_names]
+
+	order = frappe.new_doc("Transport Sales Order")
+	order.update({
+		"order_mode": QUOTATION_ORDER_MODE,
+		"transport_quotation": source.name,
+		"posting_date": today(),
+		"customer": source.customer,
+		"currency": "AED",
+		"estimated_quantity": source.estimated_quantity,
+		"estimated_trips": source.estimated_trips,
+		"remarks": source.remarks,
+	})
+	for row in selected_rates:
+		order.append("rate_snapshots", {
+			"source_quotation_rate": row.name,
+			"material": row.material,
+			"loading_location": row.loading_location,
+			"unloading_location": row.unloading_location,
+			"effective_from": row.effective_from,
+			"effective_to": row.effective_to,
+			"currency": source.currency,
+			"rate": row.rate,
+		})
+	order.insert()
+	return order.name
+
+
+def parse_quotation_rate_names(rate_names):
+	if rate_names in (None, ""):
+		return None
+	if isinstance(rate_names, str):
+		try:
+			rate_names = frappe.parse_json(rate_names)
+		except ValueError:
+			rate_names = [rate_names]
+	if not isinstance(rate_names, (list, tuple, set)):
+		frappe.throw(_("Selected quotation rates must be a list of rate row names."))
+	names = [str(name) for name in rate_names if name]
+	if len(names) != len(set(names)):
+		frappe.throw(_("A quotation rate cannot be selected more than once."))
+	return set(names)
+
+
+@frappe.whitelist()
+def resolve_quotation_sales_order_rate(
+	sales_order,
+	material,
+	loading_location,
+	unloading_location,
+	loading_date,
+	allow_unresolved=False,
+):
+	if not sales_order or not frappe.db.exists("Transport Sales Order", sales_order):
+		frappe.throw(_("Transport Sales Order must exist."))
+	order = frappe.get_doc("Transport Sales Order", sales_order)
+	order.check_permission("read")
+	if order.docstatus != 1 or order.order_mode != QUOTATION_ORDER_MODE:
+		frappe.throw(_("Rate resolution requires a submitted quotation-backed Transport Sales Order."))
+	if not all((material, loading_location, unloading_location, loading_date)):
+		frappe.throw(_("Material, loading point, destination, and loading date are required to resolve a rate."))
+
+	rate_date = getdate(loading_date)
+	matches = [
+		row
+		for row in order.rate_snapshots
+		if row.material == material
+		and row.loading_location == loading_location
+		and row.unloading_location == unloading_location
+		and getdate(row.effective_from) <= rate_date <= getdate(row.effective_to)
+	]
+	if not matches:
+		if allow_unresolved:
+			return {
+				"blocked_reason": _("No approved quotation rate covers this route on loading date {0}.").format(
+					rate_date
+				)
+			}
+		frappe.throw(_("No approved quotation rate covers this route on loading date {0}.").format(rate_date))
+	if len(matches) > 1:
+		if allow_unresolved:
+			return {
+				"blocked_reason": _("Multiple approved quotation rates cover this route on loading date {0}.").format(
+					rate_date
+				)
+			}
+		frappe.throw(_("Multiple approved quotation rates cover this route on loading date {0}.").format(rate_date))
+	row = matches[0]
+	return {
+		"rate_snapshot": row.name,
+		"source_quotation_rate": row.source_quotation_rate,
+		"material": row.material,
+		"loading_location": row.loading_location,
+		"unloading_location": row.unloading_location,
+		"effective_from": row.effective_from,
+		"effective_to": row.effective_to,
+		"currency": row.currency,
+		"rate": flt(row.rate, 6),
+	}
 
 
 def resolve_transport_rate(
@@ -270,6 +526,22 @@ def resolve_transport_rate(
 	return flt(rates[0].rate, 6)
 
 
+def quotation_rate_snapshot_values(doc):
+	return [
+		(
+			row.source_quotation_rate,
+			row.material,
+			row.loading_location,
+			row.unloading_location,
+			row.effective_from,
+			row.effective_to,
+			row.currency,
+			flt(row.rate, 6),
+		)
+		for row in doc.rate_snapshots
+	]
+
+
 @frappe.whitelist()
 def create_transport_jobs(sales_order, row_names=None):
 	"""Create one Transport Job per selected submitted Sales Order row."""
@@ -281,6 +553,9 @@ def create_transport_jobs(sales_order, row_names=None):
 	if not frappe.has_permission("Transport Job", "create"):
 		frappe.throw(_("You do not have permission to create Transport Jobs."))
 
+	if doc.order_mode == QUOTATION_ORDER_MODE:
+		return create_open_quotation_jobs(doc, selected_rows)
+
 	rows = get_rows_for_conversion(doc, selected_rows)
 	if not rows:
 		frappe.throw(_("No unconverted Sales Order rows were selected."))
@@ -291,6 +566,97 @@ def create_transport_jobs(sales_order, row_names=None):
 
 	update_conversion_status(doc.name)
 	return created_jobs
+
+
+def create_open_quotation_jobs(doc, selected_snapshot_names=None):
+	lock_sales_order(doc.name)
+	doc.reload()
+	if doc.docstatus != 1 or doc.order_mode != QUOTATION_ORDER_MODE:
+		frappe.throw(_("Open Transport Jobs require a submitted quotation-backed Transport Sales Order."))
+	if not doc.transport_quotation or not frappe.db.exists("Transport Quotation", doc.transport_quotation):
+		frappe.throw(_("Quotation-backed Transport Sales Order must retain its source Transport Quotation."))
+
+	groups = get_quotation_job_groups(doc.rate_snapshots)
+	if selected_snapshot_names is not None:
+		known_snapshot_names = {row.name for row in doc.rate_snapshots}
+		unknown = selected_snapshot_names - known_snapshot_names
+		if unknown:
+			frappe.throw(
+				_("Selected rate snapshot {0} does not belong to Transport Sales Order {1}.").format(
+					", ".join(sorted(unknown)),
+					doc.name,
+				)
+			)
+		groups = {
+			key: rows
+			for key, rows in groups.items()
+			if any(row.name in selected_snapshot_names for row in rows)
+		}
+	if not groups:
+		frappe.throw(_("No quotation-backed material and destination groups were selected."))
+
+	created_jobs = []
+	for (material, destination), snapshots in groups.items():
+		existing_job = frappe.db.get_value(
+			"Transport Job",
+			{
+				"sales_order": doc.name,
+				"quantity_mode": "Open",
+				"material": material,
+				"unloading_site": destination,
+			},
+			"name",
+		)
+		if existing_job:
+			frappe.throw(
+				_("A Transport Job already exists for Material {0} and Destination {1}: {2}.").format(
+					material,
+					destination,
+					existing_job,
+				)
+			)
+
+		job = frappe.new_doc("Transport Job")
+		job.update({
+			"customer": doc.customer,
+			"requested_date": doc.posting_date,
+			"quantity_mode": "Open",
+			"requested_quantity": 0,
+			"uom": TON_UOM,
+			"material": material,
+			"unloading_site": destination,
+			"loading_site": snapshots[0].loading_location,
+			"sales_order": doc.name,
+			"transport_quotation": doc.transport_quotation,
+			"customer_lpo_number": doc.customer_lpo_number,
+			"sale_order_reference": doc.name,
+			"agreed_rate": 0,
+			"ordered_amount": 0,
+			"special_instructions": doc.remarks,
+		})
+		loading_points = []
+		for snapshot in snapshots:
+			job.append("sales_order_rate_snapshots", {
+				"sales_order_rate_snapshot": snapshot.name,
+			})
+			if snapshot.loading_location not in loading_points:
+				loading_points.append(snapshot.loading_location)
+		for loading_point in loading_points:
+			job.append("permitted_loading_points", {
+				"loading_location": loading_point,
+			})
+		job.insert()
+		created_jobs.append(job.name)
+
+	update_conversion_status(doc.name)
+	return created_jobs
+
+
+def get_quotation_job_groups(rate_snapshots):
+	groups = {}
+	for snapshot in rate_snapshots or []:
+		groups.setdefault((snapshot.material, snapshot.unloading_location), []).append(snapshot)
+	return groups
 
 
 def parse_row_names(row_names):
@@ -390,6 +756,14 @@ def lock_sales_order_item(row_name):
 		frappe.throw(_("Sales Order row {0} does not exist.").format(row_name))
 
 
+def lock_sales_order(sales_order):
+	if not frappe.db.sql(
+		"select name from `tabTransport Sales Order` where name = %s for update",
+		sales_order,
+	):
+		frappe.throw(_("Transport Sales Order {0} does not exist.").format(sales_order))
+
+
 def update_conversion_status(sales_order):
 	doc = frappe.get_doc("Transport Sales Order", sales_order)
 	doc.set_conversion_status()
@@ -426,6 +800,52 @@ def get_sales_order_delivered_quantity(sales_order):
 
 
 def evaluate_sales_order_billing_status(sales_order):
+	if frappe.db.get_value("Transport Sales Order", sales_order, "order_mode") == QUOTATION_ORDER_MODE:
+		if frappe.db.exists(
+			"Sales Invoice",
+			{
+				"transport_sales_order": sales_order,
+				"tms_invoice_type": "Transport",
+				"docstatus": 0,
+			},
+		):
+			return BILLING_STATUS_IN_PROGRESS
+
+		job_names = frappe.get_all(
+			"Transport Job",
+			filters={"sales_order": sales_order, "status": ["!=", "Cancelled"]},
+			pluck="name",
+		)
+		if job_names and frappe.db.exists(
+			"Transport Trip",
+			{"transport_job": ["in", job_names], "transport_billing_status": "Draft Invoice"},
+		):
+			return BILLING_STATUS_IN_PROGRESS
+
+		from transport_management.transport_management.doctype.transport_job.transport_job import (
+			get_open_order_billable_trips,
+		)
+
+		if get_open_order_billable_trips(sales_order=sales_order):
+			return BILLING_STATUS_READY
+		trips = frappe.get_all(
+			"Transport Trip",
+			filters={"transport_job": ["in", job_names], "status": ["!=", "CANCELLED"]},
+			fields=["transport_billing_status"],
+		) if job_names else []
+		if any(trip.transport_billing_status != "Invoiced" for trip in trips):
+			return BILLING_STATUS_NOT_READY
+		if frappe.db.exists(
+			"Sales Invoice",
+			{
+				"transport_sales_order": sales_order,
+				"tms_invoice_type": "Transport",
+				"docstatus": 1,
+			},
+		) or any(trip.transport_billing_status == "Invoiced" for trip in trips):
+			return BILLING_STATUS_INVOICED
+		return BILLING_STATUS_NOT_READY
+
 	invoice = get_active_transport_invoice_for_sales_order(sales_order)
 	if invoice:
 		if invoice.docstatus == 0:

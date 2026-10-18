@@ -11,12 +11,15 @@
   "customer",
   "requested_date",
   "material",
+  "quantity_mode",
   "requested_quantity",
+  "estimated_quantity",
   "uom",
   "status",
   "column_break_job_details",
   "loading_site",
   "loading_stops",
+  "permitted_loading_points",
   "unloading_site",
   "instructions_section",
   "special_instructions",
@@ -26,6 +29,8 @@
   "hidden_internal_references_section",
   "sales_order",
   "sales_order_item",
+  "transport_quotation",
+  "sales_order_rate_snapshots",
   "do_number",
   "customer_do",
   "fnrc",
@@ -69,6 +74,16 @@
    "reqd": 1
   },
   {
+   "default": "Fixed Quantity",
+   "fieldname": "quantity_mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Quantity Mode",
+   "options": "Fixed Quantity\nOpen",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
    "fieldname": "column_break_job_details",
    "fieldtype": "Column Break"
   },
@@ -86,6 +101,14 @@
    "fieldtype": "Table",
    "label": "Loading Stops",
    "options": "Transport Loading Stop"
+  },
+  {
+   "depends_on": "eval:doc.quantity_mode == 'Open'",
+   "description": "Permitted loading locations from the approved quotation rate schedule; no quantity allocation is implied.",
+   "fieldname": "permitted_loading_points",
+   "fieldtype": "Table",
+   "label": "Permitted Loading Points",
+   "options": "Transport Job Permitted Loading Point"
   },
   {
    "fieldname": "unloading_site",
@@ -110,7 +133,16 @@
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Requested Quantity",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.quantity_mode == 'Fixed Quantity'",
+   "reqd": 0
+  },
+  {
+   "depends_on": "eval:doc.quantity_mode == 'Open'",
+   "description": "Informational only; does not limit Trips or delivered quantity.",
+   "fieldname": "estimated_quantity",
+   "fieldtype": "Float",
+   "label": "Estimated Quantity",
+   "precision": "3"
   },
   {
    "default": "TON",
@@ -155,6 +187,22 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Sales Order Item",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.quantity_mode == 'Open'",
+   "fieldname": "transport_quotation",
+   "fieldtype": "Link",
+   "label": "Transport Quotation",
+   "options": "Transport Quotation",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.quantity_mode == 'Open'",
+   "fieldname": "sales_order_rate_snapshots",
+   "fieldtype": "Table",
+   "label": "Sales Order Rate Snapshots",
+   "options": "Transport Job Rate Snapshot",
    "read_only": 1
   },
   {

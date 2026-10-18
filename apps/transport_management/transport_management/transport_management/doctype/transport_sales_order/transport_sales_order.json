@@ -10,11 +10,18 @@
   "order_details_section",
   "posting_date",
   "customer",
+  "order_mode",
+  "transport_quotation",
   "column_break_order_details",
   "customer_lpo_number",
   "status",
   "items_section",
   "items",
+  "rate_snapshots_section",
+  "rate_snapshots",
+  "estimate_section",
+  "estimated_quantity",
+  "estimated_trips",
   "loading_stops_section",
   "loading_stops",
   "totals_section",
@@ -54,6 +61,24 @@
    "search_index": 1
   },
   {
+   "default": "Fixed Quantity",
+   "fieldname": "order_mode",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Order Mode",
+   "options": "Fixed Quantity\nQuotation-backed Open",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.order_mode == 'Quotation-backed Open'",
+   "fieldname": "transport_quotation",
+   "fieldtype": "Link",
+   "label": "Transport Quotation",
+   "options": "Transport Quotation",
+   "read_only": 1
+  },
+  {
    "fieldname": "column_break_order_details",
    "fieldtype": "Column Break"
   },
@@ -82,8 +107,44 @@
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
+   "mandatory_depends_on": "eval:doc.order_mode == 'Fixed Quantity'",
    "options": "Transport Sales Order Item",
-   "reqd": 1
+   "reqd": 0
+  },
+  {
+   "depends_on": "eval:doc.order_mode == 'Quotation-backed Open'",
+   "fieldname": "rate_snapshots_section",
+   "fieldtype": "Section Break",
+   "label": "Approved Quotation Rate Snapshots"
+  },
+  {
+   "depends_on": "eval:doc.order_mode == 'Quotation-backed Open'",
+   "fieldname": "rate_snapshots",
+   "fieldtype": "Table",
+   "label": "Approved Rate Snapshots",
+   "options": "Transport Sales Order Rate Snapshot",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.order_mode == 'Quotation-backed Open'",
+   "fieldname": "estimate_section",
+   "fieldtype": "Section Break",
+   "label": "Optional Planning Estimates (Informational Only)"
+  },
+  {
+   "depends_on": "eval:doc.order_mode == 'Quotation-backed Open'",
+   "fieldname": "estimated_quantity",
+   "fieldtype": "Float",
+   "label": "Estimated Quantity",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.order_mode == 'Quotation-backed Open'",
+   "fieldname": "estimated_trips",
+   "fieldtype": "Int",
+   "label": "Estimated Trips",
+   "read_only": 1
   },
   {
    "collapsible": 1,

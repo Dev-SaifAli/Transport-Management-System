@@ -123,7 +123,7 @@ PERMISSIONS = [
 		"export": 1,
 		"import": 1,
 	},
-	# Operations oversight of driver expenses (AL RANA Expenses workspace links).
+	# Operations oversight of driver expenses.
 	# Read-only: approval separation stays with HRMS approver roles.
 	{
 		"parent": "Expense Claim",
