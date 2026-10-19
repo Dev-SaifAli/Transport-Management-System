@@ -1,7 +1,7 @@
 """Desk registration for the AL RANA Dispatch console.
 
 Registers the ``AL RANA Dispatch`` app launcher icon (Desktop Icon of type
-``App``) so it opens ``/app/dispatch-console`` and is role-aware.  Frappe already
+``App``) so it opens ``/dispatch`` and is role-aware.  Frappe already
 creates this icon from the ``add_to_apps_screen`` hook on app install; this module
 makes the icon deterministic across reinstalls and keeps its role table and the
 exported fixture in sync.
@@ -18,7 +18,7 @@ from dispatch_portal.services.dispatch_access import (
 	APP_NAME,
 	APP_TITLE,
 	CONSOLE_READ_ROLES,
-	DISPATCH_CONSOLE_ROUTE,
+	DISPATCH_PORTAL_ROUTE,
 )
 
 # Frappe v16 renders the app launcher icon from the SVG files under
@@ -52,7 +52,7 @@ def ensure_desktop_icon() -> None:
 		"app": APP_NAME,
 		"icon_type": ICON_TYPE,
 		"link_type": LINK_TYPE,
-		"link": DISPATCH_CONSOLE_ROUTE,
+		"link": DISPATCH_PORTAL_ROUTE,
 		"logo_url": ICON_LOGO_URL,
 		"bg_color": BODY_BG,
 		"standard": 1,
@@ -104,7 +104,7 @@ def export_desktop_icon_fixture() -> None:
 		"icon_type": ICON_TYPE,
 		"idx": doc.idx,
 		"label": APP_TITLE,
-		"link": DISPATCH_CONSOLE_ROUTE,
+		"link": DISPATCH_PORTAL_ROUTE,
 		"link_type": LINK_TYPE,
 		"link_to": "",
 		"logo_url": ICON_LOGO_URL,

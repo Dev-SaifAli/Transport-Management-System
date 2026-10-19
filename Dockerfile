@@ -2,6 +2,16 @@
 
 ARG BENCH_IMAGE=frappe/bench:latest
 
+# Build the nested Vue app explicitly; bench build only packages Frappe assets.
+FROM node:24.21.0-bookworm-slim AS dispatch-frontend
+
+WORKDIR /build/apps/dispatch_portal/frontend
+RUN npm install --global pnpm@12.11.2
+COPY apps/dispatch_portal/frontend/package.json apps/dispatch_portal/frontend/pnpm-lock.yaml apps/dispatch_portal/frontend/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY apps/dispatch_portal/frontend/ ./
+RUN VITE_API_MOCK=false VITE_API_BASE_URL=/api VITE_APP_BASE_PATH=/dispatch/ VITE_ASSET_BASE_URL= pnpm run build
+
 FROM ${BENCH_IMAGE} AS builder
 
 ARG FRAPPE_REPO=https://github.com/frappe/frappe.git
@@ -54,10 +64,19 @@ COPY --chown=frappe:frappe \
 COPY --chown=frappe:frappe apps/transport_management apps/transport_management
 COPY --chown=frappe:frappe apps/dispatch_portal apps/dispatch_portal
 
+# Copy build output directly from the Node stage, including Git-ignored assets.
+COPY --from=dispatch-frontend --chown=frappe:frappe \
+    /build/apps/dispatch_portal/dispatch_portal/public/frontend \
+    apps/dispatch_portal/dispatch_portal/public/frontend
+COPY --from=dispatch-frontend --chown=frappe:frappe \
+    /build/apps/dispatch_portal/dispatch_portal/www/dispatch.html \
+    apps/dispatch_portal/dispatch_portal/www/dispatch.html
+
 RUN ./env/bin/python -m pip install --quiet --upgrade -e apps/transport_management \
     && ./env/bin/python -m pip install --quiet --upgrade -e apps/dispatch_portal \
     && ./env/bin/python -c 'from pathlib import Path; p=Path("sites/apps.txt"); apps=[line.strip() for line in p.read_text().splitlines() if line.strip()]; [apps.append(app) for app in ("transport_management", "dispatch_portal") if app not in apps]; p.write_text("\n".join(apps) + "\n")' \
-    && bench build --production
+    && bench build --production \
+    && node apps/dispatch_portal/frontend/scripts/verify-build.mjs
 
 FROM ${BENCH_IMAGE} AS runtime
 

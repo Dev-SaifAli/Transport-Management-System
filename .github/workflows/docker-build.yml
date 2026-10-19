@@ -95,6 +95,10 @@ jobs:
             test -d apps/dispatch_portal
             test -f apps/transport_management/transport_management/hooks.py
             test -f apps/dispatch_portal/dispatch_portal/hooks.py
+            test -f apps/dispatch_portal/dispatch_portal/api/frontend.py
+            node apps/dispatch_portal/frontend/scripts/verify-build.mjs
+            test -d sites/assets/dispatch_portal/frontend
+            test -d /opt/frappe/sites-template/assets/dispatch_portal/frontend
             test -x railway-start-all.sh
             bash -n railway-start-all.sh
             test -s sites/assets/assets.json

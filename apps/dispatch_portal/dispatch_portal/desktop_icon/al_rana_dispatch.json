@@ -6,7 +6,7 @@
  "icon_type": "App",
  "idx": 5,
  "label": "AL RANA Dispatch",
- "link": "/app/dispatch-console",
+ "link": "/dispatch",
  "link_to": "",
  "link_type": "External",
  "logo_url": "/assets/dispatch_portal/icons/desktop_icons/solid/al_rana_dispatch.svg",

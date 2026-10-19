@@ -10,6 +10,8 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary/15 text-lime-800',
+        // Preserve the base-only styling already used by Create Trip.
+        secondary: '',
         blue: 'bg-blue-100 text-blue-700',
         amber: 'bg-amber-100 text-amber-700',
         green: 'bg-emerald-100 text-emerald-700',

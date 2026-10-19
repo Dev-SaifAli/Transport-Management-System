@@ -14,6 +14,7 @@ from frappe import _
 APP_NAME = "dispatch_portal"
 APP_TITLE = "AL RANA Dispatch"
 DISPATCH_CONSOLE_ROUTE = "/app/dispatch-console"
+DISPATCH_PORTAL_ROUTE = "/dispatch"
 
 ROLE_DISPATCHER = "AL RANA Dispatcher"
 ROLE_VERIFIER = "AL RANA Dispatch Verifier"
