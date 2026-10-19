@@ -108,6 +108,10 @@ TMS_PERMISSION_DOCTYPES = (
 	"transport_rate",
 	"transport_job",
 	"transport_location",
+	"transport_quotation",
+	"transport_quotation_location",
+	"transport_quotation_material",
+	"transport_quotation_rate",
 	"transport_sales_order_item",
 	"transport_sales_order",
 	"transport_trip",
@@ -157,6 +161,9 @@ def ensure_role_profiles():
 	for profile_name, roles in ROLE_PROFILES.items():
 		if frappe.db.exists("Role Profile", profile_name):
 			doc = frappe.get_doc("Role Profile", profile_name)
+			existing_roles = [row.role for row in doc.roles]
+			if set(existing_roles) == set(roles) and len(existing_roles) == len(roles):
+				continue
 			doc.roles = []
 		else:
 			doc = frappe.new_doc("Role Profile")

@@ -1,0 +1,288 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:TQ-{YYYY}-{#####}",
+ "creation": "2026-10-16 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "quotation_details_section",
+  "quotation_date",
+  "customer",
+  "valid_until",
+  "column_break_quotation_details",
+  "currency",
+  "status",
+  "customer_reference",
+  "service_period_section",
+  "service_period_from",
+  "service_period_to",
+  "revision_section",
+  "revision_of",
+  "revision_reason",
+  "materials_section",
+  "materials",
+  "locations_section",
+  "locations",
+  "rates_section",
+  "rates",
+  "estimate_section",
+  "estimated_quantity",
+  "estimated_trips",
+  "customer_approval_section",
+  "customer_approval_date",
+  "customer_approval_reference",
+  "customer_approval_notes",
+  "customer_approval_attachment",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "quotation_details_section",
+   "fieldtype": "Section Break",
+   "label": "Quotation Details"
+  },
+  {
+   "default": "Today",
+   "fieldname": "quotation_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Quotation Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "valid_until",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Acceptance Valid Until",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_quotation_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "AED",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nPending Approval\nApproved\nRejected\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer_reference",
+   "fieldtype": "Data",
+   "label": "Customer Reference"
+  },
+  {
+   "fieldname": "service_period_section",
+   "fieldtype": "Section Break",
+   "label": "Transport Service Period"
+  },
+  {
+   "fieldname": "service_period_from",
+   "fieldtype": "Date",
+   "label": "Service Period From"
+  },
+  {
+   "fieldname": "service_period_to",
+   "fieldtype": "Date",
+   "label": "Service Period To"
+  },
+  {
+   "fieldname": "revision_section",
+   "fieldtype": "Section Break",
+   "label": "Controlled Revision"
+  },
+  {
+   "fieldname": "revision_of",
+   "fieldtype": "Link",
+   "label": "Revision Of",
+   "options": "Transport Quotation"
+  },
+  {
+   "depends_on": "eval:doc.revision_of",
+   "fieldname": "revision_reason",
+   "fieldtype": "Small Text",
+   "label": "Revision Reason"
+  },
+  {
+   "fieldname": "materials_section",
+   "fieldtype": "Section Break",
+   "label": "Materials"
+  },
+  {
+   "fieldname": "materials",
+   "fieldtype": "Table",
+   "label": "Materials",
+   "options": "Transport Quotation Material"
+  },
+  {
+   "fieldname": "locations_section",
+   "fieldtype": "Section Break",
+   "label": "Selected Locations"
+  },
+  {
+   "fieldname": "locations",
+   "fieldtype": "Table",
+   "label": "Locations",
+   "options": "Transport Quotation Location"
+  },
+  {
+   "fieldname": "rates_section",
+   "fieldtype": "Section Break",
+   "label": "Date-Effective Rate Schedule"
+  },
+  {
+   "fieldname": "rates",
+   "fieldtype": "Table",
+   "label": "Rates",
+   "options": "Transport Quotation Rate"
+  },
+  {
+   "fieldname": "estimate_section",
+   "fieldtype": "Section Break",
+   "label": "Optional Planning Estimate"
+  },
+  {
+   "fieldname": "estimated_quantity",
+   "fieldtype": "Float",
+   "label": "Estimated Quantity",
+   "precision": "3"
+  },
+  {
+   "fieldname": "estimated_trips",
+   "fieldtype": "Int",
+   "label": "Estimated Trips"
+  },
+  {
+   "fieldname": "customer_approval_section",
+   "fieldtype": "Section Break",
+   "label": "Customer Approval (Recorded by AL RANA Staff)"
+  },
+  {
+   "fieldname": "customer_approval_date",
+   "fieldtype": "Date",
+   "label": "Customer Approval Date"
+  },
+  {
+   "fieldname": "customer_approval_reference",
+   "fieldtype": "Data",
+   "label": "Customer Approval Reference"
+  },
+  {
+   "fieldname": "customer_approval_notes",
+   "fieldtype": "Small Text",
+   "label": "Customer Approval Notes"
+  },
+  {
+   "fieldname": "customer_approval_attachment",
+   "fieldtype": "Attach",
+   "label": "Customer Approval Attachment"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-10-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Transport Management",
+ "name": "Transport Quotation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "TMS Trip Data Entry"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "TMS + Expense Data Entry"
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transport Manager",
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Transport Admin",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "customer",
+ "track_changes": 1
+}

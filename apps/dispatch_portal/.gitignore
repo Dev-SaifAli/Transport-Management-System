@@ -58,6 +58,7 @@ jspm_packages/
 build/
 .env.*
 !.env.example
+!frontend/.env.production
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -74,3 +75,6 @@ common_site_config.json
 *.sql.gz
 *.tar
 *.tar.gz
+
+# Generated Vue frontend bundle
+dispatch_portal/public/frontend/

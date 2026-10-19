@@ -97,14 +97,14 @@ def _ensure_demo_truck(truck_number, driver, fuel_uom):
 	return truck
 
 
-def _ensure_demo_trip(job, demo, planned_quantity, sequence, vehicle):
+def _ensure_demo_trip(job, demo, planned_quantity, sequence, vehicle, driver_name=None):
 	remarks = f"{TRIP_MARKER_PREFIX} {sequence}"
 	trip_values = {
 		"transport_job": job.name,
 		"execution_source": "OWN",
 		"trip_date": job.requested_date,
 		"vehicle": vehicle,
-		"driver": demo["driver"],
+		"driver": driver_name or demo["driver"],
 		"loading_site": job.loading_site,
 		"unloading_site": job.unloading_site,
 		"material": job.material,
@@ -200,10 +200,16 @@ def setup_demo_data(country="United Arab Emirates"):
 		_ensure_demo_truck_type()
 		locations = []
 		location_values = (
-			("ATBT AL TAWEEN", {"location_type": "Plant", "location_usage": "Loading", "active": 1}),
+			("ATBT AL TAWEEN", {
+				"location_type": "Plant",
+				"location_usage": "Loading",
+				"area_zone": "North Zone",
+				"active": 1,
+			}),
 			("SAJJA ORYX", {
 				"location_type": "Customer Site",
 				"location_usage": "Unloading",
+				"area_zone": "Sharjah Industrial",
 				"customer": customer.name,
 				"active": 1,
 			}),
@@ -230,13 +236,19 @@ def setup_demo_data(country="United Arab Emirates"):
 		fuel_uom, _ = _reuse_or_create("UOM", {"uom_name": "Litre"}, {"uom_name": "Litre", "enabled": 1})
 		if not fuel_uom.enabled:
 			frappe.throw("Existing UOM Litre is disabled; enable it explicitly before demo setup.")
-		driver, _ = _reuse_or_create("Truck Driver", {"full_name": "UMAIR"}, {
-			"full_name": "UMAIR", "status": "Active", "cell_number": "DEMO-UMAIR",
-			"address": "DEMO: contact/address details not supplied; phone is a placeholder.",
-		})
-		if driver.status != "Active":
-			frappe.throw("Existing UMAIR driver is not Active; review it before demo setup.")
-		trucks = [_ensure_demo_truck(truck_number, driver.name, fuel_uom.name) for truck_number in DEMO_TRUCKS]
+		drivers = []
+		for seq, cell in enumerate(("DEMO-UMAIR", "DEMO-UMAIR-2", "DEMO-UMAIR-3"), start=1):
+			d, _ = _reuse_or_create("Truck Driver", {"cell_number": cell}, {
+				"full_name": f"UMAIR {seq}" if seq > 1 else "UMAIR",
+				"status": "Active",
+				"cell_number": cell,
+				"address": "DEMO: contact/address details not supplied; phone is a placeholder.",
+			})
+			if d.status != "Active":
+				frappe.throw(f"Existing driver {d.name} is not Active; review it before demo setup.")
+			drivers.append(d)
+		driver = drivers[0]
+		trucks = [_ensure_demo_truck(truck_number, drivers[i].name, fuel_uom.name) for i, truck_number in enumerate(DEMO_TRUCKS)]
 		truck = trucks[0]
 
 		job_values = {
@@ -277,9 +289,9 @@ def setup_demo_data(country="United Arab Emirates"):
 		}
 		_normalize_existing_demo_trip_vehicles(job, demo["vehicles"])
 		demo["transport_trips"] = [
-			_ensure_demo_trip(job, demo, 30, 1, trucks[0].name),
-			_ensure_demo_trip(job, demo, 30, 2, trucks[1].name),
-			_ensure_demo_trip(job, demo, 20.8, 3, trucks[2].name),
+			_ensure_demo_trip(job, demo, 30, 1, trucks[0].name, drivers[0].name),
+			_ensure_demo_trip(job, demo, 30, 2, trucks[1].name, drivers[1].name),
+			_ensure_demo_trip(job, demo, 20.8, 3, trucks[2].name, drivers[2].name),
 		]
 		return demo
 	except Exception:

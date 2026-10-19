@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import flt, getdate, now_datetime
 
 
 DOCUMENT_TYPES = {
@@ -36,6 +36,8 @@ class TransportTripDocument(Document):
 		self.validate_document_type()
 		self.validate_upload_source()
 		self.validate_processing_statuses()
+		self.validate_loading_verification()
+		self.validate_delivery_verification()
 		self.validate_single_document_type_duplicate()
 
 	def validate_transport_trip(self):
@@ -56,6 +58,125 @@ class TransportTripDocument(Document):
 		if self.verification_status not in VERIFICATION_STATUSES:
 			frappe.throw(_("Invalid Verification Status {0}.").format(self.verification_status))
 
+	def validate_loading_verification(self):
+		if self.document_type != "LOADING_PAPER":
+			return
+
+		verified_fields = (
+			"verified_material",
+			"verified_loading_location",
+			"verified_loading_date",
+			"verified_loaded_quantity",
+		)
+		if not self.is_new():
+			previous = frappe.db.get_value(
+				self.doctype,
+				self.name,
+				[
+					"verification_status",
+					"verified_material",
+					"verified_loading_location",
+					"verified_loading_date",
+					"verified_loaded_quantity",
+					"verified_by",
+					"verified_at",
+					"review_notes",
+				],
+				as_dict=True,
+			)
+			if previous.verification_status in {"APPROVED", "REJECTED"} and any(
+				self.get(fieldname) != previous.get(fieldname)
+				for fieldname in (
+					"verification_status",
+					"verified_material",
+					"verified_loading_location",
+					"verified_loading_date",
+					"verified_loaded_quantity",
+					"verified_by",
+					"verified_at",
+					"review_notes",
+				)
+			):
+				frappe.throw(_("Reviewed Loading Paper facts and audit details are immutable; create a controlled correction record."))
+			if (
+				self.verification_status != previous.verification_status
+				and not self.flags.get("loading_document_review")
+			):
+				frappe.throw(_("Loading Paper verification must use the authorized review operation."))
+		elif self.verification_status != "PENDING_REVIEW":
+			frappe.throw(_("New Loading Papers must remain pending until reviewed by Operations."))
+
+		if self.verification_status == "PENDING_REVIEW" and any(
+			self.get(fieldname) for fieldname in (*verified_fields, "verified_by", "verified_at")
+		):
+			frappe.throw(_("Pending Loading Papers cannot contain verified facts or reviewer audit details."))
+
+		if self.verification_status == "APPROVED":
+			if not all((*(self.get(fieldname) for fieldname in verified_fields), self.verified_by, self.verified_at)):
+				frappe.throw(_("Approved Loading Papers require verified facts and reviewer audit details."))
+			quantity = flt(self.verified_loaded_quantity, 6)
+			if quantity <= 0:
+				frappe.throw(_("Verified Loaded Quantity must be greater than zero."))
+			if getdate(self.verified_loading_date) > getdate():
+				frappe.throw(_("Verified Loading Date cannot be in the future."))
+		elif self.verification_status == "REJECTED":
+			if not self.review_notes:
+				frappe.throw(_("A review reason is required when rejecting a Loading Paper."))
+			if not self.verified_by or not self.verified_at:
+				frappe.throw(_("Rejected Loading Papers require reviewer audit details."))
+
+	def validate_delivery_verification(self):
+		if self.document_type != "OFFLOADING_PAPER":
+			return
+
+		verified_fields = ("verified_delivery_date", "verified_delivered_quantity")
+		audit_fields = (*verified_fields, "verification_status", "verified_by", "verified_at", "review_notes")
+		if not self.is_new():
+			previous = frappe.db.get_value(
+				self.doctype,
+				self.name,
+				audit_fields,
+				as_dict=True,
+			)
+			if previous.verification_status in {"APPROVED", "REJECTED"} and any(
+				self.get(fieldname) != previous.get(fieldname) for fieldname in audit_fields
+			):
+				frappe.throw(_("Reviewed Offloading Paper facts and audit details are immutable; create a controlled correction record."))
+			if (
+				self.verification_status != previous.verification_status
+				and not self.flags.get("delivery_document_review")
+			):
+				frappe.throw(_("Offloading Paper verification must use the authorized review operation."))
+		elif self.verification_status != "PENDING_REVIEW":
+			frappe.throw(_("New Offloading Papers must remain pending until reviewed by Operations."))
+
+		if self.verification_status == "PENDING_REVIEW" and any(
+			self.get(fieldname) for fieldname in (*verified_fields, "verified_by", "verified_at")
+		):
+			frappe.throw(_("Pending Offloading Papers cannot contain verified facts or reviewer audit details."))
+
+		if self.verification_status == "APPROVED":
+			if not all(
+				(*[self.get(fieldname) for fieldname in verified_fields], self.verified_by, self.verified_at)
+			):
+				frappe.throw(_("Approved Offloading Papers require verified delivery facts and reviewer audit details."))
+			quantity = flt(self.verified_delivered_quantity, 6)
+			if quantity <= 0:
+				frappe.throw(_("Verified Delivered Quantity must be greater than zero."))
+			if getdate(self.verified_delivery_date) > getdate():
+				frappe.throw(_("Verified Delivery Date cannot be in the future."))
+			loaded_quantity = flt(
+				frappe.db.get_value("Transport Trip", self.transport_trip, "loaded_quantity"),
+				6,
+			)
+			if loaded_quantity and quantity > loaded_quantity:
+				frappe.throw(_("Verified Delivered Quantity cannot exceed Loaded Quantity."))
+		elif self.verification_status == "REJECTED":
+			if not self.review_notes:
+				frappe.throw(_("A review reason is required when rejecting an Offloading Paper."))
+			if not self.verified_by or not self.verified_at:
+				frappe.throw(_("Rejected Offloading Papers require reviewer audit details."))
+
 	def validate_single_document_type_duplicate(self):
 		if self.document_type not in SINGLE_DOCUMENT_TYPES or not self.transport_trip:
 			return
@@ -65,6 +186,7 @@ class TransportTripDocument(Document):
 			{
 				"transport_trip": self.transport_trip,
 				"document_type": self.document_type,
+				"verification_status": ["!=", "REJECTED"],
 				"name": ["!=", self.name or ""],
 			},
 		)

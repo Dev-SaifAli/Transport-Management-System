@@ -132,6 +132,9 @@ function sync_item_loading_from_stops(frm) {
 }
 
 function has_unconverted_rows(frm) {
+	if (frm.doc.order_mode === "Quotation") {
+		return frm.doc.status !== "Converted";
+	}
 	return (frm.doc.items || []).some((row) => !row.converted && !row.transport_job);
 }
 
@@ -230,6 +233,29 @@ function open_transport_sales_invoice(frm) {
 }
 
 function show_create_jobs_dialog(frm) {
+	if (frm.doc.order_mode === "Quotation") {
+		const materials = [...new Set((frm.doc.rate_snapshots || []).map((row) => row.material).filter(Boolean))];
+		const label = materials.length ? materials.join(", ") : __("all materials");
+		frappe.confirm(
+			__("Create Open Transport Jobs for material(s): {0}?", [label]),
+			() => {
+				frappe.call({
+					method: "transport_management.transport_management.doctype.transport_sales_order.transport_sales_order.create_transport_jobs",
+					args: {
+						sales_order: frm.doc.name,
+					},
+					freeze: true,
+					freeze_message: __("Creating Transport Jobs"),
+					callback(response) {
+						frappe.msgprint(__("Created Transport Jobs: {0}", [(response.message || []).join(", ")]));
+						frm.reload_doc();
+					},
+				});
+			}
+		);
+		return;
+	}
+
 	const rows = (frm.doc.items || []).filter((row) => !row.converted && !row.transport_job);
 	if (!rows.length) {
 		frappe.msgprint(__("No unconverted Sales Order rows are available."));

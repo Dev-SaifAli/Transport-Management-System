@@ -38,6 +38,9 @@ TRIP_LIST_FIELDS = (
 	"pod_attachment",
 	"pod_received_at",
 	"transport_billing_status",
+	"applied_rate_per_ton",
+	"applied_rate_currency",
+	"commercial_rate_status",
 	"remarks",
 	"modified",
 )
@@ -191,6 +194,9 @@ def serialize_trip_summary(trip) -> dict:
 		"pod_attachment": trip.get("pod_attachment"),
 		"pod_received_at": format_datetime(trip.get("pod_received_at")),
 		"transport_billing_status": trip.get("transport_billing_status"),
+		"applied_rate_per_ton": to_float(trip.get("applied_rate_per_ton")),
+		"applied_rate_currency": trip.get("applied_rate_currency") or "AED",
+		"commercial_rate_status": trip.get("commercial_rate_status"),
 		"modified": format_datetime(trip.get("modified")),
 	}
 

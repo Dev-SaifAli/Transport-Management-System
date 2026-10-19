@@ -10,8 +10,10 @@ database and are now reproducible from source control:
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import frappe
+from frappe.core.doctype.module_profile.module_profile import ModuleProfile
 
 from transport_management.patches.setup_al_rana_desk_metadata_parity import (
 	COMPANY_TAX_ID_FIELD,
@@ -20,6 +22,7 @@ from transport_management.patches.setup_al_rana_desk_metadata_parity import (
 	TRANSPORT_JOB_LIST_VIEW_FIELDS,
 	execute,
 )
+from transport_management.patches.setup_al_rana_native_ux import ensure_module_profiles
 
 
 APP_ROOT = Path(frappe.get_app_path("transport_management")).parent
@@ -169,3 +172,9 @@ class TestDeskMetadataParity(unittest.TestCase):
 
 	def test_patch_returns_reconciliation_message(self):
 		self.assertEqual(execute(), "AL RANA desk metadata reconciled with source")
+
+	def test_unchanged_module_profiles_do_not_queue_update_jobs(self):
+		with patch.object(ModuleProfile, "queue_action", autospec=True) as queue_action:
+			ensure_module_profiles()
+
+		queue_action.assert_not_called()

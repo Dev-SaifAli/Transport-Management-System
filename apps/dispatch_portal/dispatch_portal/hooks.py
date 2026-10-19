@@ -295,3 +295,10 @@ fixtures = [
 # transport_management migration and reinstall.
 after_migrate = "dispatch_portal.setup.after_migrate"
 
+# Website route rules for SPA deep links (serves dispatch.html at the requested path
+# without 301 redirecting to /dispatch/)
+website_route_rules = [
+	{"from_route": "/dispatch/<path:app_path>", "to_route": "dispatch"},
+]
+
+
