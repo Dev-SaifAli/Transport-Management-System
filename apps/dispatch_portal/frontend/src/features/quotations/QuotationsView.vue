@@ -16,7 +16,9 @@ const quotations = useQuotationsStore()
 const router = useRouter()
 const statusLabels: Record<QuotationStatus, string> = {
   draft: 'Draft',
+  pending_approval: 'Pending Approval',
   approved: 'Approved',
+  rejected: 'Rejected',
   cancelled: 'Cancelled',
 }
 
@@ -24,8 +26,9 @@ const hasFilters = computed(() => quotations.activePills.length > 0 || quotation
 
 function statusVariant(status: QuotationStatus): 'blue' | 'amber' | 'green' | 'red' {
   if (status === 'approved') return 'green'
+  if (status === 'pending_approval') return 'amber'
   if (status === 'draft') return 'blue'
-  if (status === 'cancelled') return 'red'
+  if (status === 'rejected' || status === 'cancelled') return 'red'
   return 'red'
 }
 

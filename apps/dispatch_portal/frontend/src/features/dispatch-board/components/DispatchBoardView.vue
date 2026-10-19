@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, Plus, Search, SlidersHorizontal } from 'lucide-vue-next'
+import { ChevronDown, LayoutGrid, List, Plus, Search } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -38,7 +38,7 @@ function tripsFor(columnKey: string): BoardTrip[] {
 }
 
 const metaLabel = computed(
-  () => `${store.columnCount} columns · ${store.totalTrips} trips today`,
+  () => `${store.columnCount} columns · ${store.totalTrips} trips`,
 )
 </script>
 
@@ -49,13 +49,30 @@ const metaLabel = computed(
       subtitle="Trips grouped by operational status · status changes follow backend permissions"
     >
       <template #actions>
+        <div class="flex rounded-xl border bg-card p-1 shadow-sm" role="tablist" aria-label="View mode">
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="true"
+            class="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white shadow-sm"
+          >
+            <LayoutGrid class="size-4" aria-hidden="true" />
+            Board
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="false"
+            class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-muted-foreground transition-colors hover:text-foreground"
+            @click="router.push('/dispatch-board/table')"
+          >
+            <List class="size-4" aria-hidden="true" />
+            Table
+          </button>
+        </div>
         <Button size="lg" class="rounded-lg" @click="router.push('/create-trip')">
           <Plus aria-hidden="true" />
           Create Trip
-        </Button>
-        <Button size="lg" variant="outline" class="rounded-lg" disabled title="Filters coming with backend integration">
-          <SlidersHorizontal aria-hidden="true" />
-          Filters
         </Button>
       </template>
     </PageHeader>

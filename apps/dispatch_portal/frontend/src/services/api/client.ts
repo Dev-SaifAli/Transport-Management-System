@@ -44,7 +44,7 @@ const instance: AxiosInstance = axios.create({
 })
 
 instance.interceptors.request.use((config) => {
-  const csrfToken = readCookie('csrf_token')
+  const csrfToken = getCsrfToken()
   if (csrfToken && !isSafeMethod(config.method)) {
     config.headers.set('X-Frappe-CSRF-Token', csrfToken)
   }
@@ -67,7 +67,23 @@ instance.interceptors.response.use(
 )
 
 function isSafeMethod(method?: string): boolean {
-  return method === 'get' || method === 'head' || method === 'options'
+  const m = method?.toLowerCase()
+  return m === 'get' || m === 'head' || m === 'options'
+}
+
+export function getCsrfToken(): string | undefined {
+  if (typeof window !== 'undefined') {
+    const win = window as Window & {
+      frappeBoot?: { csrf_token?: string }
+      csrf_token?: string
+      frappe?: { csrf_token?: string }
+    }
+    const bootToken = win.frappeBoot?.csrf_token || win.csrf_token || win.frappe?.csrf_token
+    if (bootToken && bootToken !== 'None') {
+      return bootToken
+    }
+  }
+  return readCookie('csrf_token')
 }
 
 function readCookie(name: string): string | undefined {

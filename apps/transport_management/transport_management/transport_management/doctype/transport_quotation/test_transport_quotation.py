@@ -222,3 +222,137 @@ class TestTransportQuotation(unittest.TestCase):
 
 		with self.assertRaises(frappe.ValidationError):
 			self.make_quotation(revision_of=source.name, revision_reason="Update").insert()
+
+	def test_send_to_customer_transitions_draft_to_pending_approval_and_persists(self):
+		from transport_management.transport_management.doctype.transport_quotation.transport_quotation import (
+			send_quotation_to_customer,
+		)
+
+		doc = self.make_quotation(complete=True, customer_approval_date=None)
+		doc.insert()
+		self.assertEqual(doc.status, "Draft")
+
+		res = send_quotation_to_customer(doc.name, "Sent via email to customer")
+		self.assertEqual(res["status"], "Pending Approval")
+
+		reloaded = frappe.get_doc("Transport Quotation", doc.name)
+		self.assertEqual(reloaded.status, "Pending Approval")
+		self.assertEqual(reloaded.docstatus, 0)
+		self.assertEqual(reloaded.customer_approval_notes, "Sent via email to customer")
+
+	def test_reject_quotation_records_rejection_without_submitting_or_cancelling_draft(self):
+		from transport_management.transport_management.doctype.transport_quotation.transport_quotation import (
+			approve_quotation,
+			reject_quotation,
+			send_quotation_to_customer,
+		)
+
+		doc = self.make_quotation(complete=True, customer_approval_date=None)
+		doc.insert()
+		send_quotation_to_customer(doc.name, "Sent for review")
+
+		res = reject_quotation(doc.name, "Customer rejected rates due to budget")
+		self.assertEqual(res["status"], "Rejected")
+		self.assertEqual(res["docstatus"], 0)
+
+		reloaded = frappe.get_doc("Transport Quotation", doc.name)
+		self.assertEqual(reloaded.status, "Rejected")
+		self.assertEqual(reloaded.docstatus, 0)
+		self.assertEqual(reloaded.customer_approval_notes, "Customer rejected rates due to budget")
+
+		# Rejected quotation is immutable and cannot be edited or approved
+		reloaded.remarks = "Attempted edit after rejection"
+		with self.assertRaises(frappe.ValidationError):
+			reloaded.save()
+
+		with self.assertRaises(frappe.ValidationError):
+			approve_quotation(doc.name, "2026-01-15", "PO-123", "Late approval")
+
+	def test_approve_quotation_from_pending_approval_submits_and_locks(self):
+		from transport_management.transport_management.doctype.transport_quotation.transport_quotation import (
+			approve_quotation,
+			reject_quotation,
+			send_quotation_to_customer,
+		)
+
+		doc = self.make_quotation(complete=True, customer_approval_date=None)
+		doc.insert()
+		send_quotation_to_customer(doc.name, "Awaiting PO")
+
+		res = approve_quotation(doc.name, "2026-01-15", "PO-REF-900", "Customer signed rate sheet")
+		self.assertEqual(res["status"], "Approved")
+		self.assertEqual(res["docstatus"], 1)
+
+		reloaded = frappe.get_doc("Transport Quotation", doc.name)
+		self.assertEqual(reloaded.status, "Approved")
+		self.assertEqual(reloaded.docstatus, 1)
+		self.assertEqual(str(reloaded.customer_approval_date), "2026-01-15")
+		self.assertEqual(reloaded.customer_approval_reference, "PO-REF-900")
+
+		# Approved quotation cannot be rejected
+		with self.assertRaises(frappe.ValidationError):
+			reject_quotation(doc.name, "Attempted rejection after approval")
+
+	def test_unauthorized_user_cannot_send_approve_or_reject_quotation(self):
+		from transport_management.transport_management.doctype.transport_quotation.transport_quotation import (
+			approve_quotation,
+			reject_quotation,
+			send_quotation_to_customer,
+		)
+
+		doc = self.make_quotation(complete=True, customer_approval_date=None)
+		doc.insert()
+
+		frappe.set_user("Guest")
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				send_quotation_to_customer(doc.name, "Unauthorized send")
+			with self.assertRaises(frappe.PermissionError):
+				approve_quotation(doc.name, "2026-01-15", "REF", "Unauthorized approve")
+			with self.assertRaises(frappe.PermissionError):
+				reject_quotation(doc.name, "Unauthorized reject")
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_unapproved_pending_or_rejected_quotations_cannot_create_sales_order(self):
+		from transport_management.transport_management.doctype.transport_quotation.transport_quotation import (
+			reject_quotation,
+			send_quotation_to_customer,
+		)
+		from transport_management.transport_management.doctype.transport_sales_order.transport_sales_order import (
+			create_quotation_transport_sales_order,
+		)
+
+		doc = self.make_quotation(complete=True, customer_approval_date=None)
+		doc.insert()
+
+		# 1. Draft cannot create Sales Order
+		with self.assertRaises(frappe.ValidationError):
+			create_quotation_transport_sales_order(doc.name)
+
+		# 2. Pending Approval cannot create Sales Order
+		send_quotation_to_customer(doc.name, "Sent to customer")
+		with self.assertRaises(frappe.ValidationError):
+			create_quotation_transport_sales_order(doc.name)
+
+		# 3. Rejected cannot create Sales Order
+		reject_quotation(doc.name, "Rejected by customer")
+		with self.assertRaises(frappe.ValidationError):
+			create_quotation_transport_sales_order(doc.name)
+
+	def test_get_quotation_list_with_summaries_returns_materials_locations_and_rates(self):
+		from transport_management.transport_management.doctype.transport_quotation.transport_quotation import (
+			get_quotation_list_with_summaries,
+		)
+
+		doc = self.make_quotation(complete=True)
+		doc.insert()
+
+		rows = get_quotation_list_with_summaries(limit_page_length=50)
+		matched = next((r for r in rows if r["name"] == doc.name), None)
+		self.assertIsNotNone(matched)
+		self.assertEqual(len(matched["materials"]), 1)
+		self.assertEqual(matched["materials"][0]["material"], self.demo["material"])
+		self.assertEqual(len(matched["locations"]), 2)
+		self.assertEqual(len(matched["rates"]), 1)
+

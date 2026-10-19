@@ -357,19 +357,49 @@ class TransportTrip(Document):
 		)
 
 	def validate_planned_loading_point(self):
-		job = frappe.db.get_value("Transport Job", self.transport_job, ["quantity_mode"], as_dict=True)
-		if not job or job.quantity_mode != OPEN_QUANTITY_MODE:
+		self.validate_open_job_route()
+
+	def validate_open_job_route(self):
+		if not self.is_open_quantity_job():
 			return
-		permitted = frappe.get_all(
-			"Transport Job Permitted Loading Point",
-			filters={"parent": self.transport_job, "parenttype": "Transport Job", "parentfield": "permitted_loading_points"},
-			pluck="loading_location",
-			limit_page_length=0,
-		)
-		if not permitted:
+		job = frappe.get_doc("Transport Job", self.transport_job)
+		# 1. Loading point validation
+		permitted_loading_points = {
+			row.loading_location for row in job.permitted_loading_points if row.loading_location
+		}
+		if not permitted_loading_points:
 			frappe.throw(_("Open Transport Jobs must have at least one permitted loading point."))
-		if self.loading_site not in permitted:
-			frappe.throw(_("Planned Loading Location must be one of the Job's permitted loading points."))
+		if self.loading_site not in permitted_loading_points:
+			frappe.throw(
+				_("Planned Loading Location {0} must be one of the Job's permitted loading points.").format(
+					self.loading_site
+				)
+			)
+
+		# 2. Destination validation
+		permitted_destinations = set(job.get_permitted_destinations())
+		if self.unloading_site not in permitted_destinations:
+			frappe.throw(
+				_("Destination {0} is not permitted for Transport Job {1}.").format(
+					self.unloading_site, self.transport_job
+				)
+			)
+
+		# 3. Route combination validation (material, loading_location, unloading_location)
+		valid_routes = job.get_permitted_routes()
+		is_valid_route = any(
+			r["loading_location"] == self.loading_site and r["unloading_location"] == self.unloading_site
+			for r in valid_routes
+		)
+		if not is_valid_route:
+			frappe.throw(
+				_("Route combination from {0} to {1} for Material {2} is not authorized for Transport Job {3}.").format(
+					self.loading_site,
+					self.unloading_site,
+					self.material,
+					self.transport_job,
+				)
+			)
 
 	def validate_protected_loading_and_rate_fields(self):
 		if self.is_new():
@@ -634,13 +664,14 @@ def get_defaults_from_transport_job(transport_job):
 	job = frappe.get_doc("Transport Job", transport_job)
 	if job.quantity_mode != OPEN_QUANTITY_MODE and flt(job.remaining_quantity, 6) <= 0:
 		frappe.throw(_("This Transport Job is fully delivered. No remaining quantity is available for a new Trip."))
-	return {
+	res = {
 		"transport_job": job.name,
 		"trip_date": job.requested_date,
 		"loading_site": job.loading_site,
 		"unloading_site": job.unloading_site,
 		"material": job.material,
 		"uom": TON_UOM,
+		"quantity_mode": job.quantity_mode,
 		"loading_stops": [
 			{
 				"loading_location": stop.loading_location,
@@ -649,6 +680,50 @@ def get_defaults_from_transport_job(transport_job):
 			}
 			for stop in job.get("loading_stops") or []
 		],
+	}
+	if job.quantity_mode == OPEN_QUANTITY_MODE:
+		res["permitted_loading_points"] = [
+			row.loading_location for row in (job.permitted_loading_points or []) if row.loading_location
+		]
+		res["permitted_destinations"] = job.get_permitted_destinations()
+		res["permitted_routes"] = job.get_permitted_routes()
+	return res
+
+
+@frappe.whitelist()
+def get_trip_route_options(transport_job, loading_site=None):
+	if not transport_job:
+		frappe.throw(_("Transport Job is required."))
+	job = frappe.get_doc("Transport Job", transport_job)
+	job.check_permission("read")
+
+	if job.quantity_mode != OPEN_QUANTITY_MODE:
+		return {
+			"quantity_mode": job.quantity_mode,
+			"material": job.material,
+			"loading_points": [job.loading_site] if job.loading_site else [],
+			"destinations": [job.unloading_site] if job.unloading_site else [],
+			"routes": [
+				{"loading_location": job.loading_site, "unloading_location": job.unloading_site}
+			] if job.loading_site and job.unloading_site else [],
+		}
+
+	loading_points = [
+		row.loading_location for row in (job.permitted_loading_points or []) if row.loading_location
+	]
+	destinations = job.get_permitted_destinations()
+	routes = job.get_permitted_routes()
+
+	if loading_site:
+		routes = [r for r in routes if r["loading_location"] == loading_site]
+		destinations = sorted(list({r["unloading_location"] for r in routes}))
+
+	return {
+		"quantity_mode": job.quantity_mode,
+		"material": job.material,
+		"loading_points": loading_points,
+		"destinations": destinations,
+		"routes": routes,
 	}
 
 
@@ -690,8 +765,12 @@ def create_assigned_transport_trip(
 	job.check_permission("read")
 	if job.docstatus == 2 or job.status == "Cancelled":
 		frappe.throw(_("Cancelled Transport Jobs cannot receive new Trips."))
-	if not driver:
+	if not driver and execution_source == "OWN":
 		frappe.throw(_("A Truck Driver must be selected when assigning a Transport Trip."))
+	if not material:
+		material = job.material
+	if not trip_date:
+		trip_date = job.requested_date or frappe.utils.today()
 	if not all((material, loading_site, unloading_site, trip_date)):
 		frappe.throw(_("Planned material, loading point, destination, and Trip date are required."))
 	if job.quantity_mode != OPEN_QUANTITY_MODE and planned_quantity in (None, ""):

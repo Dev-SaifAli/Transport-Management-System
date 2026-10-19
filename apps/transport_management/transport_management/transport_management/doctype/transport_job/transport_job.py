@@ -114,18 +114,23 @@ class TransportJob(Document):
 
 		snapshot_ids = set()
 		allowed_loading_points = set()
+		allowed_destinations = set()
 		for reference in self.sales_order_rate_snapshots:
 			snapshot = snapshots.get(reference.sales_order_rate_snapshot)
 			if not snapshot:
 				frappe.throw(_("Rate snapshot reference on Transport Job row {0} is not on its Sales Order.").format(
 					reference.idx
 				))
-			if snapshot.material != self.material or snapshot.unloading_location != self.unloading_site:
-				frappe.throw(_("Transport Job material and destination must match its rate snapshots."))
+			if snapshot.material != self.material:
+				frappe.throw(_("Transport Job material {0} must match its rate snapshot material {1}.").format(
+					self.material,
+					snapshot.material,
+				))
 			if snapshot.name in snapshot_ids:
 				frappe.throw(_("A Sales Order rate snapshot can only be linked to a Job once."))
 			snapshot_ids.add(snapshot.name)
 			allowed_loading_points.add(snapshot.loading_location)
+			allowed_destinations.add(snapshot.unloading_location)
 
 		permitted = [row.loading_location for row in self.permitted_loading_points]
 		if len(permitted) != len(set(permitted)):
@@ -136,6 +141,50 @@ class TransportJob(Document):
 			validate_transport_location_usage(row.loading_location, {"Loading", "Both"}, _("Permitted Loading Point"))
 		if self.loading_site not in allowed_loading_points:
 			frappe.throw(_("Primary Loading Site must be one of the permitted loading points."))
+		if self.unloading_site and self.unloading_site not in allowed_destinations:
+			frappe.throw(_("Default Unloading Site must be one of the destinations in the linked rate snapshots."))
+
+	def get_permitted_destinations(self):
+		if self.quantity_mode != OPEN_QUANTITY_MODE:
+			return [self.unloading_site] if self.unloading_site else []
+		snapshot_names = [r.sales_order_rate_snapshot for r in self.sales_order_rate_snapshots if r.sales_order_rate_snapshot]
+		if not snapshot_names:
+			return [self.unloading_site] if self.unloading_site else []
+		snapshots = frappe.get_all(
+			"Transport Sales Order Rate Snapshot",
+			filters={"name": ["in", snapshot_names]},
+			fields=["unloading_location"],
+			limit_page_length=0,
+		)
+		destinations = []
+		for s in snapshots:
+			if s.unloading_location and s.unloading_location not in destinations:
+				destinations.append(s.unloading_location)
+		return destinations or ([self.unloading_site] if self.unloading_site else [])
+
+	def get_permitted_routes(self):
+		if self.quantity_mode != OPEN_QUANTITY_MODE:
+			return [{"loading_location": self.loading_site, "unloading_location": self.unloading_site}]
+		snapshot_names = [r.sales_order_rate_snapshot for r in self.sales_order_rate_snapshots if r.sales_order_rate_snapshot]
+		if not snapshot_names:
+			return [{"loading_location": self.loading_site, "unloading_location": self.unloading_site}]
+		snapshots = frappe.get_all(
+			"Transport Sales Order Rate Snapshot",
+			filters={"name": ["in", snapshot_names]},
+			fields=["loading_location", "unloading_location", "rate", "currency", "effective_from", "effective_to"],
+			limit_page_length=0,
+		)
+		routes = []
+		seen = set()
+		for s in snapshots:
+			key = (s.loading_location, s.unloading_location)
+			if key not in seen:
+				seen.add(key)
+				routes.append({
+					"loading_location": s.loading_location,
+					"unloading_location": s.unloading_location,
+				})
+		return routes
 
 	def calculate_quantity_progress(self):
 		if not self.name:
@@ -158,6 +207,23 @@ class TransportJob(Document):
 			if self.quantity_mode != OPEN_QUANTITY_MODE
 			else 0
 		)
+
+@frappe.whitelist()
+def get_job_permitted_destinations(transport_job):
+	if not transport_job or not frappe.db.exists("Transport Job", transport_job):
+		frappe.throw(_("Transport Job must exist."))
+	job = frappe.get_doc("Transport Job", transport_job)
+	job.check_permission("read")
+	return job.get_permitted_destinations()
+
+
+@frappe.whitelist()
+def get_job_permitted_routes(transport_job):
+	if not transport_job or not frappe.db.exists("Transport Job", transport_job):
+		frappe.throw(_("Transport Job must exist."))
+	job = frappe.get_doc("Transport Job", transport_job)
+	job.check_permission("read")
+	return job.get_permitted_routes()
 
 
 def get_quantity_progress(transport_job):
@@ -1463,7 +1529,14 @@ def get_billing_trip_warnings(job, trip, delivered_quantity, unit_rate):
 		warnings.append(_("Trip is missing vehicle."))
 	if trip.material != job.material:
 		warnings.append(_("Trip material differs from Transport Job material."))
-	if trip.loading_site != job.loading_site or trip.unloading_site != job.unloading_site:
+	if job.quantity_mode == "Open":
+		valid_routes = job.get_permitted_routes()
+		if not any(
+			r["loading_location"] == trip.loading_site and r["unloading_location"] == trip.unloading_site
+			for r in valid_routes
+		):
+			warnings.append(_("Trip route differs from Transport Job route."))
+	elif trip.loading_site != job.loading_site or trip.unloading_site != job.unloading_site:
 		warnings.append(_("Trip route differs from Transport Job route."))
 	return warnings
 

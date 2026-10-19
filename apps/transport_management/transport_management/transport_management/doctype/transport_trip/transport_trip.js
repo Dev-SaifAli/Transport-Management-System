@@ -12,6 +12,20 @@ frappe.ui.form.on("Transport Trip", {
 		frm.trigger("render_status_header");
 		frm.trigger("setup_status_actions");
 		frm.trigger("add_calculate_charges_button");
+		if (frm.doc.transport_job && !frm.doc._permitted_routes) {
+			frm.trigger("load_job_route_options");
+		}
+	},
+
+	loading_site(frm) {
+		if (frm.doc._job_quantity_mode === "Open" && frm.doc.loading_site && frm.doc.unloading_site) {
+			const validDestinations = (frm.doc._permitted_routes || [])
+				.filter((r) => r.loading_location === frm.doc.loading_site)
+				.map((r) => r.unloading_location);
+			if (validDestinations.length && !validDestinations.includes(frm.doc.unloading_site)) {
+				frm.set_value("unloading_site", null);
+			}
+		}
 	},
 
 	execution_source(frm) {
@@ -71,18 +85,46 @@ frappe.ui.form.on("Transport Trip", {
 	},
 
 	setup_location_queries(frm) {
-		frm.set_query("loading_site", () => ({
-			filters: {
-				active: 1,
-				location_usage: ["in", ["Loading", "Both"]],
-			},
-		}));
-		frm.set_query("unloading_site", () => ({
-			filters: {
-				active: 1,
-				location_usage: ["in", ["Unloading", "Both"]],
-			},
-		}));
+		frm.set_query("loading_site", () => {
+			if (frm.doc._job_quantity_mode === "Open" && frm.doc._permitted_loading_points?.length) {
+				return {
+					filters: {
+						name: ["in", frm.doc._permitted_loading_points],
+						active: 1,
+					},
+				};
+			}
+			return {
+				filters: {
+					active: 1,
+					location_usage: ["in", ["Loading", "Both"]],
+				},
+			};
+		});
+		frm.set_query("unloading_site", () => {
+			if (frm.doc._job_quantity_mode === "Open") {
+				let destinations = frm.doc._permitted_destinations || [];
+				if (frm.doc.loading_site && frm.doc._permitted_routes?.length) {
+					destinations = frm.doc._permitted_routes
+						.filter((r) => r.loading_location === frm.doc.loading_site)
+						.map((r) => r.unloading_location);
+				}
+				if (destinations.length) {
+					return {
+						filters: {
+							name: ["in", destinations],
+							active: 1,
+						},
+					};
+				}
+			}
+			return {
+				filters: {
+					active: 1,
+					location_usage: ["in", ["Unloading", "Both"]],
+				},
+			};
+		});
 	},
 
 	setup_vehicle_query(frm) {
@@ -375,19 +417,59 @@ frappe.ui.form.on("Transport Trip", {
 			},
 			callback(r) {
 				const defaults = r.message || {};
-				["trip_date", "loading_site", "unloading_site", "material", "uom"].forEach((fieldname) => {
+				frm.doc._job_quantity_mode = defaults.quantity_mode;
+				frm.doc._permitted_loading_points = defaults.permitted_loading_points || [];
+				frm.doc._permitted_destinations = defaults.permitted_destinations || [];
+				frm.doc._permitted_routes = defaults.permitted_routes || [];
+
+				["trip_date", "material", "uom"].forEach((fieldname) => {
 					if (defaults[fieldname]) {
 						frm.set_value(fieldname, defaults[fieldname]);
 					}
 				});
-				frm.clear_table("loading_stops");
-				(defaults.loading_stops || []).forEach((stop) => {
-					const row = frm.add_child("loading_stops");
-					row.loading_location = stop.loading_location;
-					row.planned_quantity = stop.planned_quantity;
-					row.notes = stop.notes;
-				});
-				frm.refresh_field("loading_stops");
+				if (defaults.quantity_mode === "Open") {
+					if (defaults.permitted_loading_points?.length === 1) {
+						frm.set_value("loading_site", defaults.permitted_loading_points[0]);
+					} else if (defaults.loading_site && defaults.permitted_loading_points?.includes(defaults.loading_site)) {
+						frm.set_value("loading_site", defaults.loading_site);
+					}
+					if (defaults.permitted_destinations?.length === 1) {
+						frm.set_value("unloading_site", defaults.permitted_destinations[0]);
+					} else if (defaults.unloading_site && defaults.permitted_destinations?.includes(defaults.unloading_site)) {
+						frm.set_value("unloading_site", defaults.unloading_site);
+					}
+					frm.clear_table("loading_stops");
+					frm.refresh_field("loading_stops");
+				} else {
+					if (defaults.loading_site) frm.set_value("loading_site", defaults.loading_site);
+					if (defaults.unloading_site) frm.set_value("unloading_site", defaults.unloading_site);
+					frm.clear_table("loading_stops");
+					(defaults.loading_stops || []).forEach((stop) => {
+						const row = frm.add_child("loading_stops");
+						row.loading_location = stop.loading_location;
+						row.planned_quantity = stop.planned_quantity;
+						row.notes = stop.notes;
+					});
+					frm.refresh_field("loading_stops");
+				}
+			},
+		});
+	},
+
+	load_job_route_options(frm) {
+		if (!frm.doc.transport_job) return;
+		frappe.call({
+			method:
+				"transport_management.transport_management.doctype.transport_trip.transport_trip.get_trip_route_options",
+			args: {
+				transport_job: frm.doc.transport_job,
+			},
+			callback(r) {
+				const opts = r.message || {};
+				frm.doc._job_quantity_mode = opts.quantity_mode;
+				frm.doc._permitted_loading_points = opts.loading_points || [];
+				frm.doc._permitted_destinations = opts.destinations || [];
+				frm.doc._permitted_routes = opts.routes || [];
 			},
 		});
 	},

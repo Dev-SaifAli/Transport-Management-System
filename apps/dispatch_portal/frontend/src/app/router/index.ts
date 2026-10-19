@@ -40,8 +40,8 @@ const router: Router = createRouter({
     {
       path: '/create-trip',
       name: 'create-trip',
-      component: () => import('@/features/placeholder/AwaitingDesignView.vue'),
-      meta: { title: 'Create Trip', pendingDesign: true },
+      component: () => import('@/features/trips/CreateTripView.vue'),
+      meta: { title: 'Create Trip' },
     },
     {
       path: '/fleet-availability',

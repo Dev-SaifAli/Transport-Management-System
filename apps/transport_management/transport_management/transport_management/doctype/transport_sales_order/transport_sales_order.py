@@ -156,6 +156,74 @@ class TransportSalesOrder(Document):
 					)
 			route_periods[route].append((start, end))
 
+		# Validate geographical area (area_zone from Transport Location)
+		loading_locations = {snapshot.loading_location for snapshot in self.rate_snapshots if snapshot.loading_location}
+		loc_areas = {}
+		if loading_locations:
+			loc_records = frappe.get_all(
+				"Transport Location",
+				filters={"name": ["in", list(loading_locations)]},
+				fields=["name", "area_zone"],
+			)
+			loc_areas = {r.name: (r.area_zone or "").strip() for r in loc_records}
+
+		areas = set()
+		for snapshot in self.rate_snapshots:
+			area = loc_areas.get(snapshot.loading_location)
+			if not area:
+				frappe.throw(
+					_("Loading location {0} does not have a geographical area (area_zone) configured.").format(
+						snapshot.loading_location
+					),
+					frappe.ValidationError,
+				)
+			areas.add(area)
+
+		if len(areas) > 1:
+			frappe.throw(
+				_("A Transport Sales Order must belong to a single geographical area, but selected rates span multiple areas: {0}.").format(
+					", ".join(sorted(areas))
+				),
+				frappe.ValidationError,
+			)
+
+		single_area = areas.pop()
+		if self.get("area_zone") and self.get("area_zone") != single_area:
+			frappe.throw(
+				_("Sales Order area_zone '{0}' does not match the rate geographical area '{1}'.").format(
+					self.get("area_zone"), single_area
+				),
+				frappe.ValidationError,
+			)
+		self.area_zone = single_area
+
+		# Prevent duplicate conversion of the same quotation rate into active Sales Orders
+		source_rate_names = [s.source_quotation_rate for s in self.rate_snapshots if s.source_quotation_rate]
+		if source_rate_names:
+			existing_active = frappe.db.sql(
+				"""
+				SELECT
+					child.source_quotation_rate,
+					parent.name as sales_order
+				FROM `tabTransport Sales Order Rate Snapshot` child
+				INNER JOIN `tabTransport Sales Order` parent ON parent.name = child.parent
+				WHERE child.parenttype = 'Transport Sales Order'
+				  AND parent.docstatus < 2
+				  AND parent.name != %s
+				  AND child.source_quotation_rate IN ({0})
+				""".format(", ".join(["%s"] * len(source_rate_names))),
+				[self.name or ""] + source_rate_names,
+				as_dict=True,
+			)
+			if existing_active:
+				conflict = existing_active[0]
+				frappe.throw(
+					_("Quotation rate {0} has already been converted in active Sales Order {1}.").format(
+						conflict.source_quotation_rate, conflict.sales_order
+					),
+					frappe.ValidationError,
+				)
+
 		self.validate_submitted_quotation_commercials_immutable()
 
 	def validate_submitted_quotation_commercials_immutable(self):
@@ -309,19 +377,35 @@ class TransportSalesOrder(Document):
 			self.status = "Draft"
 			return
 		if self.order_mode == QUOTATION_ORDER_MODE:
-			expected_groups = set(get_quotation_job_groups(self.rate_snapshots))
-			converted_groups = {
-				(job.material, job.unloading_site)
-				for job in frappe.get_all(
-					"Transport Job",
-					filters={"sales_order": self.name, "quantity_mode": "Open"},
-					fields=["material", "unloading_site"],
-					limit_page_length=0,
-				)
-			}
-			if not converted_groups:
+			all_materials = {row.material for row in self.rate_snapshots if row.material}
+			all_snapshot_names = {row.name for row in self.rate_snapshots}
+			active_jobs = frappe.get_all(
+				"Transport Job",
+				filters={"sales_order": self.name, "quantity_mode": "Open", "status": ["!=", "Cancelled"]},
+				fields=["name", "material"],
+				limit_page_length=0,
+			)
+			if not active_jobs:
 				self.status = "Submitted"
-			elif expected_groups and expected_groups.issubset(converted_groups):
+				return
+
+			converted_snapshot_names = set(
+				frappe.db.sql_list(
+					"""
+					SELECT DISTINCT snap.sales_order_rate_snapshot
+					FROM `tabTransport Job Rate Snapshot` snap
+					INNER JOIN `tabTransport Job` job ON job.name = snap.parent
+					WHERE job.sales_order = %s
+					  AND job.quantity_mode = 'Open'
+					  AND job.status != 'Cancelled'
+					""",
+					(self.name,),
+				)
+			)
+			converted_materials = {job.material for job in active_jobs if job.material}
+			if (all_snapshot_names and all_snapshot_names.issubset(converted_snapshot_names)) or (
+				all_materials and all_materials.issubset(converted_materials)
+			):
 				self.status = "Converted"
 			else:
 				self.status = "Partially Converted"
@@ -350,11 +434,17 @@ def get_transport_rate(customer, material, loading_location, unloading_location,
 
 
 @frappe.whitelist()
-def create_quotation_transport_sales_order(quotation, quotation_rate_names=None):
+def create_quotation_transport_sales_order(quotation, quotation_rate_names=None, area_zone=None):
 	if not frappe.has_permission("Transport Sales Order", "create"):
 		frappe.throw(_("You do not have permission to create Transport Sales Orders."), frappe.PermissionError)
 	if not quotation or not frappe.db.exists("Transport Quotation", quotation):
 		frappe.throw(_("Transport Quotation must exist."))
+
+	# Concurrency lock on quotation to serialize conversions and prevent race conditions
+	frappe.db.sql(
+		"SELECT name FROM `tabTransport Quotation` WHERE name = %s FOR UPDATE",
+		quotation,
+	)
 
 	source = frappe.get_doc("Transport Quotation", quotation)
 	source.check_permission("read")
@@ -363,11 +453,44 @@ def create_quotation_transport_sales_order(quotation, quotation_rate_names=None)
 	if not source.rates:
 		frappe.throw(_("The approved Transport Quotation has no rates to snapshot."))
 
-	selected_names = parse_quotation_rate_names(quotation_rate_names)
+	# Resolve geographical areas for loading points
+	loading_locations = {row.loading_location for row in source.rates if row.loading_location}
+	loc_areas = {}
+	if loading_locations:
+		loc_records = frappe.get_all(
+			"Transport Location",
+			filters={"name": ["in", list(loading_locations)]},
+			fields=["name", "area_zone"],
+		)
+		loc_areas = {r.name: (r.area_zone or "").strip() for r in loc_records}
+
+	# Verify all loading locations have an area_zone configured
+	for row in source.rates:
+		if not loc_areas.get(row.loading_location):
+			frappe.throw(
+				_("Loading location {0} does not have a geographical area (area_zone) configured.").format(
+					row.loading_location
+				)
+			)
+
 	source_rates = {row.name: row for row in source.rates}
-	if selected_names is None:
-		selected_rates = list(source.rates)
+	all_areas = sorted({loc_areas[row.loading_location] for row in source.rates})
+
+	if area_zone:
+		area_zone = str(area_zone).strip()
+		rates_in_area = [row for row in source.rates if loc_areas.get(row.loading_location) == area_zone]
+		if not rates_in_area:
+			frappe.throw(
+				_("No rates found in Transport Quotation {0} for geographical area {1}.").format(
+					source.name, area_zone
+				)
+			)
+		candidates = rates_in_area
 	else:
+		candidates = list(source.rates)
+
+	selected_names = parse_quotation_rate_names(quotation_rate_names)
+	if selected_names is not None:
 		if not selected_names:
 			frappe.throw(_("Select at least one quotation rate for the Transport Sales Order."))
 		missing_names = selected_names - set(source_rates)
@@ -378,7 +501,29 @@ def create_quotation_transport_sales_order(quotation, quotation_rate_names=None)
 					source.name,
 				)
 			)
-		selected_rates = [row for row in source.rates if row.name in selected_names]
+		selected_rates = [row for row in candidates if row.name in selected_names]
+		if not selected_rates:
+			frappe.throw(
+				_("None of the selected quotation rates match geographical area {0}.").format(area_zone)
+			)
+	else:
+		if not area_zone and len(all_areas) > 1:
+			frappe.throw(
+				_("This quotation contains rates across multiple geographical areas ({0}). Please specify an area_zone to create an area-wise Sales Order.").format(
+					", ".join(all_areas)
+				)
+			)
+		selected_rates = candidates
+
+	# Ensure selected rates belong to exactly one area
+	selected_areas = {loc_areas[row.loading_location] for row in selected_rates}
+	if len(selected_areas) > 1:
+		frappe.throw(
+			_("A Transport Sales Order must belong to a single geographical area, but selected rates span multiple areas: {0}.").format(
+				", ".join(sorted(selected_areas))
+			)
+		)
+	resolved_area = selected_areas.pop()
 
 	order = frappe.new_doc("Transport Sales Order")
 	order.update({
@@ -386,6 +531,7 @@ def create_quotation_transport_sales_order(quotation, quotation_rate_names=None)
 		"transport_quotation": source.name,
 		"posting_date": today(),
 		"customer": source.customer,
+		"area_zone": resolved_area,
 		"currency": "AED",
 		"estimated_quantity": source.estimated_quantity,
 		"estimated_trips": source.estimated_trips,
@@ -404,6 +550,119 @@ def create_quotation_transport_sales_order(quotation, quotation_rate_names=None)
 		})
 	order.insert()
 	return order.name
+
+
+@frappe.whitelist()
+def get_quotation_sales_order_summary(quotation):
+	"""Return area-wise breakdown of quotation rates, materials, loading/destination points,
+	and existing linked active Sales Orders."""
+	if not quotation or not frappe.db.exists("Transport Quotation", quotation):
+		frappe.throw(_("Transport Quotation must exist."))
+
+	source = frappe.get_doc("Transport Quotation", quotation)
+	source.check_permission("read")
+
+	# Fetch existing active sales orders and their rate snapshots
+	active_snapshots = frappe.db.sql(
+		"""
+		SELECT
+			child.source_quotation_rate,
+			parent.name as sales_order,
+			parent.status,
+			parent.docstatus,
+			parent.creation
+		FROM `tabTransport Sales Order Rate Snapshot` child
+		INNER JOIN `tabTransport Sales Order` parent ON parent.name = child.parent
+		WHERE child.parenttype = 'Transport Sales Order'
+		  AND parent.transport_quotation = %s
+		  AND parent.docstatus < 2
+		ORDER BY parent.creation asc
+		""",
+		source.name,
+		as_dict=True,
+	)
+	snapshot_so_map = {}
+	for row in active_snapshots:
+		snapshot_so_map[row.source_quotation_rate] = {
+			"sales_order": row.sales_order,
+			"status": row.status,
+			"docstatus": row.docstatus,
+		}
+
+	# Resolve area_zone for each loading location
+	loading_locations = {row.loading_location for row in source.rates if row.loading_location}
+	loc_areas = {}
+	if loading_locations:
+		loc_records = frappe.get_all(
+			"Transport Location",
+			filters={"name": ["in", list(loading_locations)]},
+			fields=["name", "area_zone"],
+		)
+		loc_areas = {r.name: (r.area_zone or "").strip() for r in loc_records}
+
+	# Group rates by area_zone
+	areas_dict = {}
+	for row in source.rates:
+		area = loc_areas.get(row.loading_location) or "Unassigned Area"
+		if area not in areas_dict:
+			areas_dict[area] = {
+				"area_zone": area,
+				"has_valid_area": bool(loc_areas.get(row.loading_location)),
+				"rates": [],
+				"materials": set(),
+				"loading_locations": set(),
+				"unloading_locations": set(),
+				"sales_orders": {},
+			}
+		rate_info = {
+			"name": row.name,
+			"material": row.material,
+			"loading_location": row.loading_location,
+			"unloading_location": row.unloading_location,
+			"effective_from": str(row.effective_from),
+			"effective_to": str(row.effective_to),
+			"rate": flt(row.rate, 6),
+			"converted_sales_order": snapshot_so_map.get(row.name),
+		}
+		areas_dict[area]["rates"].append(rate_info)
+		areas_dict[area]["materials"].add(row.material)
+		areas_dict[area]["loading_locations"].add(row.loading_location)
+		areas_dict[area]["unloading_locations"].add(row.unloading_location)
+		if row.name in snapshot_so_map:
+			so = snapshot_so_map[row.name]
+			areas_dict[area]["sales_orders"][so["sales_order"]] = so
+
+	areas_list = []
+	for area_name, data in sorted(areas_dict.items()):
+		converted_count = sum(1 for r in data["rates"] if r["converted_sales_order"])
+		total_count = len(data["rates"])
+		areas_list.append({
+			"area_zone": data["area_zone"],
+			"has_valid_area": data["has_valid_area"],
+			"total_rates": total_count,
+			"converted_rates": converted_count,
+			"is_fully_converted": converted_count == total_count and total_count > 0,
+			"is_partially_converted": 0 < converted_count < total_count,
+			"materials": sorted(list(data["materials"])),
+			"loading_locations": sorted(list(data["loading_locations"])),
+			"unloading_locations": sorted(list(data["unloading_locations"])),
+			"sales_orders": list(data["sales_orders"].values()),
+			"rates": data["rates"],
+		})
+
+	total_areas = len(areas_list)
+	converted_areas = sum(1 for a in areas_list if a["is_fully_converted"])
+
+	return {
+		"quotation": source.name,
+		"customer": source.customer,
+		"status": source.status,
+		"docstatus": source.docstatus,
+		"total_areas": total_areas,
+		"converted_areas": converted_areas,
+		"has_unconverted_areas": converted_areas < total_areas,
+		"areas": areas_list,
+	}
 
 
 def parse_quotation_rate_names(rate_names):
@@ -579,42 +838,54 @@ def create_open_quotation_jobs(doc, selected_snapshot_names=None):
 	groups = get_quotation_job_groups(doc.rate_snapshots)
 	if selected_snapshot_names is not None:
 		known_snapshot_names = {row.name for row in doc.rate_snapshots}
-		unknown = selected_snapshot_names - known_snapshot_names
-		if unknown:
-			frappe.throw(
-				_("Selected rate snapshot {0} does not belong to Transport Sales Order {1}.").format(
-					", ".join(sorted(unknown)),
-					doc.name,
+		known_materials = {row.material for row in doc.rate_snapshots if row.material}
+		is_material_selection = bool(selected_snapshot_names and selected_snapshot_names.issubset(known_materials))
+		if not is_material_selection:
+			unknown = selected_snapshot_names - known_snapshot_names
+			if unknown:
+				frappe.throw(
+					_("Selected rate snapshot {0} does not belong to Transport Sales Order {1}.").format(
+						", ".join(sorted(unknown)),
+						doc.name,
+					)
 				)
-			)
-		groups = {
-			key: rows
-			for key, rows in groups.items()
-			if any(row.name in selected_snapshot_names for row in rows)
-		}
+			groups = {
+				material: snapshots
+				for material, snapshots in groups.items()
+				if any(row.name in selected_snapshot_names for row in snapshots)
+			}
+		else:
+			groups = {
+				material: snapshots
+				for material, snapshots in groups.items()
+				if material in selected_snapshot_names
+			}
 	if not groups:
-		frappe.throw(_("No quotation-backed material and destination groups were selected."))
+		frappe.throw(_("No quotation-backed material groups were selected."))
 
 	created_jobs = []
-	for (material, destination), snapshots in groups.items():
-		existing_job = frappe.db.get_value(
+	for material, snapshots in groups.items():
+		existing_jobs = frappe.get_all(
 			"Transport Job",
-			{
+			filters={
 				"sales_order": doc.name,
 				"quantity_mode": "Open",
 				"material": material,
-				"unloading_site": destination,
+				"status": ["!=", "Cancelled"],
 			},
-			"name",
+			pluck="name",
+			limit_page_length=2,
 		)
-		if existing_job:
-			frappe.throw(
-				_("A Transport Job already exists for Material {0} and Destination {1}: {2}.").format(
-					material,
-					destination,
-					existing_job,
+		if existing_jobs:
+			if selected_snapshot_names is not None:
+				frappe.throw(
+					_("A Transport Job already exists for Material {0} on Transport Sales Order {1}: {2}.").format(
+						material,
+						doc.name,
+						", ".join(existing_jobs),
+					)
 				)
-			)
+			continue
 
 		job = frappe.new_doc("Transport Job")
 		job.update({
@@ -624,7 +895,7 @@ def create_open_quotation_jobs(doc, selected_snapshot_names=None):
 			"requested_quantity": 0,
 			"uom": TON_UOM,
 			"material": material,
-			"unloading_site": destination,
+			"unloading_site": snapshots[0].unloading_location,
 			"loading_site": snapshots[0].loading_location,
 			"sales_order": doc.name,
 			"transport_quotation": doc.transport_quotation,
@@ -639,7 +910,7 @@ def create_open_quotation_jobs(doc, selected_snapshot_names=None):
 			job.append("sales_order_rate_snapshots", {
 				"sales_order_rate_snapshot": snapshot.name,
 			})
-			if snapshot.loading_location not in loading_points:
+			if snapshot.loading_location and snapshot.loading_location not in loading_points:
 				loading_points.append(snapshot.loading_location)
 		for loading_point in loading_points:
 			job.append("permitted_loading_points", {
@@ -648,6 +919,13 @@ def create_open_quotation_jobs(doc, selected_snapshot_names=None):
 		job.insert()
 		created_jobs.append(job.name)
 
+	if not created_jobs:
+		frappe.throw(
+			_("All quotation-backed materials for Transport Sales Order {0} have already been converted into Transport Jobs.").format(
+				doc.name
+			)
+		)
+
 	update_conversion_status(doc.name)
 	return created_jobs
 
@@ -655,7 +933,9 @@ def create_open_quotation_jobs(doc, selected_snapshot_names=None):
 def get_quotation_job_groups(rate_snapshots):
 	groups = {}
 	for snapshot in rate_snapshots or []:
-		groups.setdefault((snapshot.material, snapshot.unloading_location), []).append(snapshot)
+		if not snapshot.material:
+			continue
+		groups.setdefault(snapshot.material, []).append(snapshot)
 	return groups
 
 

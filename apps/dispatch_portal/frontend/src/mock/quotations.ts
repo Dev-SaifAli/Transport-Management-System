@@ -14,6 +14,8 @@ export const mockQuotations: TransportQuotation[] = [
 export const mockQuotationTabs: { key: QuotationTabKey; label: string; count: number }[] = [
   { key: 'all', label: 'All', count: 8 },
   { key: 'draft', label: 'Draft', count: 2 },
+  { key: 'pending_approval', label: 'Pending Approval', count: 0 },
   { key: 'approved', label: 'Approved', count: 4 },
+  { key: 'rejected', label: 'Rejected', count: 0 },
   { key: 'cancelled', label: 'Cancelled', count: 2 },
 ]

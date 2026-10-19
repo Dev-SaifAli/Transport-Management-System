@@ -33,6 +33,18 @@ APPROVAL_IMMUTABLE_FIELDS = (
 
 
 class TransportQuotation(Document):
+	def _validate_selects(self):
+		# Ensure runtime Select validation allows Pending Approval and Rejected even before
+		# bench migrate synchronizes the updated DocField options in tabDocField.
+		status_df = self.meta.get_field("status")
+		if status_df and status_df.options:
+			opts = status_df.options.split("\n")
+			for extra in ("Pending Approval", "Rejected"):
+				if extra not in opts:
+					opts.append(extra)
+			status_df.options = "\n".join(opts)
+		super()._validate_selects()
+
 	def before_validate(self):
 		if not self.quotation_date:
 			self.quotation_date = today()
@@ -44,28 +56,65 @@ class TransportQuotation(Document):
 		elif self.docstatus == 2:
 			self.status = "Cancelled"
 		else:
-			self.status = "Draft"
+			if self.is_new():
+				if self.status not in {"Draft", "Pending Approval"}:
+					self.status = "Draft"
+			else:
+				previous = self.get_doc_before_save()
+				prev_status = previous.status if previous else "Draft"
+				if prev_status == "Rejected" and not getattr(self.flags, "in_lifecycle_transition", False):
+					self.status = "Rejected"
+				elif getattr(self.flags, "in_lifecycle_transition", False) and self.status in {
+					"Draft",
+					"Pending Approval",
+					"Rejected",
+				}:
+					pass
+				elif self.status in {"Draft", "Pending Approval"}:
+					pass
+				else:
+					self.status = prev_status if prev_status in {"Draft", "Pending Approval", "Rejected"} else "Draft"
 
 	def validate(self):
 		self.validate_currency()
 		self.validate_dates()
 		self.validate_revision()
 		self.validate_materials_and_locations()
-		self.validate_rates(require_complete=self.is_submit_action())
+		self.validate_rates(require_complete=self.is_submit_action() or self.is_send_to_customer_action())
 		self.validate_approved_immutability()
+		self.validate_rejected_immutability()
 
 	def before_submit(self):
-		if frappe.session.user != "Administrator" and not (APPROVAL_ROLES & set(frappe.get_roles())):
-			frappe.throw(_("You are not authorized to record customer approval."), frappe.PermissionError)
+		check_lifecycle_authorization(_("record customer approval"))
+		previous = self.get_doc_before_save()
+		if (previous and previous.status == "Rejected") or self.status == "Rejected":
+			frappe.throw(_("Rejected quotations cannot be approved. Create a new quotation or revision instead."))
 		self.validate_approval_record()
 		self.status = "Approved"
 
+	def on_submit(self):
+		ref_text = f" (Ref: {self.customer_approval_reference})" if self.customer_approval_reference else ""
+		self.add_comment(
+			"Info",
+			_("Customer approval recorded on {0}{1} by {2}.").format(
+				self.customer_approval_date, ref_text, frappe.session.user
+			),
+		)
+
 	def on_cancel(self):
+		check_lifecycle_authorization(_("cancel an approved quotation"))
 		self.status = "Cancelled"
 		frappe.db.set_value(self.doctype, self.name, "status", "Cancelled", update_modified=False)
+		self.add_comment(
+			"Info",
+			_("Quotation cancelled by {0}.").format(frappe.session.user),
+		)
 
 	def is_submit_action(self):
 		return getattr(self, "_action", None) == "submit" or self.docstatus == 1
+
+	def is_send_to_customer_action(self):
+		return bool(getattr(self.flags, "in_send_to_customer", False)) or self.status == "Pending Approval"
 
 	def validate_currency(self):
 		if self.currency != "AED":
@@ -174,7 +223,7 @@ class TransportQuotation(Document):
 					)
 				)
 
-		if self.is_submit_action():
+		if self.is_submit_action() or self.is_send_to_customer_action():
 			if not material_names:
 				frappe.throw(_("Add at least one material before approving the quotation."))
 			for material in material_names:
@@ -269,3 +318,219 @@ class TransportQuotation(Document):
 		for fieldname in APPROVAL_IMMUTABLE_FIELDS:
 			if self.get(fieldname) != previous.get(fieldname):
 				frappe.throw(_("Approved Transport Quotations are immutable; create a controlled revision."))
+
+	def validate_rejected_immutability(self):
+		if self.docstatus != 0 or getattr(self.flags, "in_lifecycle_transition", False):
+			return
+		previous = self.get_doc_before_save()
+		if previous and previous.status == "Rejected":
+			frappe.throw(_("Rejected Transport Quotations cannot be modified; create a new quotation instead."))
+
+
+def check_lifecycle_authorization(action_label: str):
+	if frappe.session.user != "Administrator" and not (APPROVAL_ROLES & set(frappe.get_roles())):
+		frappe.throw(
+			_("You are not authorized to {0}.").format(action_label),
+			frappe.PermissionError,
+		)
+
+
+@frappe.whitelist()
+def send_quotation_to_customer(name: str, customer_note: str | None = None):
+	check_lifecycle_authorization(_("send quotation to customer"))
+	if not name or not frappe.db.exists("Transport Quotation", name):
+		frappe.throw(_("Transport Quotation {0} does not exist.").format(name or ""))
+
+	doc = frappe.get_doc("Transport Quotation", name)
+	doc.check_permission("write")
+
+	if doc.docstatus != 0 or doc.status not in {"Draft", "Pending Approval"}:
+		frappe.throw(
+			_("Only Draft or Pending Approval quotations can be sent to the customer (current status: {0}).").format(
+				doc.status
+			)
+		)
+
+	note = (customer_note or "").strip()
+	if note:
+		doc.customer_approval_notes = note
+
+	doc.flags.in_lifecycle_transition = True
+	doc.flags.in_send_to_customer = True
+	doc.status = "Pending Approval"
+	doc.save()
+
+	doc.add_comment(
+		"Info",
+		_("Quotation sent to customer (Pending Approval) by {0}{1}").format(
+			frappe.session.user, f": {note}" if note else "."
+		),
+	)
+	return doc.as_dict()
+
+
+@frappe.whitelist()
+def approve_quotation(
+	name: str,
+	approval_date: str,
+	approval_reference: str | None = None,
+	approval_notes: str | None = None,
+):
+	check_lifecycle_authorization(_("record customer approval"))
+	if not name or not frappe.db.exists("Transport Quotation", name):
+		frappe.throw(_("Transport Quotation {0} does not exist.").format(name or ""))
+
+	doc = frappe.get_doc("Transport Quotation", name)
+	doc.check_permission("write")
+	doc.check_permission("submit")
+
+	if doc.docstatus != 0 or doc.status not in {"Draft", "Pending Approval"}:
+		frappe.throw(
+			_("Only Draft or Pending Approval quotations can be approved (current status: {0}).").format(
+				doc.status
+			)
+		)
+
+	doc.customer_approval_date = approval_date
+	if approval_reference is not None and approval_reference.strip():
+		doc.customer_approval_reference = approval_reference.strip()
+	if approval_notes is not None and approval_notes.strip():
+		doc.customer_approval_notes = approval_notes.strip()
+
+	doc.flags.in_lifecycle_transition = True
+	doc.save()
+	doc.submit()
+	return doc.as_dict()
+
+
+@frappe.whitelist()
+def reject_quotation(name: str, rejection_reason: str | None = None):
+	check_lifecycle_authorization(_("record customer rejection"))
+	if not name or not frappe.db.exists("Transport Quotation", name):
+		frappe.throw(_("Transport Quotation {0} does not exist.").format(name or ""))
+
+	reason = (rejection_reason or "").strip()
+	if not reason:
+		frappe.throw(_("Rejection Reason is required to reject a quotation."))
+
+	doc = frappe.get_doc("Transport Quotation", name)
+	doc.check_permission("write")
+
+	if doc.docstatus == 1 or doc.status == "Approved":
+		frappe.throw(_("Approved Transport Quotations cannot be marked as Rejected."))
+	if doc.docstatus == 2 or doc.status == "Cancelled":
+		frappe.throw(_("Cancelled Transport Quotations cannot be marked as Rejected."))
+	if doc.status == "Rejected":
+		frappe.throw(_("Transport Quotation {0} is already marked as Rejected.").format(doc.name))
+
+	doc.customer_approval_notes = reason
+	doc.flags.in_lifecycle_transition = True
+	doc.status = "Rejected"
+	doc.save()
+
+	doc.add_comment(
+		"Info",
+		_("Customer rejection recorded by {0}: {1}").format(frappe.session.user, reason),
+	)
+	return doc.as_dict()
+
+
+@frappe.whitelist()
+def get_quotation_list_with_summaries(limit_page_length: int = 500):
+	if not frappe.has_permission("Transport Quotation", "read"):
+		frappe.throw(_("Not permitted to read Transport Quotations."), frappe.PermissionError)
+
+	quotations = frappe.get_list(
+		"Transport Quotation",
+		fields=[
+			"name",
+			"customer",
+			"quotation_date",
+			"valid_until",
+			"status",
+			"docstatus",
+			"owner",
+			"modified",
+		],
+		order_by="creation desc",
+		limit_page_length=int(limit_page_length or 500),
+	)
+	if not quotations:
+		return []
+
+	names = [q.name for q in quotations]
+	materials = frappe.get_all(
+		"Transport Quotation Material",
+		filters={"parent": ["in", names], "parenttype": "Transport Quotation"},
+		fields=["parent", "material", "idx"],
+		order_by="idx asc",
+		limit_page_length=0,
+	)
+	locations = frappe.get_all(
+		"Transport Quotation Location",
+		filters={"parent": ["in", names], "parenttype": "Transport Quotation"},
+		fields=["parent", "material", "location_role", "location", "idx"],
+		order_by="idx asc",
+		limit_page_length=0,
+	)
+	rates = frappe.get_all(
+		"Transport Quotation Rate",
+		filters={"parent": ["in", names], "parenttype": "Transport Quotation"},
+		fields=[
+			"parent",
+			"name",
+			"material",
+			"loading_location",
+			"unloading_location",
+			"rate",
+			"effective_from",
+			"effective_to",
+			"rate_group",
+			"idx",
+		],
+		order_by="idx asc",
+		limit_page_length=0,
+	)
+
+	mat_by_parent: dict[str, list] = {}
+	for row in materials:
+		mat_by_parent.setdefault(row.parent, []).append({"material": row.material})
+
+	loc_by_parent: dict[str, list] = {}
+	for row in locations:
+		loc_by_parent.setdefault(row.parent, []).append(
+			{
+				"material": row.material,
+				"location_role": row.location_role,
+				"location": row.location,
+			}
+		)
+
+	rate_by_parent: dict[str, list] = {}
+	for row in rates:
+		rate_by_parent.setdefault(row.parent, []).append(
+			{
+				"name": row.name,
+				"material": row.material,
+				"loading_location": row.loading_location,
+				"unloading_location": row.unloading_location,
+				"rate": row.rate,
+				"effective_from": str(row.effective_from) if row.effective_from else "",
+				"effective_to": str(row.effective_to) if row.effective_to else "",
+				"rate_group": row.rate_group,
+			}
+		)
+
+	result = []
+	for q in quotations:
+		item = dict(q)
+		item["quotation_date"] = str(q.quotation_date) if q.quotation_date else ""
+		item["valid_until"] = str(q.valid_until) if q.valid_until else ""
+		item["modified"] = str(q.modified) if q.modified else ""
+		item["materials"] = mat_by_parent.get(q.name, [])
+		item["locations"] = loc_by_parent.get(q.name, [])
+		item["rates"] = rate_by_parent.get(q.name, [])
+		result.append(item)
+
+	return result
+

@@ -78,6 +78,9 @@ frappe.ui.form.on("Transport Job", {
 });
 
 function can_create_transport_trip(frm) {
+	if (frm.doc.quantity_mode === "Open") {
+		return ["Draft", "Ready", "In Progress"].includes(frm.doc.status);
+	}
 	return flt(frm.doc.remaining_quantity) > 0 && ["Draft", "Ready", "In Progress"].includes(frm.doc.status);
 }
 
