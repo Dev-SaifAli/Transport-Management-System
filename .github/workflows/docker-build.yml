@@ -87,7 +87,7 @@ jobs:
 
       - name: Verify bundled Frappe apps
         run: |
-          docker run --rm --entrypoint bash al-rana-tms:${{ github.sha }} -lc '
+          docker run --rm --entrypoint bash al-rana-tms:${{ github.sha }} -c '
             set -euo pipefail
             cd /home/frappe/frappe-bench
 
