@@ -8,11 +8,15 @@ from urllib.parse import quote
 import frappe
 import frappe.sessions
 
+from dispatch_portal.services.dispatch_access import require_console_access
+
 
 def get_context(context):
 	if frappe.session.user == "Guest":
 		frappe.local.flags.redirect_location = "/login?redirect-to=" + quote("/dispatch")
 		raise frappe.Redirect
+
+	require_console_access()
 
 	context.no_cache = 1
 	csrf_token = None
