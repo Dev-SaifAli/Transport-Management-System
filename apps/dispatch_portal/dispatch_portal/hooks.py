@@ -20,7 +20,7 @@ add_to_apps_screen = [
 		"name": app_name,
 		"logo": "/assets/dispatch_portal/icons/desktop_icons/solid/al_rana_dispatch.svg",
 		"title": app_title,
-		"route": "/app/dispatch-console",
+		"route": "/dispatch",
 		"has_permission": "dispatch_portal.api.permissions.has_console_access"
 	}
 ]

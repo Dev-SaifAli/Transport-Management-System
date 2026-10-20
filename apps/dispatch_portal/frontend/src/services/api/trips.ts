@@ -169,7 +169,7 @@ const frappeService: TripsService = {
     return unwrapMessage(raw)
   },
 
-  async getFleetResources(material?: string): Promise<FleetResourceOptions> {
+  async getFleetResources(_material?: string): Promise<FleetResourceOptions> {
     const [trucksRes, driversRes, transportersRes, hiredVehiclesRes] = await Promise.all([
       frappe.list<{ name: string; capacity?: number; status?: string }[]>('Truck', {
         fields: JSON.stringify(['name', 'capacity', 'status']),
