@@ -14,16 +14,16 @@ type StatusConfig = {
 }
 
 const statusConfig: Record<Status, StatusConfig> = {
-  unassigned: { label: 'Unassigned', variant: 'red', dot: 'bg-red-600' },
-  'in-transit': { label: 'In Transit', variant: 'blue', dot: 'bg-blue-600' },
-  loading: { label: 'Loading', variant: 'amber', dot: 'bg-amber-600' },
-  scheduled: { label: 'Scheduled', variant: 'blue', dot: 'bg-blue-600' },
-  delivered: { label: 'Delivered', variant: 'green', dot: 'bg-emerald-600' },
-  'awaiting-verification': { label: 'Awaiting Verification', variant: 'amber', dot: 'bg-amber-600' },
-  completed: { label: 'Completed', variant: 'green', dot: 'bg-emerald-600' },
-  pending: { label: 'Pending', variant: 'amber', dot: 'bg-amber-600' },
-  correction: { label: 'Correction', variant: 'red', dot: 'bg-red-600' },
-  attention: { label: 'Needs Attention', variant: 'red', dot: 'bg-red-600' },
+  unassigned: { label: 'Unassigned', variant: 'red', dot: 'bg-rose-500' },
+  'in-transit': { label: 'In Transit', variant: 'blue', dot: 'bg-sky-500' },
+  loading: { label: 'Loading', variant: 'amber', dot: 'bg-amber-500' },
+  scheduled: { label: 'Scheduled', variant: 'blue', dot: 'bg-sky-500' },
+  delivered: { label: 'Delivered', variant: 'green', dot: 'bg-emerald-500' },
+  'awaiting-verification': { label: 'Awaiting Verification', variant: 'amber', dot: 'bg-amber-500' },
+  completed: { label: 'Completed', variant: 'green', dot: 'bg-emerald-500' },
+  pending: { label: 'Pending', variant: 'amber', dot: 'bg-amber-500' },
+  correction: { label: 'Correction', variant: 'red', dot: 'bg-rose-500' },
+  attention: { label: 'Needs Attention', variant: 'red', dot: 'bg-rose-500' },
 }
 
 const props = defineProps<{ status: Status }>()

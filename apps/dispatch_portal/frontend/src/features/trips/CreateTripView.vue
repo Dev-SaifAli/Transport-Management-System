@@ -12,6 +12,7 @@ import {
 } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import MasterSelect from '@/components/shared/MasterSelect.vue'
 import PageContainer from '@/components/shared/PageContainer.vue'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import { Badge } from '@/components/ui/badge'
@@ -57,6 +58,63 @@ const hiredDriver = ref('')
 
 const selectedJob = computed(() => jobs.value.find((j) => j.name === selectedJobName.value) || null)
 const isOpenQuantityJob = computed(() => selectedJob.value?.quantity_mode === 'Open')
+
+const jobOptions = computed(() =>
+  jobs.value.map((job) => ({
+    value: job.name,
+    text: `${job.name} · ${job.material}`,
+    subtext: job.customer || 'No customer',
+  }))
+)
+
+const truckOptions = computed(() =>
+  fleet.value.trucks.map((trk) => ({
+    value: trk.name,
+    text: trk.name,
+    subtext: trk.capacity ? `${trk.capacity} TON` : undefined,
+  }))
+)
+
+const driverOptions = computed(() =>
+  fleet.value.drivers.map((drv) => ({
+    value: drv.name,
+    text: drv.full_name || drv.name,
+    subtext: drv.name,
+  }))
+)
+
+const transporterOptions = computed(() =>
+  fleet.value.transporters.map((t) => ({
+    value: t.name,
+    text: t.supplier_name || t.name,
+    subtext: t.name,
+  }))
+)
+
+const hiredVehicleOptions = computed(() =>
+  availableHiredVehicles.value.map((hv) => ({
+    value: hv.name,
+    text: hv.name,
+  }))
+)
+
+async function reloadFleet() {
+  try {
+    const fetchedFleet = await api.getFleetResources()
+    fleet.value = fetchedFleet
+  } catch (err) {
+    console.error('Failed to reload fleet', err)
+  }
+}
+
+async function reloadJobs() {
+  try {
+    const fetchedJobs = await api.getJobs()
+    jobs.value = fetchedJobs
+  } catch (err) {
+    console.error('Failed to reload jobs', err)
+  }
+}
 
 const availableLoadingPoints = computed(() => routeOptions.value?.loading_points || [])
 const availableDestinations = computed(() => {
@@ -291,18 +349,16 @@ function resetForm() {
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1 text-foreground">Select Job</label>
-              <select
-                v-model="selectedJobName"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="" disabled>-- Choose an active Transport Job --</option>
-                <option v-for="job in jobs" :key="job.name" :value="job.name">
-                  {{ job.name }} &middot; {{ job.material }} ({{ job.customer || 'No customer' }})
-                </option>
-              </select>
-            </div>
+            <MasterSelect
+              v-model="selectedJobName"
+              label="Select Job"
+              :options="jobOptions"
+              :max-options="7"
+              doctype="Transport Job"
+              create-url="/app/transport-job/new"
+              placeholder="-- Choose an active Transport Job --"
+              @refresh="reloadJobs"
+            />
 
             <div v-if="selectedJob" class="rounded-lg bg-muted/50 p-3 text-xs space-y-1">
               <div><span class="text-muted-foreground">Customer:</span> <strong class="text-foreground">{{ selectedJob.customer || '—' }}</strong></div>
@@ -452,72 +508,64 @@ function resetForm() {
 
           <!-- Own Fleet Fields -->
           <div v-if="executionSource === 'OWN'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1 text-foreground">Own Vehicle (Truck)</label>
-              <select
-                v-model="vehicle"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">-- Select Available Truck --</option>
-                <option v-for="trk in fleet.trucks" :key="trk.name" :value="trk.name">
-                  {{ trk.name }} {{ trk.capacity ? `(${trk.capacity} TON)` : '' }}
-                </option>
-              </select>
-            </div>
+            <MasterSelect
+              v-model="vehicle"
+              label="Own Vehicle (Truck)"
+              :options="truckOptions"
+              :max-options="7"
+              doctype="Vehicle"
+              create-url="/app/vehicle/new"
+              placeholder="-- Select Available Truck --"
+              @refresh="reloadFleet"
+            />
 
-            <div>
-              <label class="block text-sm font-medium mb-1 text-foreground">Driver (Active)</label>
-              <select
-                v-model="driver"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                required
-              >
-                <option value="">-- Select Active Driver --</option>
-                <option v-for="drv in fleet.drivers" :key="drv.name" :value="drv.name">
-                  {{ drv.full_name || drv.name }}
-                </option>
-              </select>
-            </div>
+            <MasterSelect
+              v-model="driver"
+              label="Driver (Active)"
+              :required="true"
+              :options="driverOptions"
+              :max-options="7"
+              doctype="Driver"
+              create-url="/app/driver/new"
+              placeholder="-- Select Active Driver --"
+              @refresh="reloadFleet"
+            />
           </div>
 
           <!-- Hired Fleet Fields -->
           <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-medium mb-1 text-foreground">Transporter Supplier</label>
-              <select
-                v-model="transporter"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                required
-              >
-                <option value="">-- Select Transporter --</option>
-                <option v-for="t in fleet.transporters" :key="t.name" :value="t.name">
-                  {{ t.supplier_name || t.name }}
-                </option>
-              </select>
-            </div>
+            <MasterSelect
+              v-model="transporter"
+              label="Transporter Supplier"
+              :required="true"
+              :options="transporterOptions"
+              :max-options="7"
+              doctype="Supplier"
+              create-url="/app/supplier/new"
+              placeholder="-- Select Transporter --"
+              @refresh="reloadFleet"
+            />
+
+            <MasterSelect
+              v-model="hiredVehicle"
+              label="Hired Vehicle"
+              :required="true"
+              :options="hiredVehicleOptions"
+              :max-options="7"
+              doctype="Vehicle"
+              create-url="/app/vehicle/new"
+              placeholder="-- Select Vehicle --"
+              :disabled="!availableHiredVehicles.length"
+              @refresh="reloadFleet"
+            />
 
             <div>
-              <label class="block text-sm font-medium mb-1 text-foreground">Hired Vehicle</label>
-              <select
-                v-model="hiredVehicle"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                required
-                :disabled="!availableHiredVehicles.length"
-              >
-                <option value="">-- Select Vehicle --</option>
-                <option v-for="hv in availableHiredVehicles" :key="hv.name" :value="hv.name">
-                  {{ hv.name }}
-                </option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium mb-1 text-foreground">Hired Driver Name</label>
+              <label class="block text-xs font-semibold mb-1.5 text-foreground">Hired Driver Name</label>
               <input
                 v-model="hiredDriver"
                 type="text"
                 placeholder="Driver Name"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                class="w-full h-10 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>

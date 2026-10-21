@@ -67,6 +67,11 @@ export interface FleetMapMarker {
   /** Marker position as percentages of the map container. */
   x: number
   y: number
+  lat?: number
+  lng?: number
+  label?: string
+  tripId?: string
+  truck?: string
 }
 
 export interface DashboardOverview {

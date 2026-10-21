@@ -127,8 +127,17 @@ function exportSelected() {
           type="search"
           placeholder="Search trip, customer, plate…"
           aria-label="Search trips"
-          class="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          class="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-8 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
+        <button
+          v-if="store.search"
+          type="button"
+          class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+          title="Clear search"
+          @click="store.search = ''"
+        >
+          <X class="size-3.5" />
+        </button>
       </div>
       <div class="hidden items-center gap-2 lg:flex">
         <button v-for="chip in ['Date: Today', 'Status: All', 'Material: All', 'Customer: All', 'Emirate: All']" :key="chip" type="button"
@@ -153,13 +162,13 @@ function exportSelected() {
       <span
         v-for="filter in store.activeFilters"
         :key="filter.label"
-        class="flex items-center gap-1.5 rounded-full border border-lime-300 bg-lime-50 px-3.5 py-1.5 text-[13px] font-bold text-lime-800"
+        class="flex items-center gap-1.5 rounded-full border border-[#0466C8]/30 bg-[#0466C8]/10 px-3.5 py-1.5 text-[13px] font-bold text-[#023E7D]"
       >
         {{ filter.label }}
         <button
           type="button"
           :aria-label="`Remove filter ${filter.label}`"
-          class="rounded-full p-0.5 hover:bg-lime-200"
+          class="rounded-full p-0.5 hover:bg-[#0466C8]/20"
           @click="store.removeFilter(filter.label)"
         >
           <X class="size-3.5" aria-hidden="true" />
@@ -168,7 +177,7 @@ function exportSelected() {
       <button
         v-if="store.activeFilters.length"
         type="button"
-        class="text-[13px] font-bold text-lime-700 hover:underline"
+        class="text-[13px] font-bold text-[#0466C8] hover:text-[#0353A4] hover:underline"
         @click="store.clearFilters()"
       >
         Clear all
@@ -223,7 +232,7 @@ function exportSelected() {
               v-for="trip in store.visibleTrips"
               :key="trip.id"
               class="border-t transition-colors"
-              :class="store.selectedIds.has(trip.id) ? 'bg-lime-50' : 'hover:bg-muted/40'"
+              :class="store.selectedIds.has(trip.id) ? 'bg-[#0466C8]/10' : 'hover:bg-muted/40'"
             >
               <td class="px-4 py-4">
                 <button

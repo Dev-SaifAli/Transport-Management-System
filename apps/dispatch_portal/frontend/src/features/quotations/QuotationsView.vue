@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, Plus, RefreshCw, Search } from 'lucide-vue-next'
+import { FileText, Plus, RefreshCw, Search, X } from 'lucide-vue-next'
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -58,7 +58,16 @@ onMounted(refresh)
       <div class="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm lg:flex-row lg:items-center">
         <div class="relative min-w-0 flex-1 lg:max-w-md">
           <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input v-model="quotations.search" class="pl-9" placeholder="Search quotations, customers, materials…" aria-label="Search quotations" />
+          <Input v-model="quotations.search" class="pl-9 pr-8" placeholder="Search quotations, customers, materials…" aria-label="Search quotations" />
+          <button
+            v-if="quotations.search"
+            type="button"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+            title="Clear search"
+            @click="quotations.search = ''"
+          >
+            <X class="size-3.5" />
+          </button>
         </div>
         <div class="flex flex-wrap gap-2">
           <button

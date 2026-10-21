@@ -9,15 +9,16 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary/15 text-lime-800',
+        default: 'bg-[#0466C8]/10 text-[#023E7D] border border-[#0466C8]/25',
         // Preserve the base-only styling already used by Create Trip.
         secondary: '',
-        blue: 'bg-blue-100 text-blue-700',
-        amber: 'bg-amber-100 text-amber-700',
-        green: 'bg-emerald-100 text-emerald-700',
-        red: 'bg-red-100 text-red-600',
-        outline: 'border border-border text-foreground',
-        muted: 'bg-muted text-muted-foreground',
+        blue: 'bg-[#0466C8]/10 text-[#0353A4] border border-[#0466C8]/25',
+        deepsea: 'bg-[#023E7D]/10 text-[#023E7D] border border-[#023E7D]/25',
+        amber: 'bg-amber-50 text-amber-900 border border-amber-200/70',
+        green: 'bg-emerald-50 text-emerald-800 border border-emerald-200/70',
+        red: 'bg-rose-50 text-rose-800 border border-rose-200/70',
+        outline: 'border border-border/80 bg-card text-foreground shadow-xs',
+        muted: 'bg-muted/70 text-muted-foreground border border-border/50',
       },
     },
     defaultVariants: { variant: 'default' },

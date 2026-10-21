@@ -12,6 +12,19 @@ export default defineConfig(({ mode }) => {
     // Keep the dev server convenient while using the canonical Frappe asset URL
     // for builds consumed by /dispatch.
     base: mode === 'production' ? '/assets/dispatch_portal/frontend/' : env.VITE_APP_BASE_PATH || '/dispatch/',
+    server: {
+      port: 5173,
+      host: '127.0.0.1',
+      proxy: {
+        '/api': {
+          target: 'http://127.0.0.1:8000',
+          changeOrigin: true,
+          headers: {
+            Host: 'tms.localhost',
+          },
+        },
+      },
+    },
     plugins: [vue()],
     build: {
       outDir: '../dispatch_portal/public/frontend',

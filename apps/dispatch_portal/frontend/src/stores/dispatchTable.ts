@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
+import { refDebounced } from '@vueuse/core'
 
 import {
   createDispatchTableService,
@@ -26,6 +27,7 @@ export const useDispatchTableStore = defineStore('dispatchTable', () => {
   const error = ref<string | null>(null)
 
   const search = ref('')
+  const debouncedSearch = refDebounced(search, 300)
   const activeFilters = ref<{ label: string }[]>([])
   const selectedIds = ref<Set<string>>(new Set())
 
@@ -48,7 +50,7 @@ export const useDispatchTableStore = defineStore('dispatchTable', () => {
 
   const visibleTrips = computed<DispatchTableTrip[]>(() => {
     const trips = data.value?.trips ?? []
-    const q = search.value.trim().toLowerCase()
+    const q = debouncedSearch.value.trim().toLowerCase()
     const filtered = q
       ? trips.filter((t) =>
           [t.id, t.customer, t.truck ?? '', t.driver ?? '', t.material, t.route]
@@ -114,7 +116,7 @@ export const useDispatchTableStore = defineStore('dispatchTable', () => {
 
   return {
     data, status, error, fetchTrips,
-    search, activeFilters, selectedIds,
+    search, debouncedSearch, activeFilters, selectedIds,
     sortKey, sortDir, visibleTrips, allVisibleSelected,
     toggleSort, toggleTrip, toggleAllVisible, clearSelection,
     removeFilter, clearFilters, selectedTrips,

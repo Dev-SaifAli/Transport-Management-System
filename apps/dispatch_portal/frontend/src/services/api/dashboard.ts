@@ -162,7 +162,7 @@ const frappeDashboardService: DashboardService = {
         label: 'Active Now',
         value: String(activeNowCount),
         note: `${loadedCount} loading · ${inTransitCount} in transit`,
-        noteClass: 'text-lime-700',
+        noteClass: 'text-[#0466C8]',
         icon: 'truck',
       },
       {
@@ -295,8 +295,11 @@ const frappeDashboardService: DashboardService = {
       { x: 25, y: 48 },
       { x: 74, y: 60 },
     ]
-    const markers: FleetMapMarker[] = liveTrips.slice(0, 6).map((row, idx) => ({
+    const markers: FleetMapMarker[] = liveTrips.slice(0, 8).map((row, idx) => ({
       id: row.trip || row.name || `TRP-${idx + 1}`,
+      tripId: row.trip || row.name || `TRP-${idx + 1}`,
+      label: `${row.loading_site || 'Loading'} → ${row.unloading_site || 'Destination'}`,
+      truck: row.vehicle || 'Truck assigned',
       status: mapSourceStatusToDashboardStatus(row.source_status || row.status),
       x: markerCoords[idx % markerCoords.length].x,
       y: markerCoords[idx % markerCoords.length].y,

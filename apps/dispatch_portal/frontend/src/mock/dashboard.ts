@@ -13,7 +13,7 @@ export const mockDashboardOverview: DashboardOverview = {
     { id: 'todays-trips', label: "Today's Trips", value: '32', note: '+6 vs yesterday', noteClass: 'text-emerald-600', icon: 'users' },
     { id: 'unassigned-trips', label: 'Unassigned Trips', value: '5', note: 'Assign before 14:00', noteClass: 'text-amber-600', icon: 'alert-circle' },
     { id: 'scheduled', label: 'Scheduled', value: '9', note: 'Next at 13:30', noteClass: 'text-blue-700', icon: 'calendar-check' },
-    { id: 'active-now', label: 'Active Now', value: '11', note: 'Across 6 jobs', noteClass: 'text-lime-700', icon: 'truck' },
+    { id: 'active-now', label: 'Active Now', value: '11', note: 'Across 6 jobs', noteClass: 'text-[#0466C8]', icon: 'truck' },
     { id: 'completed', label: 'Completed', value: '7', note: '2 awaiting closure', noteClass: 'text-emerald-600', icon: 'check-circle' },
     { id: 'need-attention', label: 'Need Attention', value: '3', note: '1 delayed · 2 docs', noteClass: 'text-red-600', icon: 'alert-triangle' },
     { id: 'trucks-available', label: 'Trucks Available', value: '14', note: 'of 22 fleet', noteClass: 'text-emerald-600', icon: 'truck' },

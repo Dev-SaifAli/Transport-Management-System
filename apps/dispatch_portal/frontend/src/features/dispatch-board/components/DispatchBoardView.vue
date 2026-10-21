@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ChevronDown, LayoutGrid, List, Plus, Search } from 'lucide-vue-next'
+import { ChevronDown, LayoutGrid, List, Plus, Search, X } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useDebounce } from '@/composables/useDebounce'
 
 import ErrorState from '@/components/shared/ErrorState.vue'
 import LoadingState from '@/components/shared/LoadingState.vue'
@@ -21,9 +22,10 @@ onMounted(() => {
 })
 
 const search = ref('')
+const debouncedSearch = useDebounce(search, 300)
 
 const filteredTrips = computed<BoardTrip[]>(() => {
-  const q = search.value.trim().toLowerCase()
+  const q = debouncedSearch.value.trim().toLowerCase()
   const trips = store.data?.trips ?? []
   if (!q) return trips
   return trips.filter((t) =>
@@ -86,8 +88,17 @@ const metaLabel = computed(
           type="search"
           placeholder="Search trip, customer, truck…"
           aria-label="Search trips"
-          class="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          class="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-8 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
+        <button
+          v-if="search"
+          type="button"
+          class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+          title="Clear search"
+          @click="search = ''"
+        >
+          <X class="size-3.5" />
+        </button>
       </div>
       <div class="ml-auto hidden items-center gap-2 sm:flex">
         <button type="button" class="flex h-10 items-center gap-1.5 rounded-full border bg-background px-4 text-sm font-bold shadow-sm hover:bg-accent" disabled>

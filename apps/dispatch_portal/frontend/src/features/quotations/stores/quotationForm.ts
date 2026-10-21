@@ -248,6 +248,7 @@ export const useQuotationFormStore = defineStore('quotationForm', () => {
   const todayStr = new Date().toISOString().slice(0, 10)
   const savedQuotationName = ref<string | null>(null)
   const isPersisted = computed(() => Boolean(savedQuotationName.value))
+  const justSaved = ref(false)
   const modalError = ref<string | null>(null)
 
   const quotation = ref<Quotation>({
@@ -271,6 +272,13 @@ export const useQuotationFormStore = defineStore('quotationForm', () => {
       estimatedTripsPerDay: 10,
       notes: 'Planning only — estimates never limit operational trips',
     },
+  })
+
+  const displayStatus = computed(() => {
+    if (quotation.value.status === 'Draft') {
+      return isPersisted.value || justSaved.value ? 'Saved' : 'Draft'
+    }
+    return quotation.value.status
   })
 
   const isSaving = ref(false)
@@ -678,6 +686,7 @@ export const useQuotationFormStore = defineStore('quotationForm', () => {
     if (preset === 'empty') {
       const today = new Date().toISOString().slice(0, 10)
       savedQuotationName.value = null
+      justSaved.value = false
       modalError.value = null
       quotation.value = {
         quotationNumber: 'NEW',
@@ -727,8 +736,8 @@ export const useQuotationFormStore = defineStore('quotationForm', () => {
     return { ...doc, ...result, name: resolvedName || quotation.value.quotationNumber }
   }
 
-  async function saveDraft() {
-    if (isSaving.value) return
+  async function saveDraft(): Promise<TransportQuotationDoc | null> {
+    if (isSaving.value) return null
     isSaving.value = true
     modalError.value = null
     try {
@@ -739,12 +748,15 @@ export const useQuotationFormStore = defineStore('quotationForm', () => {
         result.status === 'Pending Approval' || prevStatus === 'Pending Approval'
           ? 'Pending Approval'
           : 'Draft'
+      justSaved.value = true
       toast.success(`Quotation ${quotation.value.quotationNumber} saved`)
+      return result
     } catch (e) {
       const msg = extractErrorMessage(e, 'Error saving quotation')
       modalError.value = msg
       toast.error(msg)
       console.error(e)
+      return null
     } finally {
       isSaving.value = false
     }
@@ -845,6 +857,7 @@ export const useQuotationFormStore = defineStore('quotationForm', () => {
       const doc = await api.getQuotation(id)
       const docName = doc.name || id
       savedQuotationName.value = docName
+      justSaved.value = true
 
       if (doc.customer && !masters.value.customers.some((c) => c.value === doc.customer)) {
         masters.value.customers.push({ value: doc.customer, text: doc.customer })
@@ -930,6 +943,8 @@ export const useQuotationFormStore = defineStore('quotationForm', () => {
     quotation,
     savedQuotationName,
     isPersisted,
+    justSaved,
+    displayStatus,
     modalError,
     isSaving,
     isSubmitting,

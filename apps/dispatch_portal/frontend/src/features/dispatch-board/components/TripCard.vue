@@ -23,7 +23,7 @@ defineProps<{ trip: BoardTrip }>()
     <RouterLink
       v-if="trip.column === 'unassigned'"
       to="/create-trip"
-      class="mt-3 block rounded-lg bg-lime-100 py-2 text-center text-xs font-bold text-lime-800 transition-colors hover:bg-lime-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      class="mt-3 block rounded-lg bg-[#0466C8]/10 py-2 text-center text-xs font-bold text-[#023E7D] transition-colors hover:bg-[#0466C8]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       Assign Truck &amp; Driver
     </RouterLink>

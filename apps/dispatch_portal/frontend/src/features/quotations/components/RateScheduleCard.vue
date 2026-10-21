@@ -108,29 +108,29 @@ function getAvailablePointsForGroup(group: RateGroup) {
 </script>
 
 <template>
-  <div class="bg-card rounded-xl border border-border/90 shadow-sm transition-all duration-200 overflow-hidden">
+  <div class="bg-white rounded-xl border border-slate-200/90 shadow-xs transition-all duration-200 overflow-hidden">
     <!-- Header banner -->
     <div
-      class="p-4 sm:p-5 flex items-center justify-between cursor-pointer select-none bg-card hover:bg-accent/50 transition"
+      class="p-4 sm:p-5 flex items-center justify-between cursor-pointer select-none bg-slate-50/50 hover:bg-slate-100/60 transition border-b border-slate-100"
       @click="isExpanded = !isExpanded"
     >
       <div class="flex items-center gap-3.5">
-        <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 shadow-xs">
+        <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200/60 shadow-2xs">
           <Coins class="w-5 h-5" />
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="font-bold text-foreground text-base">
+            <h3 class="font-bold text-slate-900 text-base">
               Commercial Rate Schedule
             </h3>
             <span
               v-if="!isExpanded"
-              class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground font-mono"
+              class="text-[11px] font-semibold px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono"
             >
               {{ quotationStore.totalRateGroupsCount }} RATE GROUPS
             </span>
           </div>
-          <p class="text-xs text-muted-foreground mt-0.5">
+          <p class="text-xs text-slate-500 mt-0.5">
             <template v-if="targetMaterial">
               {{ targetMaterial.materialName }} · shared rate groups and per-point rates · date-wise effective periods
             </template>
@@ -144,7 +144,7 @@ function getAvailablePointsForGroup(group: RateGroup) {
       <div class="flex items-center gap-3">
         <span
           v-if="!isUnlocked"
-          class="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md hidden sm:inline-flex items-center gap-1.5"
+          class="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg hidden sm:inline-flex items-center gap-1.5"
         >
           <AlertCircle class="w-3.5 h-3.5" />
           <span>Unlocks once loading points & destinations are selected</span>
@@ -153,13 +153,13 @@ function getAvailablePointsForGroup(group: RateGroup) {
         <button
           v-if="isUnlocked && targetMaterial"
           @click.stop="handleAddRateGroup"
-          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
+          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer"
         >
           <Plus class="w-4 h-4" />
           <span>Add Rate Group</span>
         </button>
 
-        <button class="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition">
+        <button class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition">
           <ChevronUp v-if="isExpanded" class="w-5 h-5" />
           <ChevronDown v-else class="w-5 h-5" />
         </button>
